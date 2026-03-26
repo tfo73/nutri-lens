@@ -1,0 +1,47 @@
+name: nutri_lens
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  http: ^1.2.0
+  sqflite: ^2.3.0
+  fl_chart: ^0.69.0
+  provider: ^6.1.0
+  image_picker: ^1.1.0
+  shared_preferences: ^2.3.2
+  mobile_scanner: ^5.2.3
+  flutter_local_notifications: ^17.2.0
+  timezone: ^0.9.4
+  pdf: ^3.10.8
+  excel: ^4.0.3
+  path_provider: ^2.1.4
+  health: ^11.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#1A2E1A"
+  adaptive_icon_foreground: "assets/icon/icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/
