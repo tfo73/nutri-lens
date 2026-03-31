@@ -100,6 +100,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 16),
                 FadeInSlide(
                   delay: const Duration(milliseconds: 0),
+                  child: _buildNutritionScore(
+                      context, nutrition, profileProvider),
+                ),
+                const SizedBox(height: 16),
+                FadeInSlide(
+                  delay: const Duration(milliseconds: 40),
                   child: _buildCalorieRing(context, nutrition, remaining,
                       calorieGoal, totalBurned, l10n),
                 ),
@@ -108,6 +114,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   delay: const Duration(milliseconds: 80),
                   child: _buildMacroRow(context, nutrition, proteinGoal,
                       carbGoal, fatGoal, l10n),
+                ),
+                const SizedBox(height: 12),
+                FadeInSlide(
+                  delay: const Duration(milliseconds: 120),
+                  child: _buildBesinKarnesi(
+                      context, nutrition, profileProvider),
+                ),
+                const SizedBox(height: 12),
+                FadeInSlide(
+                  delay: const Duration(milliseconds: 140),
+                  child: _buildConflictCards(
+                      context, provider, profileProvider),
                 ),
                 const SizedBox(height: 12),
                 FadeInSlide(
@@ -482,6 +500,309 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ],
     );
   }
+
+  // ─── Beslenme Skoru ────────────────────────────────────────────────────────
+
+  double _calcNutritionScore(
+      NutritionData n, ProfileProvider pp) {
+    final profile = pp.activeProfile;
+    if (profile == null || pp.calorieGoal <= 0) return 0;
+
+    double score(double consumed, double goal) {
+      if (goal <= 0) return 100;
+      return (consumed / goal).clamp(0.0, 1.0) * 100;
+    }
+
+    double scoreInverse(double consumed, double limit) {
+      if (limit <= 0) return 100;
+      return ((1 - consumed / limit).clamp(0.0, 1.0)) * 100;
+    }
+
+    // Makrolar %60
+    final calScore = score(n.calories, pp.calorieGoal) * 0.20;
+    final protScore = score(n.protein, pp.proteinGoal) * 0.20;
+    final carbScore = score(n.carbohydrates, pp.carbGoal) * 0.10;
+    final fatScore = score(n.fat, pp.fatGoal) * 0.10;
+
+    // Mikro besinler %40 (eşit ağırlıklı 8 besin = %5 her biri)
+    final micros = [
+      score(n.selenium ?? 0, profile.seleniumGoal),
+      score(n.magnesium ?? 0, profile.magnesiumGoal),
+      score(n.omega3 ?? 0, profile.omega3Goal),
+      score(n.iron ?? 0, profile.ironGoal),
+      score(n.zinc ?? 0, profile.zincGoal),
+      score(n.vitaminD ?? 0, profile.vitaminDGoal),
+      score(n.calcium ?? 0, profile.calciumGoal),
+      scoreInverse(n.sodium ?? 0, profile.sodiumLimit),
+    ];
+    final microScore =
+        micros.reduce((a, b) => a + b) / micros.length * 0.40;
+
+    return (calScore + protScore + carbScore + fatScore + microScore)
+        .clamp(0.0, 100.0);
+  }
+
+  Widget _buildNutritionScore(
+      BuildContext context, NutritionData nutrition, ProfileProvider pp) {
+    final score = _calcNutritionScore(nutrition, pp);
+    final colorScheme = Theme.of(context).colorScheme;
+    final Color scoreColor;
+    if (score >= 80) {
+      scoreColor = const Color(0xFF40916C);
+    } else if (score >= 50) {
+      scoreColor = const Color(0xFFF9A825);
+    } else {
+      scoreColor = colorScheme.error;
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: score / 100,
+                    strokeWidth: 6,
+                    backgroundColor:
+                        colorScheme.surfaceContainerHighest,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(scoreColor),
+                  ),
+                  Text(
+                    score.toInt().toString(),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: scoreColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Beslenme Skoru',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    score >= 80
+                        ? 'Harika gidiyorsunuz!'
+                        : score >= 50
+                            ? 'Eksik besinleriniz var'
+                            : 'Beslenmenizi geliştirin',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Besin Karnesi ────────────────────────────────────────────────────────
+
+  Widget _buildBesinKarnesi(
+      BuildContext context, NutritionData n, ProfileProvider pp) {
+    final profile = pp.activeProfile;
+    if (profile == null) return const SizedBox.shrink();
+
+    final items = <_MicroItem>[
+      _MicroItem('Selenyum', n.selenium, profile.seleniumGoal, 'μg'),
+      _MicroItem('Magnezyum', n.magnesium, profile.magnesiumGoal, 'mg'),
+      _MicroItem('Omega-3', n.omega3, profile.omega3Goal, 'g'),
+      _MicroItem('Omega-6', n.omega6, profile.omega6Goal, 'g'),
+      _MicroItem('Demir', n.iron, profile.ironGoal, 'mg'),
+      _MicroItem('Çinko', n.zinc, profile.zincGoal, 'mg'),
+      _MicroItem('D Vitamini', n.vitaminD, profile.vitaminDGoal, 'μg'),
+      _MicroItem('B12 Vitamini', n.vitaminB12, profile.vitaminB12Goal, 'μg'),
+      _MicroItem('Kalsiyum', n.calcium, profile.calciumGoal, 'mg'),
+      _MicroItem('Potasyum', n.potassium, profile.potassiumGoal, 'mg'),
+      if (profile.fiberGoal > 0)
+        _MicroItem('Lif', n.fiber, profile.fiberGoal, 'g'),
+      _MicroItem('Sodyum', n.sodium, profile.sodiumLimit, 'mg',
+          isMaxNutrient: true),
+    ];
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          title: Row(
+            children: [
+              const Text('🧬', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text(
+                'Besin Karnesi',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: items
+                    .map((item) => _buildMicroRow(context, item))
+                    .toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMicroRow(BuildContext context, _MicroItem item) {
+    final consumed = item.consumed ?? 0;
+    final ratio = item.goal > 0
+        ? (item.isMaxNutrient
+            ? (1 - consumed / item.goal).clamp(0.0, 1.0)
+            : (consumed / item.goal).clamp(0.0, 1.0))
+        : 0.0;
+
+    final Color barColor;
+    final String statusIcon;
+    if (ratio >= 0.8) {
+      barColor = const Color(0xFF40916C);
+      statusIcon = '✓';
+    } else if (ratio >= 0.5) {
+      barColor = const Color(0xFFF9A825);
+      statusIcon = '!';
+    } else {
+      barColor = Theme.of(context).colorScheme.error;
+      statusIcon = '✗';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              item.label,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 7,
+                backgroundColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            statusIcon,
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: barColor),
+          ),
+          const SizedBox(width: 4),
+          SizedBox(
+            width: 56,
+            child: Text(
+              item.consumed != null
+                  ? '${consumed.toStringAsFixed(item.unit == 'g' || item.unit == 'μg' ? 1 : 0)} ${item.unit}'
+                  : '— ${item.unit}',
+              style: const TextStyle(fontSize: 11),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Çakışma Kartları ─────────────────────────────────────────────────────
+
+  Widget _buildConflictCards(
+      BuildContext context, NutritionProvider provider, ProfileProvider pp) {
+    final conflicts =
+        provider.getConflicts(pp.activeProfile);
+    if (conflicts.isEmpty) return const SizedBox.shrink();
+
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: conflicts.map((c) {
+        final isWarning = c.severity == 'warning';
+        final bgColor = isWarning
+            ? colorScheme.errorContainer.withValues(alpha: 0.5)
+            : colorScheme.tertiaryContainer.withValues(alpha: 0.5);
+        final textColor = isWarning
+            ? colorScheme.onErrorContainer
+            : colorScheme.onTertiaryContainer;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Text(c.icon, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  c.message,
+                  style: TextStyle(fontSize: 13, color: textColor),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ─── Micro Item ────────────────────────────────────────────────────────────────
+
+class _MicroItem {
+  final String label;
+  final double? consumed;
+  final double goal;
+  final String unit;
+  final bool isMaxNutrient;
+
+  const _MicroItem(this.label, this.consumed, this.goal, this.unit,
+      {this.isMaxNutrient = false});
 }
 
 // ─── Calorie Chart Card ───────────────────────────────────────────────────────

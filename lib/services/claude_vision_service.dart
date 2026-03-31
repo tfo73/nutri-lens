@@ -34,7 +34,7 @@ class ClaudeVisionService {
               {
                 'type': 'text',
                 'text':
-                    'Bu yemek fotoğrafını analiz et. Fotoğraftaki referans nesneleri kullanarak yemeğin hacmini ve gramajını tahmin et. Sadece şu formatta JSON döndür, başka hiçbir şey yazma: {"yemek_adi": "...", "porsiyon_gram": 100, "hacim_ml": 150, "referans_nesne": "standart tabak", "kalori": 200, "protein": 10, "karbonhidrat": 20, "yag": 5, "volume_aciklamasi": "..."}',
+                    'Bu yemek fotoğrafını analiz et. Fotoğraftaki referans nesneleri kullanarak yemeğin hacmini ve gramajını tahmin et. Sadece şu formatta JSON döndür, başka hiçbir şey yazma: {"yemek_adi": "...", "porsiyon_gram": 100, "hacim_ml": 150, "referans_nesne": "standart tabak", "kalori": 200, "protein": 10, "karbonhidrat": 20, "yag": 5, "lif": 2, "seker": 5, "doymus_yag": 1, "selenyum": 5, "magnezyum": 30, "omega3": 0.1, "omega6": 0.5, "demir": 1, "cinko": 0.5, "d_vitamini": 0, "b12": 0.1, "kalsiyum": 50, "potasyum": 200, "sodyum": 150, "volume_aciklamasi": "..."}. Mikro besinleri tahmini olarak ver, bilinmiyorsa 0 yaz.',
               },
             ],
           },

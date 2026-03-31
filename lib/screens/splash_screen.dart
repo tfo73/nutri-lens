@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -72,18 +74,20 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) _textCtrl.forward();
     });
 
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, animation, __) => FadeTransition(
-              opacity: animation,
-              child: const HomeScreen(),
-            ),
-            transitionDuration: const Duration(milliseconds: 500),
+    Future.delayed(const Duration(milliseconds: 2500), () async {
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingDone = prefs.getBool('onboarding_complete') ?? false;
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, animation, _) => FadeTransition(
+            opacity: animation,
+            child: onboardingDone ? const HomeScreen() : const OnboardingScreen(),
           ),
-        );
-      }
+          transitionDuration: const Duration(milliseconds: 500),
+        ),
+      );
     });
   }
 

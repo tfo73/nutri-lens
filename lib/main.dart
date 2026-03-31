@@ -68,23 +68,59 @@ class NutriLensApp extends StatelessWidget {
               themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF4CAF50),
+              seedColor: const Color(0xFF1B4332),
               brightness: Brightness.light,
             ).copyWith(
-              surface: const Color(0xFFF5F5F5),
+              primary: const Color(0xFF40916C),
+              secondary: const Color(0xFF74C69D),
+              surface: const Color(0xFFF8FFF8),
             ),
-            scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+            scaffoldBackgroundColor: const Color(0xFFF8FFF8),
             useMaterial3: true,
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF4CAF50),
+              seedColor: const Color(0xFF1B4332),
               brightness: Brightness.dark,
             ).copyWith(
-              surface: const Color(0xFF1E1E1E),
+              primary: const Color(0xFF4ADE80),
+              secondary: const Color(0xFF74C69D),
+              surface: const Color(0xFF122018),
+              surfaceContainerHighest: const Color(0xFF0F1C13),
+              outline: const Color(0xFF1A3020),
+              onPrimary: const Color(0xFF0C1610),
+              onSurface: const Color(0xFFE8F5EC),
+              onSurfaceVariant: const Color(0xFFB8D4C0),
             ),
-            scaffoldBackgroundColor: const Color(0xFF121212),
+            scaffoldBackgroundColor: const Color(0xFF0C1610),
+            cardColor: const Color(0xFF122018),
+            dividerColor: const Color(0xFF1A3020),
             useMaterial3: true,
+            textTheme: const TextTheme(
+              displayLarge: TextStyle(
+                  color: Color(0xFFE8F5EC),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.5),
+              displayMedium: TextStyle(
+                  color: Color(0xFFE8F5EC),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0),
+              headlineLarge: TextStyle(
+                  color: Color(0xFFE8F5EC),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5),
+              headlineMedium: TextStyle(
+                  color: Color(0xFFE8F5EC),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5),
+              titleLarge: TextStyle(
+                  color: Color(0xFFE8F5EC), fontWeight: FontWeight.w600),
+              titleMedium: TextStyle(
+                  color: Color(0xFFE8F5EC), fontWeight: FontWeight.w500),
+              bodyLarge: TextStyle(color: Color(0xFFE8F5EC)),
+              bodyMedium: TextStyle(color: Color(0xFFB8D4C0)),
+              bodySmall: TextStyle(color: Color(0xFF4A7060)),
+            ),
           ),
           home: const SplashScreen(),
         ),

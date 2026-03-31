@@ -6,7 +6,9 @@
       "Bash(flutter build:*)",
       "Bash(find C:Usersbora0nutri_lens -not -path *build* -not -path *.dart_tool* -not -path *.git* -type f -name *.dart -o -name *.yaml -o -name *.yml -o -name *.json)",
       "Bash(grep -E \"\\\\.\\(dart|yaml|yml\\)$\")",
-      "Bash(dart analyze:*)"
+      "Bash(dart analyze:*)",
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(wc -l /c/Users/bora0/nutri_lens/lib/screens/*.dart)"
     ]
   }
 }

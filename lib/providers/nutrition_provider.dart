@@ -5,6 +5,8 @@ import '../models/daily_log.dart';
 import '../models/exercise_entry.dart';
 import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
+import '../services/conflict_detection_service.dart';
+import 'profile_provider.dart';
 
 class NutritionProvider extends ChangeNotifier {
   DailyLog _todayLog = DailyLog(
@@ -192,6 +194,14 @@ class NutritionProvider extends ChangeNotifier {
       }
     }
     return result;
+  }
+
+  List<NutritionConflict> getConflicts(UserProfile? profile) {
+    if (profile == null) return [];
+    return ConflictDetectionService.detect(
+      consumed: totalNutrition,
+      profile: profile,
+    );
   }
 
   Map<String, DailyLog> get allLogs {
