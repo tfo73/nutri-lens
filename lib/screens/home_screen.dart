@@ -8,7 +8,7 @@ import 'camera_screen.dart';
 import 'coach_screen.dart';
 import 'dashboard_screen.dart';
 import 'monthly_program_screen.dart';
-import 'profile_screen.dart';
+import 'profile_screen.dart' show ProfileScreen, openNewProfileWizard;
 import 'suggestions_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -55,6 +55,13 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  void _openProfileWizard() {
+    setState(() => _selectedIndex = 4);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) openNewProfileWizard(context);
+    });
+  }
+
   void _openCoach() {
     showGeneralDialog(
       context: context,
@@ -98,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           DashboardScreen(
             onMealAddPressed: (meal) => _navigateToCamera(meal: meal),
+            onProfileSetupPressed: _openProfileWizard,
           ),
           CameraScreen(
             key: ValueKey(_selectedMeal),

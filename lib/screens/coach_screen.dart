@@ -258,11 +258,15 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: colorScheme.primaryContainer,
-                  child: Icon(Icons.psychology,
-                      size: 18, color: colorScheme.onPrimaryContainer),
+                ClipOval(
+                  child: SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Image.asset(
+                      'assets/icon/icon.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const Expanded(

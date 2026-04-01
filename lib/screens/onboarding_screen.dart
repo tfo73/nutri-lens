@@ -221,24 +221,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               opacity: _logoFade.value,
               child: Transform.scale(
                 scale: _logoScale.value,
-                child: Container(
+                child: SizedBox(
                   width: 120,
                   height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: primary.withValues(alpha: 0.12),
-                    border: Border.all(color: primary, width: 3),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'NL',
-                      style: TextStyle(
-                        color: primary,
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
+                  child: Image.asset(
+                    'assets/icon/icon.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

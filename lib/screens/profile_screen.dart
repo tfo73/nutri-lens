@@ -373,6 +373,17 @@ class ProfileScreen extends StatelessWidget {
 }
 
 
+/// Dışarıdan (örn. Dashboard'dan) yeni profil sihirbazını açmak için.
+void openNewProfileWizard(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const _ProfileWizardSheet(existing: null),
+  );
+}
+
 // ─── Profile Wizard Sheet (5 adım) ───────────────────────────────────────────
 
 class _ProfileWizardSheet extends StatefulWidget {

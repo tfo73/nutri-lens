@@ -17,8 +17,13 @@ import '../widgets/profile_switcher_button.dart';
 
 class DashboardScreen extends StatefulWidget {
   final void Function(String meal)? onMealAddPressed;
+  final VoidCallback? onProfileSetupPressed;
 
-  const DashboardScreen({super.key, this.onMealAddPressed});
+  const DashboardScreen({
+    super.key,
+    this.onMealAddPressed,
+    this.onProfileSetupPressed,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -189,16 +194,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       color: Theme.of(context).colorScheme.tertiaryContainer,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.isTurkish
-                  ? 'Kişisel hedefler için Profil sekmesini doldurun.'
-                  : 'Fill the Profile tab for personal goals.'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
+        onTap: () => widget.onProfileSetupPressed?.call(),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(

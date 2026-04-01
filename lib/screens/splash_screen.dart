@@ -56,11 +56,11 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // NL text and subtitle fade in
+    // Logo scale 0.0 → 1.0, subtitle fade in
     _nlFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _textCtrl,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeIn),
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       ),
     );
     _subtitleFade = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -150,7 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ),
                           ),
-                          // Innermost circle background + NL text
+                          // Innermost circle background
                           Transform.scale(
                             scale: _innerRingScale.value,
                             child: Container(
@@ -162,16 +162,15 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ),
                           ),
-                          // NL text fade in
-                          Opacity(
-                            opacity: _nlFade.value.clamp(0.0, 1.0),
-                            child: const Text(
-                              'NL',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 44,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2,
+                          // Logo icon scale 0.0 → 1.0
+                          Transform.scale(
+                            scale: _nlFade.value.clamp(0.0, 1.0),
+                            child: SizedBox(
+                              width: 160,
+                              height: 160,
+                              child: Image.asset(
+                                'assets/icon/icon.png',
+                                fit: BoxFit.contain,
                               ),
                             ),
                           ),
