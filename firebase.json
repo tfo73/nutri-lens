@@ -1,0 +1,39 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "nutrilens-app-ae2ab",
+          "appId": "1:808142209819:android:9e27aa6353807197a8c9be",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "nutrilens-app-ae2ab",
+          "configurations": {
+            "android": "1:808142209819:android:9e27aa6353807197a8c9be",
+            "ios": "1:808142209819:ios:64af1cff4b089e65a8c9be",
+            "macos": "1:808142209819:ios:64af1cff4b089e65a8c9be",
+            "web": "1:808142209819:web:ae1d126c8032cebba8c9be",
+            "windows": "1:808142209819:web:ad6fdd828890ab8ea8c9be"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

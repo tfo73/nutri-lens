@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
   static const _key = 'isDarkMode';
-  bool _isDarkMode = false;
+  bool _isDarkMode = true; // Varsayılan: koyu tema
 
   bool get isDarkMode => _isDarkMode;
 
@@ -13,7 +13,7 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool(_key) ?? false;
+    _isDarkMode = prefs.getBool(_key) ?? true; // Varsayılan: koyu tema
     notifyListeners();
   }
 
@@ -22,5 +22,13 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_key, _isDarkMode);
+  }
+
+  void setDark(bool value) {
+    if (_isDarkMode == value) return;
+    _isDarkMode = value;
+    notifyListeners();
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool(_key, _isDarkMode));
   }
 }

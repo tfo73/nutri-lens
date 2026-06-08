@@ -1,577 +1,610 @@
-import 'dart:async';
-import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../l10n/app_localizations.dart';
-import '../models/exercise_entry.dart';
-import '../providers/language_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/profile_provider.dart';
+import '../models/food_entry.dart';
+import '../models/nutrition_data.dart';
+import '../models/nutrition_data_65.dart';
+import 'coach_screen.dart';
 
-// ─── Öneri Modeli ─────────────────────────────────────────────────────────────
+// ─── Öğün zamanı ─────────────────────────────────────────────────────────────
 
-class SuggestionItem {
-  final String titleTr;
-  final String titleEn;
-  final String descriptionTr;
-  final String descriptionEn;
-  final String category;
-  final IconData icon;
-  final Color color;
+enum _Period { kahvalti, ogle, araOgun, aksam }
 
-  const SuggestionItem({
-    required this.titleTr,
-    required this.titleEn,
-    required this.descriptionTr,
-    required this.descriptionEn,
-    required this.category,
-    required this.icon,
-    required this.color,
-  });
+extension _PeriodX on _Period {
+  static _Period fromHour(int h) {
+    if (h >= 5 && h < 10) return _Period.kahvalti;
+    if (h >= 10 && h < 14) return _Period.ogle;
+    if (h >= 14 && h < 17) return _Period.araOgun;
+    if (h >= 17 && h < 21) return _Period.aksam;
+    return _Period.araOgun;
+  }
 
-  String title(bool isTurkish) => isTurkish ? titleTr : titleEn;
-  String description(bool isTurkish) => isTurkish ? descriptionTr : descriptionEn;
+  String get baslik {
+    switch (this) {
+      case _Period.kahvalti: return 'Günaydın!';
+      case _Period.ogle:     return 'Öğle Vakti';
+      case _Period.araOgun:  return 'Ara Öğün';
+      case _Period.aksam:    return 'Akşam Yemeği';
+    }
+  }
+
+  String get altyazi {
+    switch (this) {
+      case _Period.kahvalti: return 'Güne enerjik başla';
+      case _Period.ogle:     return 'Öğle arası güç yemeği';
+      case _Period.araOgun:  return 'Enerjini canlı tut';
+      case _Period.aksam:    return 'Güne güzel bir kapanış';
+    }
+  }
+
+  String get dbKey {
+    switch (this) {
+      case _Period.kahvalti: return 'kahvalti';
+      case _Period.ogle:     return 'ogle';
+      case _Period.araOgun:  return 'araOgun';
+      case _Period.aksam:    return 'aksam';
+    }
+  }
 }
 
-// ─── Antrenman Modeli ──────────────────────────────────────────────────────────
+// ─── Tarif modeli ─────────────────────────────────────────────────────────────
 
-enum WorkoutDifficulty { easy, medium, hard }
-enum WorkoutCategory { cardio, strength, flexibility }
+class _Tarif {
+  final String ad;
+  final String aciklama;
+  final int kalori;
+  final double protein;
+  final double karb;
+  final double yag;
+  final double lif;
+  final int gramaj; // 1 porsiyon gram ağırlığı
+  final double? demir;
+  final double? magnezyum;
+  final double? kalsiyum;
+  final double? vitaminA;
+  final double? vitaminC;
+  final double? vitaminD;
+  final double? vitaminE;
+  final double? vitaminB12;
+  final double? vitaminB6;
+  final double? vitaminB1;
+  final double? zinc;
+  final double? potasyum;
+  final double? omega3;
+  final int dakika;
+  final List<String> etiketler;
+  final List<String> ogunler;
+  final List<String> diyetler;
+  final List<String> zenginOldugu;
+  final Color renk;
+  final String gorselUrl;
+  final List<String> malzemeler;
+  final List<String> adimlar;
 
-class WorkoutItem {
-  final String nameTr;
-  final String nameEn;
-  final IconData icon;
-  final String durationTr;
-  final String durationEn;
-  final int calories;
-  final WorkoutDifficulty difficulty;
-  final WorkoutCategory category;
-  final int durationSeconds;
-
-  const WorkoutItem({
-    required this.nameTr,
-    required this.nameEn,
-    required this.icon,
-    required this.durationTr,
-    required this.durationEn,
-    required this.calories,
-    required this.difficulty,
-    required this.category,
-    required this.durationSeconds,
+  const _Tarif({
+    required this.ad,
+    required this.aciklama,
+    required this.kalori,
+    required this.protein,
+    required this.karb,
+    required this.yag,
+    required this.lif,
+    this.gramaj = 300,
+    this.demir,
+    this.magnezyum,
+    this.kalsiyum,
+    this.vitaminA,
+    this.vitaminC,
+    this.vitaminD,
+    this.vitaminE,
+    this.vitaminB12,
+    this.vitaminB6,
+    this.vitaminB1,
+    this.zinc,
+    this.potasyum,
+    this.omega3,
+    required this.dakika,
+    required this.etiketler,
+    required this.ogunler,
+    required this.diyetler,
+    required this.zenginOldugu,
+    required this.renk,
+    required this.gorselUrl,
+    required this.malzemeler,
+    required this.adimlar,
   });
-
-  String name(bool isTurkish) => isTurkish ? nameTr : nameEn;
-  String duration(bool isTurkish) => isTurkish ? durationTr : durationEn;
 }
 
-// ─── Öneri Havuzu (40+) ───────────────────────────────────────────────────────
+// ─── Tarif veritabanı ─────────────────────────────────────────────────────────
 
-const List<SuggestionItem> _pool = [
-  // Sabah rutini
-  SuggestionItem(
-    titleTr: 'Kahvaltıyı atlama',
-    titleEn: 'Don\'t skip breakfast',
-    descriptionTr: 'Güne yulaf, yumurta ya da tam tahıllı ekmekle başla. Kahvaltı gün boyu odaklanmayı artırır.',
-    descriptionEn: 'Start the day with oats, eggs or whole-grain bread. Breakfast improves focus throughout the day.',
-    category: 'morning', icon: Icons.breakfast_dining, color: Colors.orange,
+const _db = <_Tarif>[
+  // ── KAHVALTI ──────────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Gecelik Yulaf', aciklama: 'Meyveli, chia tohumlu kremsi yulaf', kalori: 320, protein: 12.0, karb: 45.0, yag: 8.0, lif: 10.0,
+    demir: 2.5, magnezyum: 150, kalsiyum: 200, vitaminA: 50, vitaminC: 15, vitaminB1: 0.3, vitaminB6: 0.2, zinc: 2.0, potasyum: 380, omega3: 2.5, dakika: 5,
+    etiketler: ['YÜKSEK LİF', 'VEGAN'], ogunler: ['kahvalti'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'magnezyum', 'omega3'], renk: Color(0xFFE8A04B),
+    gorselUrl: 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['½ su bardağı yulaf', '1 su bardağı badem sütü', '1 yemek kaşığı chia tohumu', 'Taze meyveler', '1 tatlı kaşığı bal'],
+    adimlar: ['Yulaf, süt ve chiayı bir kavanozda karıştırın.', 'Kapağını kapatıp gece boyu buzdolabında bekletin.', 'Sabah üzerine meyveleri ve balı ekleyerek servis yapın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Güne su ile başla',
-    titleEn: 'Start the day with water',
-    descriptionTr: 'Sabah kalktığında aç karnına 1-2 bardak su için. Metabolizmayı hızlandırır.',
-    descriptionEn: 'Drink 1-2 glasses of water on an empty stomach in the morning. It speeds up metabolism.',
-    category: 'morning', icon: Icons.water_drop, color: Colors.cyan,
+  _Tarif(
+    ad: 'Ispanaklı Omlet', aciklama: 'Taze ıspanak ve beyaz peynirli omlet', kalori: 310, protein: 18.0, karb: 5.0, yag: 22.0, lif: 3.0,
+    demir: 4.5, magnezyum: 60, kalsiyum: 180, vitaminA: 450, vitaminC: 25, vitaminD: 2.5, vitaminB12: 1.8, vitaminB6: 0.3, zinc: 2.5, potasyum: 420, dakika: 12,
+    etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KARBONHİDRAT'], ogunler: ['kahvalti'],
+    diyetler: ['vejetaryen', 'keto', 'glutensiz'], zenginOldugu: ['protein', 'demir', 'vitaminA'], renk: Color(0xFF5A9F5A),
+    gorselUrl: 'https://images.unsplash.com/photo-1588168333986-5078d3ae3976?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 adet yumurta', '1 avuç ıspanak', '30g beyaz peynir', '1 tatlı kaşığı zeytinyağı'],
+    adimlar: ['Ispanakları zeytinyağında hafifçe soteleyin.', 'Yumurtaları çırpıp ıspanakların üzerine dökün.', 'Peyniri ekleyip kısık ateşte pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Sabah proteini önemli',
-    titleEn: 'Morning protein matters',
-    descriptionTr: 'Sabah öğününde en az 20g protein alın. Kas koruması ve tokluk hissi için kritik.',
-    descriptionEn: 'Consume at least 20g of protein at breakfast. Critical for muscle retention and satiety.',
-    category: 'morning', icon: Icons.egg_alt, color: Colors.amber,
+  _Tarif(
+    ad: 'Yunan Yoğurdu Parfesi', aciklama: 'Granola ve bal katmanlı parfait', kalori: 280, protein: 15.0, karb: 30.0, yag: 6.0, lif: 4.0,
+    demir: 1.2, magnezyum: 50, kalsiyum: 350, vitaminC: 10, vitaminD: 1.5, vitaminB12: 1.2, zinc: 1.5, potasyum: 320, dakika: 5,
+    etiketler: ['YÜKSEK PROTEİN'], ogunler: ['kahvalti', 'araOgun'],
+    diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'kalsiyum', 'magnezyum'], renk: Color(0xFF7BBFEA),
+    gorselUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 kase süzme yoğurt', '3 yemek kaşığı granola', 'Yaban mersini', '1 tatlı kaşığı bal'],
+    adimlar: ['Yoğurdu bir kaseye alın.', 'Üzerine granolayı ve meyveleri ekleyin.', 'Bal gezdirerek servis yapın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Aralıklı oruç dene',
-    titleEn: 'Try intermittent fasting',
-    descriptionTr: '16:8 yöntemi: 16 saat açlık, 8 saat yeme penceresi. Birçok kişiye yarar sağlar.',
-    descriptionEn: '16:8 method: 16 hours fasting, 8-hour eating window. Benefits many people.',
-    category: 'morning', icon: Icons.schedule, color: Colors.deepPurple,
+  _Tarif(
+    ad: 'Avokadolu Tost', aciklama: 'Ekşi mayalı ekmek üzerine avokado', kalori: 450, protein: 14.0, karb: 40.0, yag: 25.0, lif: 12.0,
+    demir: 1.5, magnezyum: 58, kalsiyum: 55, vitaminC: 20, vitaminE: 4.0, vitaminB6: 0.5, vitaminB12: 0.6, zinc: 1.3, potasyum: 550, omega3: 0.8, dakika: 15,
+    etiketler: ['SAĞLIKLI YAĞ', 'YÜKSEK PROTEİN'], ogunler: ['kahvalti', 'araOgun'],
+    diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'lif', 'omega3'], renk: Color(0xFF4CAF76),
+    gorselUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 dilim ekşi mayalı ekmek', 'Yarım avokado', '1 haşlanmış yumurta', 'Çörek otu'],
+    adimlar: ['Ekmeği kızartın.', 'Avokadoyu üzerine ezin ve limon sıkın.', 'Yumurtayı dilimleyip üzerine ekleyin.'],
   ),
-  // Protein
-  SuggestionItem(
-    titleTr: 'Protein alımını artır',
-    titleEn: 'Increase protein intake',
-    descriptionTr: 'Akşam yemeğine tavuk, yumurta veya baklagil ekleyerek günlük protein ihtiyacını karşıla.',
-    descriptionEn: 'Add chicken, eggs or legumes to dinner to meet daily protein needs.',
-    category: 'protein', icon: Icons.fitness_center, color: Colors.blue,
+  _Tarif(
+    ad: 'Muzlu Smoothie Bowl', aciklama: 'Enerji dolu kahvaltı kasesi', kalori: 350, protein: 8.0, karb: 60.0, yag: 10.0, lif: 7.0,
+    demir: 1.0, magnezyum: 65, kalsiyum: 30, vitaminC: 15, vitaminB6: 0.7, zinc: 0.8, potasyum: 690, dakika: 5,
+    etiketler: ['ENERJİ', 'POTASYUM'], ogunler: ['kahvalti'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['potasyum', 'lif'], renk: Color(0xFFFFEB3B),
+    gorselUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Muz', 'Yaban mersini', 'Hindistan cevizi sütü'],
+    adimlar: ['Muz ve sütü blenderdan geçirin.', 'Meyvelerle süsleyin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Bitkisel protein tüket',
-    titleEn: 'Consume plant protein',
-    descriptionTr: 'Mercimek, nohut, edamame güçlü bitkisel protein kaynaklarıdır. Hem lif hem protein içerir.',
-    descriptionEn: 'Lentils, chickpeas, and edamame are strong plant protein sources with fiber too.',
-    category: 'protein', icon: Icons.spa, color: Colors.green,
+  _Tarif(
+    ad: 'Chia Puding', aciklama: 'Meyveli ve hindistan cevizli', kalori: 190, protein: 6.0, karb: 15.0, yag: 14.0, lif: 11.0,
+    demir: 2.2, magnezyum: 140, kalsiyum: 180, vitaminC: 12, vitaminE: 1.5, zinc: 1.5, potasyum: 280, omega3: 5.5, dakika: 5,
+    etiketler: ['HAFİF', 'LİF'], ogunler: ['kahvalti', 'araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'omega3', 'magnezyum'], renk: Color(0xFF9C27B0),
+    gorselUrl: 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['3 yemek kaşığı chia', '1 su bardağı hindistan cevizi sütü', 'Meyve'],
+    adimlar: ['Chia ve sütü karıştırıp buzdolabında bekletin.', 'Kıvam alınca meyvelerle süsleyin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Antrenman sonrası protein',
-    titleEn: 'Protein after workout',
-    descriptionTr: 'Egzersizden sonra 30 dakika içinde protein tüket. Kas onarımı için en kritik pencere.',
-    descriptionEn: 'Consume protein within 30 minutes after exercise. The most critical window for muscle repair.',
-    category: 'protein', icon: Icons.sports_gymnastics, color: Colors.indigo,
+  _Tarif(
+    ad: 'Tam Buğdaylı Pankek', aciklama: 'Lifli ve tok tutan kahvaltı pankeki', kalori: 290, protein: 10.0, karb: 48.0, yag: 7.0, lif: 6.0,
+    demir: 2.0, magnezyum: 55, kalsiyum: 120, vitaminB1: 0.3, vitaminB6: 0.2, zinc: 1.2, potasyum: 300, dakika: 15,
+    etiketler: ['LİF', 'ENERJİ'], ogunler: ['kahvalti'],
+    diyetler: ['vejetaryen'], zenginOldugu: ['lif', 'protein'], renk: Color(0xFFD4A056),
+    gorselUrl: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 su bardağı tam buğday unu', '1 yumurta', '1 su bardağı süt', '1 tatlı kaşığı kabartma tozu', 'Çilek veya muz'],
+    adimlar: ['Unu, yumurta ve sütü karıştırın.', 'Kısık ateşte her iki yüzünü pişirin.', 'Meyvelerle servis yapın.'],
   ),
-  // Hidrasyon
-  SuggestionItem(
-    titleTr: 'Günde 2 litre su iç',
-    titleEn: 'Drink 2 liters of water daily',
-    descriptionTr: 'Her saat başı 1 bardak su içmeyi alışkanlık haline getir. Yanında her zaman su şişesi taşı.',
-    descriptionEn: 'Make it a habit to drink 1 glass of water every hour. Always carry a water bottle.',
-    category: 'hydration', icon: Icons.water_drop, color: Colors.cyan,
+  _Tarif(
+    ad: 'Fıstık Ezmeli Muz Tost', aciklama: 'Protein ve potasyum dolu kahvaltı', kalori: 370, protein: 12.0, karb: 42.0, yag: 16.0, lif: 5.0,
+    magnezyum: 60, potasyum: 520, vitaminB6: 0.5, zinc: 1.5, dakika: 5,
+    etiketler: ['ENERJİ', 'PROTEİN'], ogunler: ['kahvalti', 'araOgun'],
+    diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['protein', 'potasyum'], renk: Color(0xFFD4A056),
+    gorselUrl: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 dilim ekmek', '2 yemek kaşığı fıstık ezmesi', '1 muz', 'Bal'],
+    adimlar: ['Ekmeği kızartın.', 'Fıstık ezmesini sürün.', 'İnce dilimlenmiş muzı üzerine dizin, bal gezdirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Yemekten önce su iç',
-    titleEn: 'Drink water before meals',
-    descriptionTr: 'Her öğünden 30 dakika önce 1 bardak su iç. Porsiyon kontrolüne yardımcı olur.',
-    descriptionEn: 'Drink 1 glass of water 30 minutes before each meal. Helps with portion control.',
-    category: 'hydration', icon: Icons.local_drink, color: Colors.lightBlue,
+  _Tarif(
+    ad: 'Sebzeli Yumurta Haşlama', aciklama: 'Düşük kalorili doyurucu kahvaltı', kalori: 220, protein: 14.0, karb: 12.0, yag: 12.0, lif: 4.0,
+    demir: 3.0, magnezyum: 35, kalsiyum: 80, vitaminA: 320, vitaminC: 30, vitaminD: 2.0, vitaminB12: 1.0, zinc: 1.8, potasyum: 380, dakika: 15,
+    etiketler: ['DÜŞÜK KALORİ', 'PROTEİN'], ogunler: ['kahvalti'],
+    diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'demir', 'vitaminA'], renk: Color(0xFF8BC34A),
+    gorselUrl: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 yumurta', '1 domates', '½ biber', 'Maydanoz', 'Zeytinyağı'],
+    adimlar: ['Sebzeleri ince doğrayın.', 'Zeytinyağında sebzeleri kavurun.', 'Üzerine yumurtaları kırıp pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Elektrolit dengesi',
-    titleEn: 'Electrolyte balance',
-    descriptionTr: 'Çok terlendiysen sadece su değil, biraz tuzlu veya elektrolititli içecek de al.',
-    descriptionEn: 'If you sweat a lot, also drink something slightly salty or electrolyte-rich.',
-    category: 'hydration', icon: Icons.bolt, color: Colors.teal,
+  _Tarif(
+    ad: 'Yeşil Smoothie', aciklama: 'Detoks ve enerji veren içecek', kalori: 180, protein: 5.0, karb: 28.0, yag: 5.0, lif: 6.0,
+    demir: 2.5, magnezyum: 55, kalsiyum: 100, vitaminA: 800, vitaminC: 60, zinc: 0.8, potasyum: 520, dakika: 5,
+    etiketler: ['DETOKS', 'VEGAN'], ogunler: ['kahvalti', 'araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['vitaminC', 'vitaminA', 'lif'], renk: Color(0xFF4CAF50),
+    gorselUrl: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 avuç ıspanak', '1 muz', '½ elma', '1 su bardağı su', '1 tatlı kaşığı zencefil'],
+    adimlar: ['Tüm malzemeleri blendere koyun.', 'Pürüzsüz olana kadar blenderdan geçirin.', 'Hemen tüketin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Kafein su değildir',
-    titleEn: 'Caffeine is not water',
-    descriptionTr: 'Çay ve kahve idrar söktürücüdür. Günlük 2-3 fincan sınırını aşmamaya çalış.',
-    descriptionEn: 'Tea and coffee are diuretics. Try not to exceed 2-3 cups per day.',
-    category: 'hydration', icon: Icons.coffee, color: Colors.brown,
+  // ── ÖĞLE ──────────────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Izgara Tavuklu Kinoa', aciklama: 'Protein dolu egzersiz sonrası tabak', kalori: 520, protein: 42.0, karb: 35.0, yag: 12.0, lif: 8.0,
+    demir: 5.5, magnezyum: 110, kalsiyum: 60, vitaminC: 15, vitaminB6: 0.8, vitaminB12: 0.5, zinc: 3.5, potasyum: 620, dakika: 25,
+    etiketler: ['YÜKSEK PROTEİN', 'TOPARLANMA'], ogunler: ['ogle'],
+    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'demir', 'magnezyum'], renk: Color(0xFFE6A44A),
+    gorselUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['150g tavuk göğsü', 'Yarım su bardağı kinoa', 'Brokoli', 'Zeytinyağı'],
+    adimlar: ['Kinoayı haşlayın.', 'Tavukları ızgara yapın.', 'Buharda pişmiş brokoli ile servis edin.'],
   ),
-  // Öğün zamanlaması
-  SuggestionItem(
-    titleTr: 'Düzenli yemek zamanlaması',
-    titleEn: 'Regular meal timing',
-    descriptionTr: 'Her 3-4 saatte bir beslenmeye çalış. Uzun açlık metabolizmayı yavaşlatır.',
-    descriptionEn: 'Try to eat every 3-4 hours. Extended fasting slows metabolism.',
-    category: 'timing', icon: Icons.schedule, color: Colors.purple,
+  _Tarif(
+    ad: 'Mercimek Çorbası', aciklama: 'Demir açısından zengin ısıtıcı çorba', kalori: 310, protein: 18.0, karb: 45.0, yag: 4.0, lif: 15.0,
+    demir: 7.2, magnezyum: 80, kalsiyum: 60, vitaminA: 1200, vitaminC: 30, vitaminB1: 0.5, vitaminB6: 0.6, zinc: 2.8, potasyum: 730, dakika: 30,
+    etiketler: ['YÜKSEK DEMİR', 'VEGAN'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['demir', 'lif', 'vitaminA'], renk: Color(0xFFB05C1A),
+    gorselUrl: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 su bardağı kırmızı mercimek', '1 adet soğan', '1 adet havuç', 'Zerdeçal'],
+    adimlar: ['Sebzeleri soteleyin.', 'Mercimeği ekleyip suyunu koyun.', 'Pişince blenderdan geçirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Ara öğün ekle',
-    titleEn: 'Add a snack',
-    descriptionTr: 'Öğünler arası bir avuç fındık veya bir porsiyon yoğurt kan şekerini dengeler.',
-    descriptionEn: 'A handful of hazelnuts or a portion of yogurt between meals balances blood sugar.',
-    category: 'timing', icon: Icons.restaurant, color: Colors.green,
+  _Tarif(
+    ad: 'Ton Balıklı Salata', aciklama: 'Hızlı ve proteinli öğle yemeği', kalori: 320, protein: 28.0, karb: 10.0, yag: 15.0, lif: 4.0,
+    demir: 1.5, magnezyum: 40, kalsiyum: 30, vitaminD: 6.0, vitaminB12: 2.5, vitaminB6: 0.5, zinc: 1.2, potasyum: 350, omega3: 1.8, dakika: 10,
+    etiketler: ['YÜKSEK PROTEİN', 'OMEGA-3'], ogunler: ['ogle'],
+    diyetler: ['keto', 'glutensiz'], zenginOldugu: ['protein', 'omega3', 'vitaminD'], renk: Color(0xFF03A9F4),
+    gorselUrl: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Ton balığı', 'Mevsim yeşillikleri', 'Mısır', 'Limon'],
+    adimlar: ['Yeşillikleri doğrayın, ton balığını ekleyin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Geç saatte yemekten kaçın',
-    titleEn: 'Avoid late-night eating',
-    descriptionTr: 'Yatmadan en az 2-3 saat önce son öğününü tamamla. Gece geç yemek sindirimi zorlaştırır.',
-    descriptionEn: 'Finish your last meal at least 2-3 hours before bed. Late-night eating impairs digestion.',
-    category: 'timing', icon: Icons.nights_stay, color: Colors.blueAccent,
+  _Tarif(
+    ad: 'Kinoalı Akdeniz Salatası', aciklama: 'Ferahlatıcı ve doyurucu', kalori: 290, protein: 10.0, karb: 40.0, yag: 8.0, lif: 7.0,
+    demir: 4.0, magnezyum: 95, kalsiyum: 110, vitaminA: 600, vitaminC: 35, vitaminE: 2.5, vitaminB6: 0.3, zinc: 1.5, potasyum: 450, dakika: 10,
+    etiketler: ['VEGAN', 'HAFİF'], ogunler: ['ogle', 'araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'demir', 'magnezyum'], renk: Color(0xFF009688),
+    gorselUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Kinoa', 'Domates', 'Salatalık', 'Zeytinyağı'],
+    adimlar: ['Haşlanmış kinoayı doğranmış sebzelerle karıştırın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Yavaş ye',
-    titleEn: 'Eat slowly',
-    descriptionTr: 'Her öğünü en az 20 dakikada tüket. Yavaş yemek tokluk sinyallerinin beyne ulaşmasını sağlar.',
-    descriptionEn: 'Take at least 20 minutes per meal. Slow eating allows satiety signals to reach the brain.',
-    category: 'timing', icon: Icons.timer_outlined, color: Colors.deepPurple,
+  _Tarif(
+    ad: 'Fırın Falafel', aciklama: 'Yağsız ve çıtır falafel topları', kalori: 250, protein: 12.0, karb: 35.0, yag: 8.0, lif: 9.0,
+    demir: 5.2, magnezyum: 100, kalsiyum: 90, vitaminC: 10, vitaminB1: 0.3, vitaminB6: 0.4, zinc: 2.2, potasyum: 390, dakika: 35,
+    etiketler: ['VEGAN', 'YÜKSEK LİF'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'protein', 'demir'], renk: Color(0xFF8BC34A),
+    gorselUrl: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Nohut', 'Maydanoz', 'Sarımsak', 'Baharatlar'],
+    adimlar: ['Malzemeleri robottan geçirin.', 'Toplar şekline getirip fırında 200°C\'de 25 dakika pişirin.'],
   ),
-  // Karbonhidrat
-  SuggestionItem(
-    titleTr: 'Lif tüketimini artır',
-    titleEn: 'Increase fiber intake',
-    descriptionTr: 'Sebze ve tam tahıl tüketimini artır. Günde en az 25g lif almaya çalış.',
-    descriptionEn: 'Increase vegetable and whole grain consumption. Aim for at least 25g of fiber per day.',
-    category: 'carbs', icon: Icons.grass, color: Colors.lightGreen,
+  _Tarif(
+    ad: 'Tofu Sote', aciklama: 'Sebzeli çıtır tofu', kalori: 340, protein: 22.0, karb: 10.0, yag: 18.0, lif: 5.0,
+    demir: 4.5, magnezyum: 90, kalsiyum: 450, vitaminC: 15, vitaminB1: 0.4, vitaminB6: 0.3, zinc: 2.0, potasyum: 400, dakika: 20,
+    etiketler: ['VEGAN', 'PROTEİN'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'kalsiyum', 'demir'], renk: Color(0xFF4CAF50),
+    gorselUrl: 'https://images.unsplash.com/photo-1546069901-d5bfd2cbfb1f?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['200g sert tofu', 'Biber', 'Kabak', 'Soya sosu'],
+    adimlar: ['Tofuları küp küp doğrayıp kızartın.', 'Sebzeleri ekleyip soteleyin.', 'Soya sosu ile tatlandırın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Glisemik indeksi düşür',
-    titleEn: 'Lower glycemic index',
-    descriptionTr: 'Beyaz pirinç ve ekmek yerine esmer pirinç ve tam tahıllı ekmek tercih et.',
-    descriptionEn: 'Choose brown rice and whole grain bread instead of white rice and bread.',
-    category: 'carbs', icon: Icons.trending_down, color: Colors.greenAccent,
+  _Tarif(
+    ad: 'Karabuğday Pilavı', aciklama: 'Glutensiz ve sağlıklı karbonhidrat', kalori: 310, protein: 10.0, karb: 55.0, yag: 4.0, lif: 8.0,
+    demir: 3.5, magnezyum: 180, kalsiyum: 40, vitaminB1: 0.4, vitaminB6: 0.3, zinc: 2.0, potasyum: 460, dakika: 20,
+    etiketler: ['YÜKSEK LİF', 'GLUTENSİZ'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'magnezyum', 'demir'], renk: Color(0xFF795548),
+    gorselUrl: 'https://images.unsplash.com/photo-1505576399279-565b52d4ac71?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Karabuğday', 'Soğan', 'Mantar', 'Zeytinyağı'],
+    adimlar: ['Karabuğdayı haşlayın.', 'Soğan ve mantarı zeytinyağında soteleyin.', 'Karıştırıp servis yapın.'],
   ),
-  SuggestionItem(
-    titleTr: 'İşlenmiş şekeri azalt',
-    titleEn: 'Reduce processed sugar',
-    descriptionTr: 'Hazır meyve suyu ve şekerleme yerine taze meyve tercih et. Etiketteki gizli şekere dikkat.',
-    descriptionEn: 'Choose fresh fruit instead of packaged juice and candy. Watch for hidden sugar in labels.',
-    category: 'carbs', icon: Icons.no_food, color: Colors.red,
+  _Tarif(
+    ad: 'Tavuklu Wrap', aciklama: 'Lifli tortiyaya sarılı protein', kalori: 430, protein: 32.0, karb: 38.0, yag: 14.0, lif: 6.0,
+    demir: 2.0, magnezyum: 45, kalsiyum: 60, vitaminA: 400, vitaminC: 25, vitaminB6: 0.6, zinc: 2.2, potasyum: 480, dakika: 15,
+    etiketler: ['YÜKSEK PROTEİN', 'PRATIK'], ogunler: ['ogle'],
+    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'vitaminA'], renk: Color(0xFFE6A44A),
+    gorselUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 adet tam buğday tortiya', '120g tavuk göğsü', 'Marul', 'Domates', 'Yoğurt sosu'],
+    adimlar: ['Tavuğu baharatlarla ızgara yapın.', 'Tortiyaya tüm malzemeleri dizin.', 'Sıkıca sarıp servis yapın.'],
   ),
-  // Yağ
-  SuggestionItem(
-    titleTr: 'Omega-3 kaynakları tüket',
-    titleEn: 'Consume Omega-3 sources',
-    descriptionTr: 'Haftada 2 kez somon veya uskumru ye. Ceviz ve keten tohumu da iyi kaynaklardır.',
-    descriptionEn: 'Eat salmon or mackerel twice a week. Walnuts and flaxseed are also good sources.',
-    category: 'fat', icon: Icons.set_meal, color: Colors.teal,
+  _Tarif(
+    ad: 'Nohutlu Ispanaklı Yemek', aciklama: 'Demir ve protein dolu sıcak yemek', kalori: 360, protein: 16.0, karb: 44.0, yag: 10.0, lif: 12.0,
+    demir: 6.8, magnezyum: 90, kalsiyum: 140, vitaminA: 900, vitaminC: 35, vitaminB6: 0.5, zinc: 2.5, potasyum: 680, dakika: 25,
+    etiketler: ['YÜKSEK DEMİR', 'VEGAN'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['demir', 'lif', 'vitaminA'], renk: Color(0xFF388E3C),
+    gorselUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 kutu nohut', '2 avuç ıspanak', '1 soğan', 'Sarımsak', 'Zerdeçal', 'Domates'],
+    adimlar: ['Soğanı soteleyin, sarımsak ekleyin.', 'Domates ve baharatları ekleyip pişirin.', 'Nohut ve ıspanağı ekleyip 10 dakika daha pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Zeytinyağı kullan',
-    titleEn: 'Use olive oil',
-    descriptionTr: 'Pişirmede tereyağı yerine zeytinyağı tercih et. Soğuk baskı zeytinyağı en faydalısıdır.',
-    descriptionEn: 'Use olive oil instead of butter for cooking. Cold-pressed olive oil is most beneficial.',
-    category: 'fat', icon: Icons.opacity, color: Colors.lime,
+  _Tarif(
+    ad: 'Tam Buğday Makarna', aciklama: 'Domates soslu sağlıklı makarna', kalori: 420, protein: 14.0, karb: 68.0, yag: 8.0, lif: 9.0,
+    demir: 3.0, magnezyum: 70, kalsiyum: 50, vitaminA: 300, vitaminC: 20, vitaminB1: 0.4, vitaminB6: 0.3, zinc: 1.5, potasyum: 420, dakika: 20,
+    etiketler: ['YÜKSEK LİF', 'ENERJİ'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['lif', 'demir'], renk: Color(0xFFE53935),
+    gorselUrl: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Tam buğday makarna', 'Domates sosu', 'Sarımsak', 'Fesleğen', 'Zeytinyağı'],
+    adimlar: ['Makarnayı al dente pişirin.', 'Sarımsağı zeytinyağında kavurun, domates sosunu ekleyin.', 'Makarna ile harmanlayıp servis edin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Avokado tüket',
-    titleEn: 'Eat avocado',
-    descriptionTr: 'Haftada birkaç kez avokado ye. Tekli doymamış yağ asitleri kalp sağlığını korur.',
-    descriptionEn: 'Eat avocado a few times a week. Monounsaturated fatty acids protect heart health.',
-    category: 'fat', icon: Icons.eco, color: Colors.green,
+  _Tarif(
+    ad: 'Sebzeli Kuskus', aciklama: 'Akdeniz usulü hafif kuskus tabağı', kalori: 330, protein: 11.0, karb: 52.0, yag: 7.0, lif: 7.0,
+    demir: 3.5, magnezyum: 60, kalsiyum: 45, vitaminA: 500, vitaminC: 40, vitaminB6: 0.3, zinc: 1.2, potasyum: 450, dakika: 15,
+    etiketler: ['VEGAN', 'HAFİF'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['lif', 'vitaminA', 'demir'], renk: Color(0xFFF9A825),
+    gorselUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 su bardağı kuskus', 'Kabak', 'Biber', 'Domates', 'Zeytinyağı', 'Nane'],
+    adimlar: ['Kuskusu kaynar suda bekletin.', 'Sebzeleri zeytinyağında soteleyin.', 'Kuskusu sebzelerle karıştırıp nane ekleyin.'],
   ),
-  // Vitamin & Mineral
-  SuggestionItem(
-    titleTr: 'D vitamini takviyesi al',
-    titleEn: 'Take vitamin D',
-    descriptionTr: 'Yağlı balık, yumurta sarısı tüket ya da güneşten yararlan. Eksiklik yorgunluğa yol açar.',
-    descriptionEn: 'Eat fatty fish, egg yolks or get sunlight. Deficiency leads to fatigue.',
-    category: 'vitamin', icon: Icons.wb_sunny, color: Colors.amber,
+  // ── AKŞAM ─────────────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Somon Izgara', aciklama: 'Omega-3 bombası akşam yemeği', kalori: 520, protein: 38.0, karb: 0.0, yag: 35.0, lif: 2.0,
+    demir: 1.2, magnezyum: 45, kalsiyum: 40, vitaminA: 100, vitaminD: 25.0, vitaminB12: 4.8, vitaminB6: 0.9, zinc: 1.0, potasyum: 480, omega3: 3.5, dakika: 30,
+    etiketler: ['OMEGA-3', 'YÜKSEK PROTEİN'], ogunler: ['aksam'],
+    diyetler: ['glutensiz'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
+    gorselUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 dilim somon', 'Kuşkonmaz', 'Limon', 'Biberiye'],
+    adimlar: ['Somonu baharatlayın.', 'Fırın tepsisine somon ve kuşkonmazları dizin.', '200 derecede 20 dakika pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Kalsiyum alımına dikkat et',
-    titleEn: 'Pay attention to calcium intake',
-    descriptionTr: 'Günde 1-2 porsiyon süt, yoğurt veya peynir tüket. Kemik sağlığı için kritik öneme sahiptir.',
-    descriptionEn: 'Consume 1-2 portions of milk, yogurt or cheese per day. Critical for bone health.',
-    category: 'vitamin', icon: Icons.egg_alt, color: Colors.blueGrey,
+  _Tarif(
+    ad: 'Biftek ve Kuşkonmaz', aciklama: 'Mükemmel pişirilmiş biftek', kalori: 480, protein: 45.0, karb: 0.0, yag: 28.0, lif: 3.0,
+    demir: 6.5, magnezyum: 40, kalsiyum: 25, vitaminC: 5, vitaminB12: 3.5, vitaminB6: 0.7, zinc: 8.0, potasyum: 560, dakika: 25,
+    etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KARBONHİDRAT'], ogunler: ['aksam'],
+    diyetler: ['keto', 'glutensiz'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
+    gorselUrl: 'https://images.unsplash.com/photo-1546241072-48010ad28c2c?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['200g biftek', 'Kuşkonmaz', 'Tereyağı', 'Sarımsak'],
+    adimlar: ['Tavayı iyice ısıtın.', 'Bifteği her iki taraflı 4-5 dakika pişirin.', 'Son dakikada tereyağı ve sarımsak ekleyip soslayın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Demir deposunu doldur',
-    titleEn: 'Fill your iron stores',
-    descriptionTr: 'Ispanak, kırmızı et veya mercimek tüket. C vitaminiyle birlikte alınca emilimi artar.',
-    descriptionEn: 'Eat spinach, red meat or lentils. Absorption increases when taken with vitamin C.',
-    category: 'vitamin', icon: Icons.bloodtype, color: Colors.red,
+  _Tarif(
+    ad: 'Fırın Sebze Dizmesi', aciklama: 'Hafif ve sağlıklı sebze tabağı', kalori: 180, protein: 4.0, karb: 30.0, yag: 6.0, lif: 5.0,
+    demir: 1.8, magnezyum: 45, kalsiyum: 35, vitaminA: 400, vitaminC: 30, vitaminE: 2.0, vitaminB6: 0.4, zinc: 0.8, potasyum: 520, dakika: 40,
+    etiketler: ['DÜŞÜK KALORİ', 'VEGAN'], ogunler: ['aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'vitaminA'], renk: Color(0xFFFF9800),
+    gorselUrl: 'https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Patlıcan', 'Kabak', 'Domates', 'Zeytinyağı'],
+    adimlar: ['Sebzeleri dilimleyip fırınlayın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Magnezyum alımını artır',
-    titleEn: 'Increase magnesium intake',
-    descriptionTr: 'Kabak çekirdeği, badem ve koyu yapraklı sebzeler bol magnezyum içerir. Uyku kalitesini artırır.',
-    descriptionEn: 'Pumpkin seeds, almonds and dark leafy vegetables are rich in magnesium. Improves sleep quality.',
-    category: 'vitamin', icon: Icons.bolt, color: Colors.lime,
+  _Tarif(
+    ad: 'Sebzeli Tavuk Sote', aciklama: 'Renkli biberli tavuk göğsü', kalori: 380, protein: 35.0, karb: 10.0, yag: 12.0, lif: 4.0,
+    demir: 2.5, magnezyum: 50, kalsiyum: 40, vitaminA: 800, vitaminC: 95, vitaminB6: 0.7, zinc: 2.8, potasyum: 510, dakika: 20,
+    etiketler: ['DÜŞÜK KALORİ', 'YÜKSEK PROTEİN'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['keto', 'glutensiz'], zenginOldugu: ['protein', 'vitaminC', 'vitaminA'], renk: Color(0xFFFF5722),
+    gorselUrl: 'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Tavuk', 'Biber', 'Soğan', 'Baharatlar'],
+    adimlar: ['Tavukları soteleyin.', 'Sebzeleri ekleyip pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'B12 vitaminine dikkat et',
-    titleEn: 'Pay attention to vitamin B12',
-    descriptionTr: 'Kırmızı et, balık ve süt ürünleri tüket. Sinir sistemi ve enerji için hayati öneme sahiptir.',
-    descriptionEn: 'Consume red meat, fish and dairy. Vital for nervous system and energy.',
-    category: 'vitamin', icon: Icons.electric_bolt, color: Colors.yellow,
+  _Tarif(
+    ad: 'Hindi Köfte', aciklama: 'Hafif ve yüksek proteinli köfte', kalori: 350, protein: 38.0, karb: 8.0, yag: 14.0, lif: 2.0,
+    demir: 3.5, magnezyum: 40, kalsiyum: 30, vitaminB6: 0.7, vitaminB12: 1.5, zinc: 4.5, potasyum: 490, dakika: 25,
+    etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK YAĞ'], ogunler: ['aksam'],
+    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'zinc', 'demir'], renk: Color(0xFF795548),
+    gorselUrl: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['300g hindi kıyması', 'Soğan', 'Maydanoz', 'Yumurta', 'Baharatlar'],
+    adimlar: ['Tüm malzemeleri yoğurun.', 'Köfte şeklinde hazırlayın.', 'Izgara veya fırında pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'C vitamini tüket',
-    titleEn: 'Consume vitamin C',
-    descriptionTr: 'Her gün bir portakal, kivi veya kırmızı biber ye. Bağışıklık sistemini ve demir emilimini destekler.',
-    descriptionEn: 'Eat an orange, kiwi or red pepper every day. Supports immune system and iron absorption.',
-    category: 'vitamin', icon: Icons.circle, color: Colors.deepOrangeAccent,
+  _Tarif(
+    ad: 'Balık Tava', aciklama: 'Çıtır zeytinyağlı balık', kalori: 390, protein: 34.0, karb: 5.0, yag: 22.0, lif: 1.5,
+    demir: 1.5, magnezyum: 50, kalsiyum: 40, vitaminD: 12.0, vitaminB12: 3.0, vitaminB6: 0.5, zinc: 1.5, potasyum: 450, omega3: 2.0, dakika: 20,
+    etiketler: ['OMEGA-3', 'PROTEİN'], ogunler: ['aksam'],
+    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'omega3', 'vitaminD'], renk: Color(0xFF1976D2),
+    gorselUrl: 'https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Levrek ya da çipura', 'Limon', 'Zeytinyağı', 'Taze otlar'],
+    adimlar: ['Balığı yıkayıp kurulayın.', 'Zeytinyağı ve limonla marine edin.', 'Tavada ya da fırında pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Antioksidan tüket',
-    titleEn: 'Consume antioxidants',
-    descriptionTr: 'Yaban mersini, nar veya yeşil çay tüket. Hücre hasarına karşı koruma sağlar.',
-    descriptionEn: 'Consume blueberries, pomegranate or green tea. Protects against cellular damage.',
-    category: 'vitamin', icon: Icons.local_florist, color: Colors.pink,
+  _Tarif(
+    ad: 'Sebzeli Güveç', aciklama: 'Düşük kalorili besleyici güveç', kalori: 270, protein: 9.0, karb: 38.0, yag: 8.0, lif: 10.0,
+    demir: 4.5, magnezyum: 65, kalsiyum: 80, vitaminA: 1100, vitaminC: 55, vitaminB6: 0.5, zinc: 1.8, potasyum: 750, dakika: 45,
+    etiketler: ['DÜŞÜK KALORİ', 'VEGAN'], ogunler: ['aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'vitaminA', 'vitaminC'], renk: Color(0xFFD32F2F),
+    gorselUrl: 'https://images.unsplash.com/photo-1548943487-a2e4e43b4853?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Patlıcan', 'Patates', 'Biber', 'Domates', 'Soğan', 'Zeytinyağı'],
+    adimlar: ['Sebzeleri doğrayın.', 'Güveç kabına dizin.', '180°C fırında 40 dakika pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Çinko eksikliğini gider',
-    titleEn: 'Address zinc deficiency',
-    descriptionTr: 'Kabak çekirdeği, kırmızı et ve kurubaklagil iyi çinko kaynaklarıdır. Bağışıklığı güçlendirir.',
-    descriptionEn: 'Pumpkin seeds, red meat and legumes are good zinc sources. Strengthens immunity.',
-    category: 'vitamin', icon: Icons.shield, color: Colors.tealAccent,
+  _Tarif(
+    ad: 'Fırın Tavuk Baget', aciklama: 'Baharatlı çıtır tavuk baget', kalori: 440, protein: 40.0, karb: 4.0, yag: 24.0, lif: 1.0,
+    demir: 2.0, magnezyum: 35, kalsiyum: 30, vitaminB6: 0.8, vitaminB12: 0.7, zinc: 3.5, potasyum: 440, dakika: 40,
+    etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KARBONHİDRAT'], ogunler: ['aksam'],
+    diyetler: ['glutensiz', 'keto'], zenginOldugu: ['protein', 'zinc'], renk: Color(0xFFF57F17),
+    gorselUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Tavuk baget', 'Sarımsak tozu', 'Pul biber', 'Zeytinyağı', 'Limon'],
+    adimlar: ['Tavukları baharatlarla ovun.', 'Üzerine zeytinyağı ve limon sıkın.', '200°C fırında 35 dakika pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Folat tüketimini artır',
-    titleEn: 'Increase folate consumption',
-    descriptionTr: 'Brokoli, ıspanak ve mercimek bol folat içerir. Hücre yenilenmesi için gereklidir.',
-    descriptionEn: 'Broccoli, spinach and lentils are rich in folate. Required for cell renewal.',
-    category: 'vitamin', icon: Icons.eco, color: Colors.lightGreen,
+  // ── ARA ÖĞÜN ──────────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Humus Tabağı', aciklama: 'Nohut humusu ve çıtır sebzeler', kalori: 180, protein: 8.0, karb: 22.0, yag: 10.0, lif: 6.0,
+    demir: 3.0, magnezyum: 70, kalsiyum: 80, vitaminA: 500, vitaminC: 45, vitaminB6: 0.4, zinc: 1.8, potasyum: 350, dakika: 5,
+    etiketler: ['VEGAN', 'YÜKSEK LİF'], ogunler: ['araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'protein', 'demir'], renk: Color(0xFFE6742A),
+    gorselUrl: 'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 kase humus', 'Havuç çubukları', 'Salatalık', 'Tam buğday lavaş'],
+    adimlar: ['Sebzeleri dilimleyin.', 'Humusu tabağın ortasına alın.', 'Zeytinyağı ve pul biber ekleyerek servis edin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Potasyum alımını artır',
-    titleEn: 'Increase potassium intake',
-    descriptionTr: 'Muz, patates ve fasulye potasyum açısından zengindir. Kan basıncını dengelemeye yardımcı olur.',
-    descriptionEn: 'Bananas, potatoes and beans are rich in potassium. Helps balance blood pressure.',
-    category: 'vitamin', icon: Icons.favorite, color: Colors.redAccent,
+  _Tarif(
+    ad: 'Lor Peynirli Salata', aciklama: 'Kas dostu hafif öğün', kalori: 240, protein: 20.0, karb: 10.0, yag: 12.0, lif: 3.0,
+    demir: 1.5, magnezyum: 35, kalsiyum: 150, vitaminA: 120, vitaminC: 8, vitaminB12: 0.8, zinc: 1.5, potasyum: 280, omega3: 1.2, dakika: 5,
+    etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK YAĞ'], ogunler: ['ogle', 'araOgun'],
+    diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'kalsiyum'], renk: Color(0xFFE91E63),
+    gorselUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Lor peyniri', 'Roka', 'Ceviz', 'Nar ekşisi'],
+    adimlar: ['Roka üzerine lor ve cevizi ekleyip soslayın.'],
   ),
-  // Genel beslenme
-  SuggestionItem(
-    titleTr: 'Renkli tabak oluştur',
-    titleEn: 'Create a colorful plate',
-    descriptionTr: 'Her öğüne en az 3 farklı renkte sebze ekle. Renk çeşitliliği antioksidan zenginliğini gösterir.',
-    descriptionEn: 'Add at least 3 different colored vegetables to each meal. Color variety indicates antioxidant richness.',
-    category: 'general', icon: Icons.palette, color: Colors.deepOrange,
+  _Tarif(
+    ad: 'Fıstık Ezmeli Elma', aciklama: 'Lif ve sağlıklı yağ bir arada', kalori: 200, protein: 5.0, karb: 26.0, yag: 9.0, lif: 5.0,
+    magnezyum: 25, potasyum: 240, vitaminC: 8, zinc: 0.8, dakika: 3,
+    etiketler: ['HAFİF', 'SAĞLIKLI YAĞ'], ogunler: ['araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'protein'], renk: Color(0xFFE53935),
+    gorselUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 elma', '2 yemek kaşığı fıstık ezmesi', 'Tarçın'],
+    adimlar: ['Elmayı dilimleyin.', 'Fıstık ezmesine batırarak servis yapın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Probiyotik tüket',
-    titleEn: 'Consume probiotics',
-    descriptionTr: 'Her gün bir kase kefir veya ev yapımı yoğurt ye. Bağırsak florasını destekler.',
-    descriptionEn: 'Eat a bowl of kefir or homemade yogurt daily. Supports gut flora.',
-    category: 'general', icon: Icons.science, color: Colors.indigo,
+  _Tarif(
+    ad: 'Karışık Kuruyemiş', aciklama: 'Sağlıklı yağ ve mineral deposu', kalori: 170, protein: 5.0, karb: 8.0, yag: 14.0, lif: 3.0,
+    magnezyum: 55, kalsiyum: 30, vitaminE: 4.0, zinc: 1.5, potasyum: 200, omega3: 1.5, dakika: 1,
+    etiketler: ['SAĞLIKLI YAĞ', 'MİNERAL'], ogunler: ['araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['magnezyum', 'omega3', 'vitaminE'], renk: Color(0xFF8D6E63),
+    gorselUrl: 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Ceviz', 'Badem', 'Fındık', 'Kabak çekirdeği'],
+    adimlar: ['Kuruyemişleri karıştırıp servis yapın. 30g porsiyon önerilir.'],
   ),
-  SuggestionItem(
-    titleTr: 'Tuzu azalt',
-    titleEn: 'Reduce salt',
-    descriptionTr: 'Yemekler pişerken az tuz kullan, sofraya tuzluk koyma. Baharatlarla lezzet kat.',
-    descriptionEn: 'Use less salt when cooking, don\'t put a salt shaker on the table. Add flavor with spices.',
-    category: 'general', icon: Icons.soup_kitchen, color: Colors.brown,
+  _Tarif(
+    ad: 'Protein Topu', aciklama: 'Spor sonrası çikolatalı enerji topu', kalori: 130, protein: 8.0, karb: 14.0, yag: 5.0, lif: 3.0,
+    magnezyum: 40, zinc: 1.2, potasyum: 180, omega3: 0.5, dakika: 10,
+    etiketler: ['PROTEİN', 'SPOR'], ogunler: ['araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'magnezyum'], renk: Color(0xFF6D4C41),
+    gorselUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Yulaf', 'Fıstık ezmesi', 'Kakao tozu', 'Bal', 'Protein tozu (isteğe bağlı)'],
+    adimlar: ['Tüm malzemeleri karıştırın.', 'Toplar şekline getirin.', 'Buzdolabında 30 dakika soğutun.'],
   ),
-  SuggestionItem(
-    titleTr: 'E vitamini al',
-    titleEn: 'Get vitamin E',
-    descriptionTr: 'Badem, avokado ve zeytinyağı iyi E vitamini kaynaklarıdır. Cildi ve bağışıklığı korur.',
-    descriptionEn: 'Almonds, avocado and olive oil are good vitamin E sources. Protects skin and immunity.',
-    category: 'vitamin', icon: Icons.spa, color: Colors.orangeAccent,
+  _Tarif(
+    ad: 'Meyve ve Yoğurt', aciklama: 'Probiyotik ve taze meyveli atıştırmalık', kalori: 160, protein: 8.0, karb: 22.0, yag: 3.0, lif: 3.0,
+    kalsiyum: 200, vitaminC: 30, vitaminB12: 0.8, zinc: 1.0, potasyum: 350, dakika: 3,
+    etiketler: ['PROBİYOTİK', 'DÜŞÜK KALORİ'], ogunler: ['araOgun', 'kahvalti'],
+    diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['kalsiyum', 'protein', 'vitaminC'], renk: Color(0xFFFF7043),
+    gorselUrl: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 kase Yunan yoğurdu', 'Çilek', 'Yaban mersini', 'Muz'],
+    adimlar: ['Yoğurdu kaseye alın.', 'Taze meyveleri üzerine ekleyin.', 'Hemen servis yapın.'],
   ),
-  // Davranış ve alışkanlık
-  SuggestionItem(
-    titleTr: 'Yemek günlüğü tut',
-    titleEn: 'Keep a food diary',
-    descriptionTr: 'Her gün ne yediğini kaydetmek bilinç düzeyini artırır. Araştırmalar kilo kaybını %50 hızlandırdığını gösterir.',
-    descriptionEn: 'Recording what you eat daily increases awareness. Research shows it speeds up weight loss by 50%.',
-    category: 'habit', icon: Icons.book_outlined, color: Colors.purple,
+  // ── EK KAHVALTI ───────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Peynirli Gözleme', aciklama: 'İnce hamurda beyaz peynirli geleneksel lezzet', kalori: 380, protein: 14.0, karb: 44.0, yag: 16.0, lif: 3.0,
+    demir: 1.8, magnezyum: 30, kalsiyum: 260, vitaminA: 120, vitaminB12: 0.6, vitaminB1: 0.2, zinc: 1.4, potasyum: 220, dakika: 20,
+    etiketler: ['GELENEKSEL', 'PROTEİN'], ogunler: ['kahvalti'],
+    diyetler: ['vejetaryen'], zenginOldugu: ['protein', 'kalsiyum'], renk: Color(0xFFD4A056),
+    gorselUrl: 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 adet yufka', '100g beyaz peynir', 'Maydanoz', 'Zeytinyağı'],
+    adimlar: ['Yufkayı hafif yağlayın.', 'Peynir ve maydanozu koyun, katlayın.', 'Yapışmaz tavada her iki yüzünü altın rengi olana dek kızartın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Uyku ve beslenme bağlantısı',
-    titleEn: 'Sleep and nutrition connection',
-    descriptionTr: 'Günde 7-8 saat uyumak ghrelin/leptin dengesini korur. Az uyku aşırı yemeye yol açar.',
-    descriptionEn: '7-8 hours of sleep maintains ghrelin/leptin balance. Too little sleep leads to overeating.',
-    category: 'habit', icon: Icons.bedtime, color: Colors.deepPurple,
+  _Tarif(
+    ad: 'Tarhana Çorbası', aciklama: 'Fermente tahıllı geleneksel sabah çorbası', kalori: 210, protein: 9.0, karb: 32.0, yag: 5.0, lif: 4.0,
+    demir: 2.5, magnezyum: 40, kalsiyum: 80, vitaminA: 200, vitaminC: 12, vitaminB1: 0.2, vitaminB6: 0.3, zinc: 1.5, potasyum: 310, dakika: 15,
+    etiketler: ['PROBİYOTİK', 'GELENEKSEL'], ogunler: ['kahvalti', 'ogle'],
+    diyetler: ['vejetaryen'], zenginOldugu: ['demir', 'lif', 'protein'], renk: Color(0xFFB05C1A),
+    gorselUrl: 'https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['4 yemek kaşığı tarhana', '3 su bardağı su', 'Tereyağı', 'Pul biber', 'Nane'],
+    adimlar: ['Tarhanayı soğuk suda eritin.', 'Kısık ateşte karıştırarak pişirin.', 'Tereyağında nane ve pul biber kavurup üzerine dökün.'],
   ),
-  SuggestionItem(
-    titleTr: 'Stres yönetimi',
-    titleEn: 'Stress management',
-    descriptionTr: 'Stres kortizol artırır ve yağ depolamayı tetikler. Nefes egzersizleri veya meditasyon dene.',
-    descriptionEn: 'Stress increases cortisol and triggers fat storage. Try breathing exercises or meditation.',
-    category: 'habit', icon: Icons.self_improvement, color: Colors.teal,
+  _Tarif(
+    ad: 'Tahin Pekmez', aciklama: 'Geleneksel ve besleyici kahvaltı ikilisi', kalori: 260, protein: 7.0, karb: 30.0, yag: 13.0, lif: 2.5,
+    demir: 2.8, magnezyum: 70, kalsiyum: 110, vitaminB1: 0.3, vitaminB6: 0.1, zinc: 1.8, potasyum: 380, dakika: 3,
+    etiketler: ['ENERJİ', 'MİNERAL'], ogunler: ['kahvalti'],
+    diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['demir', 'magnezyum', 'kalsiyum'], renk: Color(0xFF8D6E63),
+    gorselUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 yemek kaşığı tahin', '2 yemek kaşığı üzüm pekmezi', 'Tam buğday ekmek'],
+    adimlar: ['Tahini tabağa alın.', 'Üzerine pekmezi gezdirin.', 'Tost ya da ekmekle servis edin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Tabak boyutunu küçült',
-    titleEn: 'Reduce plate size',
-    descriptionTr: 'Küçük tabak kullanmak psikolojik olarak daha dolu hissettirir. Porsiyon kontrolünde etkili.',
-    descriptionEn: 'Using a smaller plate makes you feel psychologically fuller. Effective for portion control.',
-    category: 'habit', icon: Icons.crop_din, color: Colors.grey,
+  // ── EK ÖĞLE ──────────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Bulgur Pilavı', aciklama: 'Şehriyeli bol mineralli pilav', kalori: 320, protein: 10.0, karb: 58.0, yag: 5.0, lif: 8.0,
+    demir: 3.0, magnezyum: 85, kalsiyum: 30, vitaminB1: 0.4, vitaminB6: 0.3, zinc: 1.8, potasyum: 360, dakika: 20,
+    etiketler: ['YÜKSEK LİF', 'ENERJİ'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['lif', 'magnezyum', 'demir'], renk: Color(0xFFD4A056),
+    gorselUrl: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 su bardağı iri bulgur', '1 soğan', 'Şehriye', 'Domates salçası', 'Zeytinyağı'],
+    adimlar: ['Soğanı zeytinyağında kavurun.', 'Salça ve bulguru ekleyip kavurun.', 'Sıcak su ekleyip kısık ateşte demleyin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Alışveriş listesi yap',
-    titleEn: 'Make a shopping list',
-    descriptionTr: 'Planlı alışveriş işlenmiş gıda satın alma riskini azaltır. Sağlıklı seçim için aç karnına gitme.',
-    descriptionEn: 'Planned shopping reduces the risk of buying processed food. Don\'t go hungry for healthy choices.',
-    category: 'habit', icon: Icons.shopping_cart, color: Colors.green,
+  _Tarif(
+    ad: 'Zeytinyağlı Taze Fasulye', aciklama: 'Geleneksel zeytinyağlı Türk yemeği', kalori: 240, protein: 5.0, karb: 28.0, yag: 12.0, lif: 7.0,
+    demir: 2.2, magnezyum: 45, kalsiyum: 55, vitaminA: 600, vitaminC: 25, vitaminB6: 0.2, zinc: 0.8, potasyum: 420, dakika: 35,
+    etiketler: ['VEGAN', 'DÜŞÜK KALORİ'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'vitaminA'], renk: Color(0xFF4CAF50),
+    gorselUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['500g taze fasulye', '2 domates', '1 soğan', 'Zeytinyağı', 'Şeker'],
+    adimlar: ['Soğanı zeytinyağında kavurun.', 'Domates ve fasulyeleri ekleyin.', 'Kısık ateşte 30 dakika pişirin, soğuk servis yapın.'],
   ),
-  SuggestionItem(
-    titleTr: 'Türk mutfağından sağlıklı seçimler',
-    titleEn: 'Healthy choices from Turkish cuisine',
-    descriptionTr: 'Zeytinyağlılar, çorbalar ve taze salata Türk mutfağının en sağlıklı seçenekleridir. Kızartmalı seçenekleri azalt.',
-    descriptionEn: 'Olive oil dishes, soups and fresh salads are the healthiest options in Turkish cuisine. Reduce fried options.',
-    category: 'general', icon: Icons.restaurant_menu, color: Colors.redAccent,
+  _Tarif(
+    ad: 'Patlıcan Musakka', aciklama: 'Fırınlanmış kıymalı patlıcan musakka', kalori: 410, protein: 24.0, karb: 20.0, yag: 22.0, lif: 6.0,
+    demir: 4.5, magnezyum: 50, kalsiyum: 50, vitaminA: 500, vitaminC: 20, vitaminB12: 1.5, vitaminB6: 0.5, zinc: 4.0, potasyum: 620, dakika: 50,
+    etiketler: ['GELENEKSEL', 'YÜKSEK PROTEİN'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF6D4C41),
+    gorselUrl: 'https://images.unsplash.com/photo-1576866209830-589e1bfbaa4d?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 patlıcan', '300g kıyma', '1 soğan', 'Domates sosu', 'Zeytinyağı'],
+    adimlar: ['Patlıcanları dilimleyip tuzlayın, hafif kızartın.', 'Kıymayı soğanla kavurun, domates sosunu ekleyin.', 'Katmanlar halinde dizin, fırında 35 dakika pişirin.'],
   ),
-  SuggestionItem(
-    titleTr: 'Mevsimsel sebze tüket',
-    titleEn: 'Consume seasonal vegetables',
-    descriptionTr: 'Mevsimsel sebzeler daha taze ve besleyicidir. Kış için lahana, yaz için domates vazgeçilmezdir.',
-    descriptionEn: 'Seasonal vegetables are fresher and more nutritious. Cabbage for winter, tomatoes for summer are essential.',
-    category: 'general', icon: Icons.eco, color: Colors.lightGreen,
+  _Tarif(
+    ad: 'Sarımsaklı Karides', aciklama: 'Tereyağlı çıtır karides kavurma', kalori: 290, protein: 28.0, karb: 4.0, yag: 16.0, lif: 0.5,
+    demir: 2.5, magnezyum: 40, kalsiyum: 80, vitaminD: 4.0, vitaminB12: 1.8, vitaminB6: 0.3, zinc: 2.0, potasyum: 350, omega3: 0.6, dakika: 15,
+    etiketler: ['YÜKSEK PROTEİN', 'OMEGA-3'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['glutensiz', 'keto'], zenginOldugu: ['protein', 'vitaminD', 'zinc'], renk: Color(0xFFFF7043),
+    gorselUrl: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['300g karides', '3 diş sarımsak', 'Tereyağı', 'Limon', 'Maydanoz'],
+    adimlar: ['Sarımsağı tereyağında kavurun.', 'Karidesler pembeye dönünce limon sıkın.', 'Maydanoz ekleyip servis yapın.'],
+  ),
+  _Tarif(
+    ad: 'Nohut Çorbası', aciklama: 'Doyurucu ve protein dolu sıcak çorba', kalori: 290, protein: 14.0, karb: 40.0, yag: 7.0, lif: 10.0,
+    demir: 4.0, magnezyum: 60, kalsiyum: 70, vitaminA: 100, vitaminC: 8, vitaminB1: 0.3, vitaminB6: 0.4, zinc: 2.0, potasyum: 480, dakika: 30,
+    etiketler: ['YÜKSEK LİF', 'VEGAN'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'demir', 'protein'], renk: Color(0xFFD4A056),
+    gorselUrl: 'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['2 su bardağı haşlanmış nohut', '1 soğan', 'Zerdeçal', 'Kimyon', 'Zeytinyağı'],
+    adimlar: ['Soğanı zeytinyağında kavurun.', 'Nohut ve baharatları ekleyin, suyunu koyun.', 'Kıvam alınca servis yapın.'],
+  ),
+  // ── EK AKŞAM ─────────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Levrek Buğulama', aciklama: 'Sebzeli buharda pişirilmiş levrek', kalori: 340, protein: 36.0, karb: 6.0, yag: 16.0, lif: 2.0,
+    demir: 1.8, magnezyum: 55, kalsiyum: 60, vitaminD: 18.0, vitaminB12: 3.5, vitaminB6: 0.7, zinc: 1.5, potasyum: 550, omega3: 2.8, dakika: 30,
+    etiketler: ['OMEGA-3', 'DÜŞÜK KALORİ'], ogunler: ['aksam'],
+    diyetler: ['glutensiz'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
+    gorselUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 levrek (400g)', 'Zeytinyağı', 'Limon', 'Havuç', 'Kereviz', 'Defne yaprağı'],
+    adimlar: ['Levreği ve sebzeleri tencereye dizin.', 'Limon suyu ve zeytinyağı ekleyin.', 'Kapağı kapalı 20 dakika buharda pişirin.'],
+  ),
+  _Tarif(
+    ad: 'Dana Güveci', aciklama: 'Yavaş pişirilmiş sebzeli dana eti', kalori: 460, protein: 38.0, karb: 22.0, yag: 22.0, lif: 5.0,
+    demir: 6.0, magnezyum: 45, kalsiyum: 40, vitaminA: 400, vitaminB12: 2.5, vitaminB6: 0.6, zinc: 7.0, potasyum: 680, dakika: 90,
+    etiketler: ['YÜKSEK PROTEİN', 'GELENEKSEL'], ogunler: ['aksam'],
+    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
+    gorselUrl: 'https://images.unsplash.com/photo-1551881192-002c429f5a03?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['400g dana kuşbaşı', 'Patates', 'Havuç', 'Biber', 'Domates', 'Soğan', 'Zeytinyağı'],
+    adimlar: ['Eti zeytinyağında sote edin.', 'Sebzeleri ekleyip kavurun.', 'Sıcak su koyup 75 dakika kısık ateşte pişirin.'],
+  ),
+  _Tarif(
+    ad: 'Zeytinyağlı Enginar', aciklama: 'Baharatlı zeytinyağlı soğuk meze', kalori: 190, protein: 4.5, karb: 18.0, yag: 11.0, lif: 7.0,
+    demir: 1.5, magnezyum: 50, kalsiyum: 40, vitaminC: 15, vitaminB6: 0.2, zinc: 0.6, potasyum: 380, dakika: 40,
+    etiketler: ['VEGAN', 'DÜŞÜK KALORİ'], ogunler: ['ogle', 'aksam'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'magnezyum'], renk: Color(0xFF558B2F),
+    gorselUrl: 'https://images.unsplash.com/photo-1596547609652-9cf5d8c10616?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['4 adet enginar', 'Zeytinyağı', 'Limon', 'Soğan', 'Bezelye', 'Şeker'],
+    adimlar: ['Enginarları limonlu suda bekletin.', 'Soğan ve bezelyeyle tencereye koyun.', 'Zeytinyağı ve limon ekleyip 30 dakika pişirin, soğutun.'],
+  ),
+  // ── EK ARA ÖĞÜN ──────────────────────────────────────────────────────────
+  _Tarif(
+    ad: 'Taze Meyve Salatası', aciklama: 'Vitamin bombası renkli meyve salatası', kalori: 120, protein: 2.0, karb: 28.0, yag: 0.5, lif: 4.0,
+    magnezyum: 20, kalsiyum: 30, vitaminC: 60, vitaminA: 150, potasyum: 380, dakika: 8,
+    etiketler: ['DÜŞÜK KALORİ', 'VİTAMİN'], ogunler: ['araOgun', 'kahvalti'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['vitaminC', 'vitaminA', 'lif'], renk: Color(0xFFFF7043),
+    gorselUrl: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['Çilek', 'Kavun', 'Karpuz', 'Üzüm', 'Nane', 'Limon suyu'],
+    adimlar: ['Tüm meyveleri küp küp doğrayın.', 'Limon suyu ve nane ekleyin.', 'Soğuk servis yapın.'],
+  ),
+  _Tarif(
+    ad: 'Lor Peyniri ve Domates', aciklama: 'Hafif ve protein dolu sağlıklı atıştırmalık', kalori: 150, protein: 12.0, karb: 6.0, yag: 8.0, lif: 1.5,
+    demir: 0.8, magnezyum: 20, kalsiyum: 180, vitaminA: 250, vitaminC: 15, vitaminB12: 0.5, zinc: 1.2, potasyum: 280, dakika: 5,
+    etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KALORİ'], ogunler: ['araOgun', 'kahvalti'],
+    diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'kalsiyum'], renk: Color(0xFFE91E63),
+    gorselUrl: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['150g lor peyniri', '2 domates', 'Zeytinyağı', 'Kekik', 'Tuz'],
+    adimlar: ['Domatesleri dilimleyin.', 'Lor peyniri ile tabağa dizin.', 'Zeytinyağı ve kekik gezdirerek servis edin.'],
+  ),
+  _Tarif(
+    ad: 'Mercimekli Köfte', aciklama: 'Soğuk servis edilen geleneksel mercimek köftesi', kalori: 280, protein: 13.0, karb: 38.0, yag: 8.0, lif: 11.0,
+    demir: 5.5, magnezyum: 75, kalsiyum: 50, vitaminA: 300, vitaminC: 18, vitaminB1: 0.4, vitaminB6: 0.4, zinc: 2.2, potasyum: 490, dakika: 30,
+    etiketler: ['VEGAN', 'YÜKSEK DEMİR'], ogunler: ['ogle', 'araOgun'],
+    diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['demir', 'lif', 'protein'], renk: Color(0xFFB05C1A),
+    gorselUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=600',
+    malzemeler: ['1 su bardağı kırmızı mercimek', '½ su bardağı ince bulgur', '1 soğan', 'Salça', 'Zeytinyağı', 'Maydanoz', 'Limon'],
+    adimlar: ['Mercimeği haşlayın, suyunu süzün.', 'Bulgur, salça ve yağı ekleyip yoğurun.', 'Köfte şekli verip maydanoz ve limonla servis yapın.'],
   ),
 ];
 
-// ─── Antrenman Havuzu ─────────────────────────────────────────────────────────
 
-const List<WorkoutItem> _workouts = [
-  // Kardiyovasküler
-  WorkoutItem(
-    nameTr: 'Tempolu Yürüyüş',
-    nameEn: 'Brisk Walking',
-    icon: Icons.directions_walk,
-    durationTr: '30 dakika',
-    durationEn: '30 minutes',
-    calories: 150,
-    difficulty: WorkoutDifficulty.easy,
-    category: WorkoutCategory.cardio,
-    durationSeconds: 1800,
-  ),
-  WorkoutItem(
-    nameTr: 'Koşu',
-    nameEn: 'Running',
-    icon: Icons.directions_run,
-    durationTr: '20 dakika',
-    durationEn: '20 minutes',
-    calories: 220,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.cardio,
-    durationSeconds: 1200,
-  ),
-  WorkoutItem(
-    nameTr: 'Bisiklet',
-    nameEn: 'Cycling',
-    icon: Icons.directions_bike,
-    durationTr: '30 dakika',
-    durationEn: '30 minutes',
-    calories: 200,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.cardio,
-    durationSeconds: 1800,
-  ),
-  WorkoutItem(
-    nameTr: 'Yüzme',
-    nameEn: 'Swimming',
-    icon: Icons.pool,
-    durationTr: '30 dakika',
-    durationEn: '30 minutes',
-    calories: 260,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.cardio,
-    durationSeconds: 1800,
-  ),
-  WorkoutItem(
-    nameTr: 'Atlama İpi',
-    nameEn: 'Jump Rope',
-    icon: Icons.sports_gymnastics,
-    durationTr: '15 dakika',
-    durationEn: '15 minutes',
-    calories: 180,
-    difficulty: WorkoutDifficulty.hard,
-    category: WorkoutCategory.cardio,
-    durationSeconds: 900,
-  ),
-  // Güç
-  WorkoutItem(
-    nameTr: 'Şınav',
-    nameEn: 'Push-ups',
-    icon: Icons.fitness_center,
-    durationTr: '3×15 tekrar',
-    durationEn: '3×15 reps',
-    calories: 60,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.strength,
-    durationSeconds: 300,
-  ),
-  WorkoutItem(
-    nameTr: 'Mekik',
-    nameEn: 'Sit-ups',
-    icon: Icons.accessibility_new,
-    durationTr: '3×20 tekrar',
-    durationEn: '3×20 reps',
-    calories: 50,
-    difficulty: WorkoutDifficulty.easy,
-    category: WorkoutCategory.strength,
-    durationSeconds: 300,
-  ),
-  WorkoutItem(
-    nameTr: 'Squat',
-    nameEn: 'Squats',
-    icon: Icons.sports_martial_arts,
-    durationTr: '3×15 tekrar',
-    durationEn: '3×15 reps',
-    calories: 70,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.strength,
-    durationSeconds: 360,
-  ),
-  WorkoutItem(
-    nameTr: 'Plank',
-    nameEn: 'Plank',
-    icon: Icons.square,
-    durationTr: '3×45 saniye',
-    durationEn: '3×45 seconds',
-    calories: 30,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.strength,
-    durationSeconds: 135,
-  ),
-  WorkoutItem(
-    nameTr: 'Dumbbell Kıvırma',
-    nameEn: 'Dumbbell Curl',
-    icon: Icons.sports,
-    durationTr: '3×12 tekrar',
-    durationEn: '3×12 reps',
-    calories: 45,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.strength,
-    durationSeconds: 300,
-  ),
-  WorkoutItem(
-    nameTr: 'Burpee',
-    nameEn: 'Burpees',
-    icon: Icons.height,
-    durationTr: '3×10 tekrar',
-    durationEn: '3×10 reps',
-    calories: 100,
-    difficulty: WorkoutDifficulty.hard,
-    category: WorkoutCategory.strength,
-    durationSeconds: 300,
-  ),
-  // Esneklik
-  WorkoutItem(
-    nameTr: 'Sabah Yogası',
-    nameEn: 'Morning Yoga',
-    icon: Icons.self_improvement,
-    durationTr: '20 dakika',
-    durationEn: '20 minutes',
-    calories: 80,
-    difficulty: WorkoutDifficulty.easy,
-    category: WorkoutCategory.flexibility,
-    durationSeconds: 1200,
-  ),
-  WorkoutItem(
-    nameTr: 'Esneme Hareketleri',
-    nameEn: 'Stretching',
-    icon: Icons.accessibility,
-    durationTr: '15 dakika',
-    durationEn: '15 minutes',
-    calories: 40,
-    difficulty: WorkoutDifficulty.easy,
-    category: WorkoutCategory.flexibility,
-    durationSeconds: 900,
-  ),
-  WorkoutItem(
-    nameTr: 'Pilates',
-    nameEn: 'Pilates',
-    icon: Icons.airline_seat_legroom_extra,
-    durationTr: '30 dakika',
-    durationEn: '30 minutes',
-    calories: 120,
-    difficulty: WorkoutDifficulty.medium,
-    category: WorkoutCategory.flexibility,
-    durationSeconds: 1800,
-  ),
-  WorkoutItem(
-    nameTr: 'Akşam Esneme',
-    nameEn: 'Evening Stretching',
-    icon: Icons.nightlight,
-    durationTr: '10 dakika',
-    durationEn: '10 minutes',
-    calories: 25,
-    difficulty: WorkoutDifficulty.easy,
-    category: WorkoutCategory.flexibility,
-    durationSeconds: 600,
-  ),
-];
 
-// ─── Ana Ekran ─────────────────────────────────────────────────────────────────
+// ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 class SuggestionsScreen extends StatefulWidget {
-  const SuggestionsScreen({super.key});
+  final VoidCallback? onNavigateBack;
+  final VoidCallback? onNavigateForward;
+
+  const SuggestionsScreen({
+    super.key,
+    this.onNavigateBack,
+    this.onNavigateForward,
+  });
 
   @override
   State<SuggestionsScreen> createState() => _SuggestionsScreenState();
 }
 
-class _SuggestionsScreenState extends State<SuggestionsScreen>
-    with SingleTickerProviderStateMixin {
-  static const int _displayCount = 6;
-
-  late final TabController _tabController;
-  List<SuggestionItem> _active = [];
-  final Set<int> _usedIndices = {};
-  int _completedToday = 0;
-  bool _loaded = false;
+class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _initSuggestions();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 0) {
+        FocusScope.of(context).unfocus();
+      }
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -580,180 +613,481 @@ class _SuggestionsScreenState extends State<SuggestionsScreen>
     super.dispose();
   }
 
-  Future<void> _initSuggestions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final todayKey = _todayKey();
-    final count = prefs.getInt('completed_count_$todayKey') ?? 0;
-
-    final random = Random();
-    final indices = <int>{};
-    while (indices.length < _displayCount.clamp(0, _pool.length)) {
-      indices.add(random.nextInt(_pool.length));
-    }
-    _usedIndices.addAll(indices);
-
-    setState(() {
-      _completedToday = count;
-      _active = indices.map((i) => _pool[i]).toList();
-      _loaded = true;
-    });
-  }
-
-  String _todayKey() {
-    final now = DateTime.now();
-    return '${now.year}_${now.month}_${now.day}';
-  }
-
-  SuggestionItem? _getNextSuggestion() {
-    for (int i = 0; i < _pool.length; i++) {
-      if (!_usedIndices.contains(i)) {
-        _usedIndices.add(i);
-        return _pool[i];
-      }
-    }
-    return null;
-  }
-
-  Future<void> _completeSuggestion(int index, SuggestionItem item) async {
-    HapticFeedback.mediumImpact();
-    final prefs = await SharedPreferences.getInstance();
-    final todayKey = _todayKey();
-    final newCount = _completedToday + 1;
-    await prefs.setInt('completed_count_$todayKey', newCount);
-
-    final titles = prefs.getStringList('completed_titles_$todayKey') ?? [];
-    titles.add(item.titleTr);
-    await prefs.setStringList('completed_titles_$todayKey', titles);
-
-    final next = _getNextSuggestion();
-    if (mounted) {
-      setState(() {
-        _completedToday = newCount;
-        if (next != null) {
-          _active[index] = next;
-        } else {
-          _active.removeAt(index);
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    context.watch<LanguageProvider>();
-    final l10n = AppLocalizations.of(context);
-
-    if (!_loaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.tr('Öneriler')),
-        centerTitle: true,
+        toolbarHeight: 0,
+        title: null,
+        actions: const [],
         bottom: TabBar(
           controller: _tabController,
-          tabs: [
-            Tab(text: l10n.isTurkish ? 'Öneriler' : 'Tips'),
-            Tab(text: l10n.isTurkish ? 'Eksikler' : 'Deficits'),
-            Tab(text: l10n.tr('Antrenman')),
+          onTap: (index) {
+            _tabController.animateTo(index, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
+          },
+          tabs: const [
+            Tab(text: 'Günlük Tarifler'),
+            Tab(text: 'Beslenme Koçu'),
+          ],
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+          indicatorWeight: 3,
+        ),
+      ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity > 300) {
+            // Right swipe
+            if (_tabController.index == 0) {
+              widget.onNavigateBack?.call();
+            } else {
+              _tabController.animateTo(0, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
+            }
+          } else if (velocity < -300) {
+            // Left swipe
+            if (_tabController.index == _tabController.length - 1) {
+              widget.onNavigateForward?.call();
+            } else {
+              _tabController.animateTo(1, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
+            }
+          }
+        },
+        child: TabBarView(
+          controller: _tabController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _buildRecipesTab(context, cs, isDark),
+            const CoachScreen(isEmbedded: true),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+    );
+  }
+
+  Widget _buildRecipesTab(BuildContext context, ColorScheme cs, bool isDark) {
+    final hour = DateTime.now().hour;
+    final currentPeriod = _PeriodX.fromHour(hour);
+    final nutrition = context.watch<NutritionProvider>();
+    final profileProvider = context.watch<ProfileProvider>();
+    final profile = profileProvider.activeProfile;
+    
+    final stats = nutrition.totalNutrition;
+    final stats65 = nutrition.todayLog.totalNutrition65;
+    final calorieGoal = profileProvider.calorieGoal;
+    final isOverGoal = stats.calories > calorieGoal && calorieGoal > 0;
+
+    // Detect deficiencies ( personalized logic )
+    final List<String> gaps = [];
+    if (stats.protein < (profile?.proteinGoal ?? 100) * 0.5) gaps.add('protein');
+    if (stats.fiber < (profile?.fiberGoal ?? 25) * 0.5) gaps.add('lif');
+    if (stats65 != null) {
+      if (stats65.magnesium < (profile?.magnesiumGoal ?? 300) * 0.5) gaps.add('magnezyum');
+      if (stats65.iron < (profile?.ironGoal ?? 10) * 0.5) gaps.add('demir');
+      if (stats65.calcium < (profile?.calciumGoal ?? 1000) * 0.5) gaps.add('kalsiyum');
+      if (stats65.vitC < 50) gaps.add('vitaminC');
+      if (stats65.dha < 0.1) gaps.add('omega3');
+    }
+
+    // Dynamic Section Titles
+    String lunchTitle = 'Hızlı ${currentPeriod.baslik.replaceAll('!', '')}';
+    String relaxationTitle = (hour >= 5 && hour < 12) ? 'Sabah Dinçliği' : 'Akşam Dinlenmesi';
+    String relaxationSub = (hour >= 5 && hour < 12) ? 'Güne zinde başlamak için öneriler.' : 'Kaliteli bir uyku için hafif seçimler.';
+
+    // Filter recipes based on time and status
+    // ─── Sağlık ve Tercih Filtreleme ──────────────────────────────────────────
+    final healthConditions = profile?.healthConditions ?? [];
+    final dietaryPrefs = profile?.dietaryPreferences ?? [];
+
+    // Filtreleme mantığını yumuşat: Sadece 'Kesinlikle yasak' olanları çıkar (Alerji/Çölyak)
+    final safeRecipes = _db.where((r) {
+      if (healthConditions.contains('Çölyak') || healthConditions.contains('Gluten İntoleransı')) {
+        if (!r.diyetler.contains('glutensiz')) return false;
+      }
+      if (healthConditions.contains('Yumurta Alerjisi') && r.malzemeler.any((m) => m.toLowerCase().contains('yumurta'))) return false;
+      if (healthConditions.contains('Deniz Ürünleri Alerjisi') && r.ad.toLowerCase().contains('somon')) return false;
+      return true;
+    }).toList();
+
+    // ─── Bölüm Listeleri ──────────────────────────────────────────────────────
+    
+    // Metabolism: Always energetic
+    final metabolismRecipes = safeRecipes.where((r) => r.etiketler.contains('ENERJİ') || r.etiketler.contains('METABOLİZMA')).take(5).toList();
+    if (metabolismRecipes.isEmpty) metabolismRecipes.addAll(safeRecipes.take(5));
+
+    // Main Section: Personalized based on gaps
+    final lunchRecipesAll = safeRecipes.where((r) => r.ogunler.contains(currentPeriod.dbKey)).toList();
+    if (lunchRecipesAll.isEmpty) lunchRecipesAll.addAll(safeRecipes.take(5));
+
+    if (gaps.isNotEmpty) {
+      lunchRecipesAll.sort((a, b) {
+        int scoreA = a.zenginOldugu.where((z) => gaps.contains(z)).length;
+        int scoreB = b.zenginOldugu.where((z) => gaps.contains(z)).length;
+        return scoreB.compareTo(scoreA);
+      });
+    }
+    final lunchRecipes = lunchRecipesAll.take(5).toList();
+
+    final eveningRecipes = safeRecipes.where((r) => r.ogunler.contains(hour < 12 ? 'kahvalti' : 'aksam')).take(5).toList();
+    if (eveningRecipes.isEmpty) eveningRecipes.addAll(safeRecipes.reversed.take(5));
+
+    return ListView(
+      key: const PageStorageKey<String>('recipes_tab'),
+      padding: EdgeInsets.zero,
+      children: [
+        _buildCoachHeaderCard(context, cs),
+        
+        if (safeRecipes.length < _db.length)
+          _buildInfoBanner('Sağlık profilin için en uygun tarifleri en başa taşıdık.'),
+        
+        const SizedBox(height: 24),
+        
+        // Metabolism Boosters Section
+        _buildSectionHeader('Metabolizma Hızlandırıcılar', 'Enerjini zirveye taşıyacak seçimler.'),
+        const SizedBox(height: 16),
+        _HorizontalScrollSection(
+          height: 100,
+          items: metabolismRecipes.map((r) => _buildWideRecipeCard(context, r, cs, isDark)).toList(),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Main Meal Section (Dynamic Title)
+        _buildSectionHeader(lunchTitle, gaps.isNotEmpty ? 'Eksik olduğun besin değerlerine göre özel seçildi.' : (isOverGoal ? 'Kalori hedefini aştığın için hafif seçenekler.' : 'Hızlı ve sağlıklı tarifler.')),
+        const SizedBox(height: 16),
+        _HorizontalScrollSection(
+          height: 240,
+          items: lunchRecipes.map((r) => _buildVerticalRecipeCard(context, r, cs, isDark)).toList(),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Evening/Morning Section (Dynamic Title)
+        _buildSectionHeader(relaxationTitle, relaxationSub),
+        const SizedBox(height: 16),
+        _HorizontalScrollSection(
+          height: 90,
+          items: eveningRecipes.map((r) => _buildListRecipeItem(context, r, cs, isDark)).toList(),
+        ),
+        
+        const SizedBox(height: 120), // Bottom padding for navigation
+      ],
+    );
+  }
+
+  void _showMealSelection(BuildContext context, _Tarif r) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Öğün Seçin', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            const Text('Bu tarifi hangi öğüne eklemek istersiniz?', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _mealButton(context, 'kahvaltı', Icons.wb_sunny_outlined, r),
+                _mealButton(context, 'öğle', Icons.light_mode_outlined, r),
+                _mealButton(context, 'akşam', Icons.nightlight_outlined, r),
+                _mealButton(context, 'ara öğün', Icons.coffee_outlined, r),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mealButton(BuildContext context, String type, IconData icon, _Tarif r) {
+    Color mealColor;
+    switch (type) {
+      case 'kahvaltı': mealColor = const Color(0xFFFF9500); break;
+      case 'öğle': mealColor = const Color(0xFFFFCC00); break;
+      case 'akşam': mealColor = const Color(0xFF5856D6); break;
+      default: mealColor = const Color(0xFF4CD964);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        final nutrition = context.read<NutritionProvider>();
+        nutrition.addFoodEntry(_foodEntryFromTarif(r, type));
+        Navigator.pop(context); // Close selection
+        Navigator.pop(context); // Close details
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${r.ad} tüm besin değerleriyle $type öğününe eklendi!'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      },
+      child: Column(
         children: [
-          _buildSuggestionsTab(l10n),
-          _ExiklerTab(isTurkish: l10n.isTurkish),
-          _WorkoutTab(isTurkish: l10n.isTurkish),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: mealColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: mealColor.withValues(alpha: 0.3), width: 1.5),
+            ),
+            child: Icon(icon, color: mealColor, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 
-  Widget _buildSuggestionsTab(AppLocalizations l10n) {
-    final isTurkish = l10n.isTurkish;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildCompletionBanner(context, isTurkish),
-        const SizedBox(height: 8),
-        _buildInfoBanner(context, isTurkish),
-        const SizedBox(height: 16),
-        ..._active.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 450),
-            transitionBuilder: (child, animation) {
-              final slide = Tween<Offset>(
-                begin: const Offset(1.0, 0),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(position: slide, child: child),
-              );
-            },
-            child: _buildSuggestionCard(
-              context,
-              item,
-              index,
-              isTurkish: isTurkish,
-              key: ValueKey('${item.titleTr}_$index'),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildCompletionBanner(BuildContext context, bool isTurkish) {
-    final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(Icons.check_circle, color: theme.colorScheme.onSecondaryContainer),
-            const SizedBox(width: 12),
-            Text(
-              isTurkish
-                  ? 'Bugün $_completedToday öneri tamamlandı'
-                  : '$_completedToday tips completed today',
-              style: TextStyle(
-                color: theme.colorScheme.onSecondaryContainer,
+  Widget _buildInfoBanner(String text) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome, color: Colors.blue, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                fontSize: 15,
+                color: Colors.blue,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoBanner(BuildContext context, bool isTurkish) {
-    final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.primaryContainer,
-      child: Padding(
+  FoodEntry _foodEntryFromTarif(_Tarif r, String mealType) {
+    final nutritionData = NutritionData(
+      calories: r.kalori.toDouble(),
+      protein: r.protein,
+      carbohydrates: r.karb,
+      fat: r.yag,
+      fiber: r.lif,
+      iron: r.demir ?? 0,
+      magnesium: r.magnezyum ?? 0,
+      calcium: r.kalsiyum ?? 0,
+      vitaminA: r.vitaminA ?? 0,
+      vitaminC: r.vitaminC ?? 0,
+      vitaminD: r.vitaminD ?? 0,
+      vitaminE: r.vitaminE ?? 0,
+      vitaminB12: r.vitaminB12 ?? 0,
+      vitaminB6: r.vitaminB6 ?? 0,
+      thiamine: r.vitaminB1 ?? 0,
+      zinc: r.zinc ?? 0,
+      potassium: r.potasyum ?? 0,
+      omega3: r.omega3 ?? 0,
+    );
+
+    return FoodEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: r.ad,
+      portionSize: 100.0,
+      portionUnit: 'g (1 porsiyon)',
+      nutritionData: nutritionData,
+      nutrition65per100g: nutritionData.to65(),
+      timestamp: DateTime.now(),
+      mealType: mealType,
+      imageUrl: r.gorselUrl,
+    );
+  }
+
+  Widget _buildCoachHeaderCard(BuildContext context, ColorScheme cs) {
+    final content = _getDynamicCoachContent(context);
+    
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0969DA), Color(0xFF58A6FF)], // Blue gradient
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0969DA).withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Transform.flip(
+              flipX: true,
+              child: const Icon(Icons.psychology, color: Colors.white, size: 24),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'BESLENME KOÇU',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            content.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            content.description,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => _tabController.animateTo(1, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF0969DA),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+            ),
+            child: const Text('Hemen Gör', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _CoachContent _getDynamicCoachContent(BuildContext context) {
+    final nutrition = context.watch<NutritionProvider>();
+    final profile = context.watch<ProfileProvider>().activeProfile;
+    final stats = nutrition.totalNutrition;
+    final calorieGoal = context.read<ProfileProvider>().calorieGoal;
+    final steps = nutrition.todayLog.stepsCount ?? 0;
+    final hour = DateTime.now().hour;
+
+    // Time-based greetings
+    String title = 'Günaydın, canlanma vakti!';
+    if (hour >= 12 && hour < 17) title = 'Tünaydın, enerji lazım!';
+    if (hour >= 17 && hour < 21) title = 'İyi akşamlar, hafifleyelim!';
+    if (hour >= 21 || hour < 6) title = 'İyi geceler, dinlenme vakti!';
+
+    // Logic for description
+    String description = 'Senin için en sağlıklı önerileri hazırladım. Bugün hedeflerine ulaşmak için harika bir gün!';
+
+    if (stats.calories > calorieGoal && calorieGoal > 0) {
+      description = 'Bugün kalori hedefini biraz aşmışsın. Akşam yemeğinde hafif bir salata veya sebze yemeği tercih ederek dengeleyebiliriz.';
+    } else if (steps > 10000) {
+      description = 'Harika bir hareketlilik! 10.000 adımı geçtin. Kaslarını desteklemek için protein ağırlıklı bir ara öğün harika olur.';
+    } else if (stats.protein < (profile?.proteinGoal ?? 0) * 0.5 && stats.calories > 0) {
+      description = 'Bugün protein alımın biraz düşük kalmış. Kas sağlığın için bir sonraki öğününde protein kaynaklarına yer vermeni öneririm.';
+    } else if (hour < 10 && stats.calories == 0) {
+      description = 'Güne zinde başlamak için besleyici bir kahvaltıya ne dersin? Metabolizmanı ateşleyecek önerilerim aşağıda.';
+    } else if (nutrition.todayLog.waterIntakeMl < 1000) {
+      description = 'Bugün su içmeyi biraz ihmal etmiş gibisin. Vücudunun nem dengesi için hemen bir bardak su içmeye ne dersin?';
+    }
+
+    return _CoachContent(title, description);
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.8),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWideRecipeCard(BuildContext context, _Tarif r, ColorScheme cs, bool isDark) {
+    return GestureDetector(
+      onTap: () => _showRecipeDetails(context, r),
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 16),
         padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: r.renk.withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Row(
           children: [
-            Icon(Icons.auto_awesome, color: theme.colorScheme.onPrimaryContainer),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    r.ad,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    r.aciklama,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                isTurkish
-                    ? 'Bu öneriler günlük beslenme verileriniz analiz edilerek oluşturulmuştur.'
-                    : 'These tips are generated by analyzing your daily nutrition data.',
-                style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
+              flex: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _buildRecipeImage(r.gorselUrl, 60, r.renk),
               ),
             ),
           ],
@@ -762,460 +1096,49 @@ class _SuggestionsScreenState extends State<SuggestionsScreen>
     );
   }
 
-  Widget _buildSuggestionCard(
-    BuildContext context,
-    SuggestionItem item,
-    int index, {
-    Key? key,
-    required bool isTurkish,
-  }) {
-    return _DismissibleSuggestionCard(
-      key: key,
-      item: item,
-      isTurkish: isTurkish,
-      onComplete: () => _completeSuggestion(index, item),
-    );
-  }
-}
-
-// ─── Dismissible Suggestion Card ─────────────────────────────────────────────
-
-class _DismissibleSuggestionCard extends StatefulWidget {
-  final SuggestionItem item;
-  final bool isTurkish;
-  final VoidCallback onComplete;
-
-  const _DismissibleSuggestionCard({
-    super.key,
-    required this.item,
-    required this.isTurkish,
-    required this.onComplete,
-  });
-
-  @override
-  State<_DismissibleSuggestionCard> createState() =>
-      _DismissibleSuggestionCardState();
-}
-
-class _DismissibleSuggestionCardState
-    extends State<_DismissibleSuggestionCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<Offset> _slide;
-  late final Animation<double> _fade;
-  bool _dismissed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _slide = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-1.3, 0),
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
-    _fade = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeIn),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleComplete() async {
-    if (_dismissed) return;
-    _dismissed = true;
-    if (!MediaQuery.of(context).disableAnimations) {
-      await _ctrl.forward();
-    }
-    widget.onComplete();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final item = widget.item;
-    final isTurkish = widget.isTurkish;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SlideTransition(
-      position: _slide,
-      child: FadeTransition(
-        opacity: _fade,
-        child: Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          elevation: 2,
-          shadowColor: item.color.withOpacity(0.15),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: item.color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(item.icon, color: item.color, size: 26),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title(isTurkish),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.description(isTurkish),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              height: 1.4,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _CheckButton(onPressed: _handleComplete),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CheckButton extends StatefulWidget {
-  final VoidCallback onPressed;
-  const _CheckButton({required this.onPressed});
-
-  @override
-  State<_CheckButton> createState() => _CheckButtonState();
-}
-
-class _CheckButtonState extends State<_CheckButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 1.25).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handle() async {
-    await _ctrl.forward();
-    await _ctrl.reverse();
-    widget.onPressed();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildVerticalRecipeCard(BuildContext context, _Tarif r, ColorScheme cs, bool isDark) {
     return GestureDetector(
-      onTap: _handle,
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50).withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.check_circle_outline,
-            color: Color(0xFF4CAF50),
-            size: 26,
-          ),
+      onTap: () => _showRecipeDetails(context, r),
+      child: Container(
+        width: 180,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF161B22) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
         ),
-      ),
-    );
-  }
-}
-
-// ─── Eksikler Sekmesi ─────────────────────────────────────────────────────────
-
-class _SupplementItem {
-  final String name;
-  final IconData icon;
-  final String reason;
-  final String dose;
-
-  const _SupplementItem({
-    required this.name,
-    required this.icon,
-    required this.reason,
-    required this.dose,
-  });
-}
-
-class _ExiklerTab extends StatelessWidget {
-  final bool isTurkish;
-  const _ExiklerTab({required this.isTurkish});
-
-  static const _proteinFoods = [
-    ['Tavuk göğsü', 0.31],
-    ['Ton balığı (konserve)', 0.25],
-    ['Yumurta', 0.13],
-    ['Süzme yoğurt', 0.10],
-    ['Mercimek (pişmiş)', 0.09],
-  ];
-
-  static const _carbFoods = [
-    ['Yulaf ezmesi', 0.60],
-    ['Tam tahıllı ekmek', 0.40],
-    ['Pirinç (pişmiş)', 0.28],
-    ['Muz', 0.23],
-    ['Tatlı patates', 0.20],
-  ];
-
-  static const _fatFoods = [
-    ['Ceviz', 0.65],
-    ['Badem', 0.50],
-    ['Avokado', 0.15],
-    ['Somon', 0.13],
-    ['Zeytinyağı', 1.00],
-  ];
-
-  static const _calorieFoods = [
-    ['Karışık kuruyemiş', 6.00],
-    ['Avokado', 1.60],
-    ['Peynir (kaşar)', 3.50],
-    ['Muz', 0.89],
-    ['Tam yağlı yoğurt', 0.97],
-  ];
-
-  String _foodLine(String name, double deficit, double macroPerGram,
-      String unit, double maxGrams) {
-    final neededGrams = deficit / macroPerGram;
-    if (neededGrams > maxGrams) {
-      final actualMacro = maxGrams * macroPerGram;
-      return '${maxGrams.toStringAsFixed(0)}g $name → +${actualMacro.toStringAsFixed(0)}$unit';
-    }
-    return '${neededGrams.toStringAsFixed(0)}g $name → +${deficit.toStringAsFixed(0)}$unit';
-  }
-
-  Widget _buildDeficitCard(
-    BuildContext context, {
-    required String title,
-    required double deficit,
-    required String unit,
-    required Color color,
-    required List<dynamic> foods,
-    required double maxGrams,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: color.withOpacity(0.15),
-                  child: Icon(Icons.trending_up, color: color, size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isTurkish ? '$title Eksikliği' : '$title Deficit',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        isTurkish
-                            ? '${deficit.toStringAsFixed(0)}$unit eksik'
-                            : '${deficit.toStringAsFixed(0)}$unit missing',
-                        style: TextStyle(color: color, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              isTurkish ? 'Tamamlamak için:' : 'To complete:',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            ...List.generate(
-              foods.length > 3 ? 3 : foods.length,
-              (i) {
-                final food = foods[i];
-                final line = _foodLine(
-                  food[0] as String,
-                  deficit,
-                  food[1] as double,
-                  unit,
-                  maxGrams,
-                );
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      Icon(Icons.arrow_right, color: color, size: 20),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(line,
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static const _proteinSupplements = [
-    _SupplementItem(
-      name: 'Whey Protein',
-      icon: Icons.fitness_center,
-      reason: 'Günlük protein açığınızı hızlı kapatmak için',
-      dose: '1 porsiyon (25-30g) antrenman sonrası',
-    ),
-    _SupplementItem(
-      name: 'Kazein Protein',
-      icon: Icons.nightlight_round,
-      reason: 'Gece yavaş salınımlı protein desteği',
-      dose: '1 porsiyon (25-30g) uyumadan önce',
-    ),
-    _SupplementItem(
-      name: 'Bitkisel Protein',
-      icon: Icons.eco,
-      reason: 'Bitkisel kaynaklı protein takviyesi',
-      dose: '1 porsiyon (25-30g) öğün aralarında',
-    ),
-  ];
-
-  static const _generalSupplements = [
-    _SupplementItem(
-      name: 'D3 Vitamini',
-      icon: Icons.wb_sunny,
-      reason: 'D vitamini eksikliği yorgunluk ve bağışıklık zayıflamasına yol açar',
-      dose: 'Günde 1000-2000 IU (doktor önerisine göre)',
-    ),
-    _SupplementItem(
-      name: 'Balık Yağı (Omega-3)',
-      icon: Icons.set_meal,
-      reason: 'Omega-3 kalp, beyin ve eklem sağlığını destekler',
-      dose: 'Günde 1-2g EPA+DHA içeren kapsül',
-    ),
-    _SupplementItem(
-      name: 'Magnezyum Glisinat',
-      icon: Icons.bolt,
-      reason: 'Magnezyum kas fonksiyonu ve uyku kalitesini artırır',
-      dose: 'Günde 200-400mg yatmadan önce',
-    ),
-    _SupplementItem(
-      name: 'B12 Vitamini',
-      icon: Icons.electric_bolt,
-      reason: 'B12 sinir sistemi ve enerji metabolizması için kritik',
-      dose: 'Günde 500-1000mcg (özellikle vejetaryenler)',
-    ),
-    _SupplementItem(
-      name: 'Demir Takviyesi',
-      icon: Icons.bloodtype,
-      reason: 'Demir eksikliği yorgunluk ve anemi riskini artırır',
-      dose: 'Günde 18mg (doktor kontrolünde)',
-    ),
-    _SupplementItem(
-      name: 'Multivitamin',
-      icon: Icons.medication,
-      reason: 'Genel besin eksikliklerini kapatmak için',
-      dose: 'Günde 1 tablet sabah yemeğiyle',
-    ),
-  ];
-
-  Widget _buildSupplementCard(BuildContext context, _SupplementItem item) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.amber.shade200, width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.amber.shade100,
-              child:
-                  Icon(item.icon, color: Colors.amber.shade800, size: 22),
-            ),
-            const SizedBox(width: 12),
             Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: _buildRecipeImage(r.gorselUrl, 140, r.renk),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 3),
-                  Text(item.reason,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          )),
-                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: Text(r.ad, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, color: Colors.green, size: 14),
+                          Text(' 4.8', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.schedule,
-                          size: 13, color: Colors.amber.shade700),
+                      _miniTag('KARB', Colors.blue),
                       const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(item.dose,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Colors.amber.shade800,
-                                      fontWeight: FontWeight.w500,
-                                    )),
-                      ),
+                      _miniTag('PRO', Colors.green),
                     ],
                   ),
                 ],
@@ -1227,619 +1150,488 @@ class _ExiklerTab extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Consumer2<NutritionProvider, ProfileProvider>(
-      builder: (context, nutritionProvider, profileProvider, _) {
-        if (!profileProvider.isProfileComplete) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.person_outline,
-                      size: 72,
-                      color: Theme.of(context).colorScheme.outline),
-                  const SizedBox(height: 16),
-                  Text(
-                    isTurkish
-                        ? 'Eksikleri görmek için\nProfilinizi doldurun.'
-                        : 'Fill your profile\nto see deficits.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+  Widget _miniTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+      child: Text(text, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+    );
+  }
 
-        final nutrition = nutritionProvider.totalNutrition;
-        final proteinDeficit =
-            (profileProvider.proteinGoal - nutrition.protein)
-                .clamp(0.0, double.infinity);
-        final carbDeficit =
-            (profileProvider.carbGoal - nutrition.carbohydrates)
-                .clamp(0.0, double.infinity);
-        final fatDeficit =
-            (profileProvider.fatGoal - nutrition.fat)
-                .clamp(0.0, double.infinity);
-        final calorieDeficit =
-            (profileProvider.calorieGoal - nutrition.calories)
-                .clamp(0.0, double.infinity);
-
-        const proteinThreshold = 5.0;
-        const carbThreshold = 10.0;
-        const fatThreshold = 3.0;
-        const calorieThreshold = 50.0;
-
-        final hasProtein = proteinDeficit > proteinThreshold;
-        final hasCarb = carbDeficit > carbThreshold;
-        final hasFat = fatDeficit > fatThreshold;
-        final hasCalorie = calorieDeficit > calorieThreshold;
-        final hasAnyDeficit = hasProtein || hasCarb || hasFat || hasCalorie;
-
-        final supplements = [
-          if (hasProtein) ..._proteinSupplements,
-          ..._generalSupplements,
-        ];
-
-        return ListView(
-          padding: const EdgeInsets.all(16),
+  Widget _buildListRecipeItem(BuildContext context, _Tarif r, ColorScheme cs, bool isDark) {
+    return GestureDetector(
+      onTap: () => _showRecipeDetails(context, r),
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C2128) : const Color(0xFFF6F8FA),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
           children: [
-            if (!hasAnyDeficit) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      const Text('🎉', style: TextStyle(fontSize: 48)),
-                      const SizedBox(height: 12),
-                      Text(
-                        isTurkish
-                            ? 'Bugün tüm hedeflerinize ulaştınız!'
-                            : 'You reached all your goals today!',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        isTurkish
-                            ? 'Harika iş çıkardınız, böyle devam edin.'
-                            : 'Great job, keep it up!',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 50, height: 50,
+                child: _buildRecipeImage(r.gorselUrl, 50, r.renk),
               ),
-            ] else ...[
-              Row(
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('🥗', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Text(
-                    isTurkish ? 'Gıda Önerileri' : 'Food Suggestions',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
+                  Text(r.ad, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(r.aciklama, style: TextStyle(fontSize: 11, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (hasProtein)
-                _buildDeficitCard(context,
-                    title: isTurkish ? 'Protein' : 'Protein',
-                    deficit: proteinDeficit,
-                    unit: 'g protein',
-                    color: Colors.blue,
-                    foods: _proteinFoods,
-                    maxGrams: 500),
-              if (hasCarb)
-                _buildDeficitCard(context,
-                    title: isTurkish ? 'Karbonhidrat' : 'Carbohydrate',
-                    deficit: carbDeficit,
-                    unit: isTurkish ? 'g karb.' : 'g carbs',
-                    color: Colors.orange,
-                    foods: _carbFoods,
-                    maxGrams: 500),
-              if (hasFat)
-                _buildDeficitCard(context,
-                    title: isTurkish ? 'Yağ' : 'Fat',
-                    deficit: fatDeficit,
-                    unit: isTurkish ? 'g yağ' : 'g fat',
-                    color: Colors.green,
-                    foods: _fatFoods,
-                    maxGrams: 200),
-              if (hasCalorie)
-                _buildDeficitCard(context,
-                    title: isTurkish ? 'Kalori' : 'Calorie',
-                    deficit: calorieDeficit,
-                    unit: 'kcal',
-                    color: Colors.red,
-                    foods: _calorieFoods,
-                    maxGrams: 300),
-            ],
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Text('💊', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                Text(
-                  isTurkish ? 'Supplement Önerileri' : 'Supplement Tips',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ],
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.shade200),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRecipeDetails(BuildContext context, _Tarif r) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
               ),
-              child: Row(
+              const SizedBox(height: 24),
+              Stack(
                 children: [
-                  Icon(Icons.warning_amber_rounded,
-                      color: Colors.amber.shade800, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isTurkish
-                          ? 'Supplement kullanmadan önce doktorunuza danışın.'
-                          : 'Consult your doctor before using supplements.',
-                      style: TextStyle(
-                        color: Colors.amber.shade900,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: _buildRecipeImage(r.gorselUrl, 250, r.renk),
+                  ),
+                  Positioned(
+                    top: 12, right: 12,
+                    child: StatefulBuilder(
+                      builder: (context, setState) {
+                        final nutrition = context.watch<NutritionProvider>();
+                        final isFav = nutrition.isFavorite(r.ad);
+                        return GestureDetector(
+                          onTap: () {
+                            nutrition.toggleFavoriteMeal(_foodEntryFromTarif(r, 'ara öğün'));
+                            setState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]),
+                            child: Icon(isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: isFav ? r.renk : Colors.grey, size: 24),
+                          ),
+                        );
+                      }
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(r.ad, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 4),
+                        Text(r.aciklama, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(color: r.renk.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                    child: Text('${r.kalori} kcal', style: TextStyle(color: r.renk, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _infoChip(Icons.timer_outlined, '${r.dakika} dk'),
+                  _infoChip(Icons.local_fire_department_outlined, r.etiketler.first),
+                  _infoChip(Icons.eco_outlined, r.diyetler.first),
+                ],
+              ),
+              const SizedBox(height: 32),
+              const Text('Besin Değerleri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _macroItem('Protein', '${r.protein}g', const Color(0xFF7EE787)),
+                        _macroItem('Karb', '${r.karb}g', const Color(0xFF58A6FF)),
+                        _macroItem('Yağ', '${r.yag}g', const Color(0xFFFFA726)),
+                        _macroItem('Lif', '${r.lif}g', const Color(0xFFBC8CF2)),
+                      ],
+                    ),
+                    if (r.demir != null || r.magnezyum != null || r.kalsiyum != null || r.vitaminA != null || r.vitaminC != null || r.vitaminD != null || r.omega3 != null || r.zinc != null || r.potasyum != null || r.vitaminB12 != null || r.vitaminB6 != null || r.vitaminB1 != null || r.vitaminE != null) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(height: 1),
+                      ),
+                      StatefulBuilder(
+                        builder: (context, setState) {
+                          bool isExpanded = false;
+                          return StatefulBuilder( // use another inner one for local state
+                            builder: (context, setState) {
+                              return Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        isExpanded = !isExpanded;
+                                      });
+                                    },
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text('Daha fazlası', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey)),
+                                        Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isExpanded) ...[
+                                    const SizedBox(height: 16),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 12,
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        if (r.demir != null) _microItem('Demir', '${r.demir}mg'),
+                                        if (r.magnezyum != null) _microItem('Magnezyum', '${r.magnezyum}mg'),
+                                        if (r.kalsiyum != null) _microItem('Kalsiyum', '${r.kalsiyum}mg'),
+                                        if (r.vitaminA != null) _microItem('Vit A', '${r.vitaminA}µg'),
+                                        if (r.vitaminC != null) _microItem('Vit C', '${r.vitaminC}mg'),
+                                        if (r.vitaminD != null) _microItem('Vit D', '${r.vitaminD}µg'),
+                                        if (r.vitaminB12 != null) _microItem('Vit B12', '${r.vitaminB12}µg'),
+                                        if (r.vitaminB1 != null) _microItem('Vit B1', '${r.vitaminB1}mg'),
+                                        if (r.zinc != null) _microItem('Çinko', '${r.zinc}mg'),
+                                        if (r.potasyum != null) _microItem('Potasyum', '${r.potasyum}mg'),
+                                        if (r.omega3 != null) _microItem('Omega-3', '${r.omega3}g'),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              );
+                            }
+                          );
+                        }
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text('Malzemeler', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              ...r.malzemeler.map((m) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: r.renk, size: 18),
+                    const SizedBox(width: 12),
+                    Text(m, style: const TextStyle(fontSize: 15)),
+                  ],
+                ),
+              )),
+              const SizedBox(height: 32),
+              const Text('Hazırlanışı', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              ...r.adimlar.asMap().entries.map((entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 24, height: 24,
+                      decoration: BoxDecoration(color: r.renk, shape: BoxShape.circle),
+                      alignment: Alignment.center,
+                      child: Text('${entry.key + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 15, height: 1.5))),
+                  ],
+                ),
+              )),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _showMealSelection(context, r),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: r.renk,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Tarifi Ekle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _macroItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _microItem(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey)),
+          const SizedBox(width: 6),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blueGrey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String text) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.grey, size: 20),
+        const SizedBox(height: 4),
+        Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildRecipeImage(String url, double height, Color renk) {
+    return CachedNetworkImage(
+      imageUrl: url,
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorWidget: (context, url, error) => Container(
+        height: height,
+        color: renk.withValues(alpha: 0.2),
+        child: Icon(Icons.restaurant, color: renk, size: 24),
+      ),
+      placeholder: (context, url) => Container(
+        height: height,
+        color: Colors.grey.withValues(alpha: 0.1),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+    );
+  }
+}
+
+class _CoachContent {
+  final String title;
+  final String description;
+  _CoachContent(this.title, this.description);
+}
+
+class _HorizontalScrollSection extends StatefulWidget {
+  final List<Widget> items;
+  final double height;
+  const _HorizontalScrollSection({required this.items, required this.height});
+
+  @override
+  State<_HorizontalScrollSection> createState() => _HorizontalScrollSectionState();
+}
+
+class _HorizontalScrollSectionState extends State<_HorizontalScrollSection> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showLeftArrow = false;
+  bool _showRightArrow = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final showLeft = _scrollController.offset > 10;
+    final showRight = _scrollController.offset < _scrollController.position.maxScrollExtent - 10;
+    if (showLeft != _showLeftArrow || showRight != _showRightArrow) {
+      setState(() {
+        _showLeftArrow = showLeft;
+        _showRightArrow = showRight;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        SizedBox(
+          height: widget.height,
+          child: ListView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            children: widget.items,
+          ),
+        ),
+        if (_showLeftArrow)
+          Positioned(
+            left: 5,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _ArrowButton(icon: Icons.chevron_left_rounded, onTap: () => _scroll(-1)),
             ),
-            const SizedBox(height: 12),
-            ...supplements.map((s) => _buildSupplementCard(context, s)),
+          ),
+        if (_showRightArrow && widget.items.length > 1)
+          Positioned(
+            right: 5,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _ArrowButton(icon: Icons.chevron_right_rounded, onTap: () => _scroll(1)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _scroll(int direction) {
+    _scrollController.animateTo(
+      _scrollController.offset + (direction * 200),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+}
+
+class _ArrowButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ArrowButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.9),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
           ],
+        ),
+        child: Icon(icon, size: 24, color: Colors.black87),
+      ),
+    );
+  }
+}
+
+class _AnimatedDots extends StatefulWidget {
+  const _AnimatedDots();
+
+  @override
+  State<_AnimatedDots> createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<_AnimatedDots> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final double opacity = ((_controller.value * 3 - index).clamp(0.0, 1.0));
+            return Opacity(
+              opacity: opacity,
+              child: Text(
+                '.',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: cs.primary,
+                ),
+              ),
+            );
+          }),
         );
       },
     );
   }
 }
 
-// ─── Antrenman Sekmesi ────────────────────────────────────────────────────────
-
-class _WorkoutTab extends StatefulWidget {
-  final bool isTurkish;
-  const _WorkoutTab({required this.isTurkish});
-
-  @override
-  State<_WorkoutTab> createState() => _WorkoutTabState();
-}
-
-
-class _WorkoutTabState extends State<_WorkoutTab> {
-  WorkoutCategory? _selectedCategory;
-  WorkoutItem? _activeWorkout;
-  int _secondsRemaining = 0;
-  bool _isFinished = false;
-  Timer? _timer;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _startWorkout(WorkoutItem workout) {
-    _timer?.cancel();
-    setState(() {
-      _activeWorkout = workout;
-      _secondsRemaining = workout.durationSeconds;
-      _isFinished = false;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      setState(() {
-        if (_secondsRemaining > 0) {
-          _secondsRemaining--;
-        } else {
-          _isFinished = true;
-          t.cancel();
-        }
-      });
-    });
-  }
-
-  void _stopWorkout() {
-    _timer?.cancel();
-    setState(() {
-      _activeWorkout = null;
-      _isFinished = false;
-    });
-  }
-
-  String _formatTime(int seconds) {
-    final m = seconds ~/ 60;
-    final s = seconds % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-
-  Color _difficultyColor(WorkoutDifficulty d) {
-    switch (d) {
-      case WorkoutDifficulty.easy:
-        return Colors.green;
-      case WorkoutDifficulty.medium:
-        return Colors.orange;
-      case WorkoutDifficulty.hard:
-        return Colors.red;
-    }
-  }
-
-  Color _categoryColor(WorkoutCategory c) {
-    switch (c) {
-      case WorkoutCategory.cardio:
-        return const Color(0xFFE53935);
-      case WorkoutCategory.strength:
-        return const Color(0xFF1565C0);
-      case WorkoutCategory.flexibility:
-        return const Color(0xFF00897B);
-    }
-  }
-
-  IconData _categoryIcon(WorkoutCategory c) {
-    switch (c) {
-      case WorkoutCategory.cardio:
-        return Icons.directions_run;
-      case WorkoutCategory.strength:
-        return Icons.fitness_center;
-      case WorkoutCategory.flexibility:
-        return Icons.self_improvement;
-    }
-  }
-
-  String _difficultyLabel(WorkoutDifficulty d, bool isTurkish) {
-    switch (d) {
-      case WorkoutDifficulty.easy:
-        return isTurkish ? 'Kolay' : 'Easy';
-      case WorkoutDifficulty.medium:
-        return isTurkish ? 'Orta' : 'Medium';
-      case WorkoutDifficulty.hard:
-        return isTurkish ? 'Zor' : 'Hard';
-    }
-  }
-
-  String _categoryLabel(WorkoutCategory c, bool isTurkish) {
-    switch (c) {
-      case WorkoutCategory.cardio:
-        return isTurkish ? 'Kardiyovasküler' : 'Cardio';
-      case WorkoutCategory.strength:
-        return isTurkish ? 'Güç' : 'Strength';
-      case WorkoutCategory.flexibility:
-        return isTurkish ? 'Esneklik' : 'Flexibility';
-    }
-  }
-
-  void _showAddExerciseDialog(BuildContext context, WorkoutItem workout) {
-    final durationCtrl = TextEditingController(
-      text: (workout.durationSeconds ~/ 60).toString(),
-    );
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Bu antrenmanı bugüne ekle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(workout.name(widget.isTurkish)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: durationCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Süre (dakika)',
-                border: OutlineInputBorder(),
-                suffixText: 'dk',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final minutes = int.tryParse(durationCtrl.text) ??
-                  (workout.durationSeconds ~/ 60);
-              final burnedCalories = workout.calories *
-                  minutes /
-                  (workout.durationSeconds ~/ 60);
-              final entry = ExerciseEntry(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                name: workout.name(widget.isTurkish),
-                durationMinutes: minutes,
-                burnedCalories: burnedCalories,
-                timestamp: DateTime.now(),
-              );
-              context.read<NutritionProvider>().addExercise(entry);
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      '${entry.name} eklendi (${burnedCalories.toStringAsFixed(0)} kcal)'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: const Text('Ekle'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isTurkish = widget.isTurkish;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final filtered = _selectedCategory == null
-        ? _workouts
-        : _workouts.where((w) => w.category == _selectedCategory).toList();
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Active workout timer
-        if (_activeWorkout != null) ...[
-          Card(
-            color: _isFinished
-                ? colorScheme.primaryContainer
-                : colorScheme.surfaceContainerHighest,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text(
-                    _activeWorkout!.name(isTurkish),
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_isFinished) ...[
-                    const Text('🎉', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 8),
-                    Text(
-                      isTurkish
-                          ? 'Tebrikler! ~${_activeWorkout!.calories} kalori yaktın! 🔥'
-                          : 'Congrats! ~${_activeWorkout!.calories} calories burned! 🔥',
-                      style: TextStyle(
-                        color: colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _stopWorkout,
-                      icon: const Icon(Icons.check),
-                      label: Text(isTurkish ? 'Tamam' : 'Done'),
-                    ),
-                  ] else ...[
-                    Text(
-                      _formatTime(_secondsRemaining),
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: 1 -
-                          (_secondsRemaining / _activeWorkout!.durationSeconds),
-                      minHeight: 6,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _stopWorkout,
-                      icon: const Icon(Icons.stop),
-                      label: Text(isTurkish ? 'Durdur' : 'Stop'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        // Category filter chips
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              FilterChip(
-                label: Text(isTurkish ? 'Tümü' : 'All'),
-                selected: _selectedCategory == null,
-                onSelected: (_) => setState(() => _selectedCategory = null),
-              ),
-              const SizedBox(width: 8),
-              ...WorkoutCategory.values.map((c) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(_categoryLabel(c, isTurkish)),
-                      selected: _selectedCategory == c,
-                      onSelected: (_) =>
-                          setState(() => _selectedCategory = c),
-                    ),
-                  )),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Workout cards with colored header bands
-        ...filtered.map((workout) {
-          final catColor = _categoryColor(workout.category);
-          return Card(
-            margin: const EdgeInsets.only(bottom: 10),
-            elevation: 2,
-            shadowColor: catColor.withOpacity(0.15),
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            child: Column(
-              children: [
-                // Colored category header band
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 7),
-                  color: catColor,
-                  child: Row(
-                    children: [
-                      Icon(_categoryIcon(workout.category),
-                          size: 14, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text(
-                        _categoryLabel(workout.category, isTurkish)
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _difficultyLabel(workout.difficulty, isTurkish),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Card body
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: catColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(workout.icon, color: catColor, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              workout.name(isTurkish),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.timer_outlined,
-                                    size: 13,
-                                    color: colorScheme.onSurfaceVariant),
-                                const SizedBox(width: 4),
-                                Text(
-                                  workout.duration(isTurkish),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                          color:
-                                              colorScheme.onSurfaceVariant),
-                                ),
-                                const SizedBox(width: 10),
-                                const Text('🔥',
-                                    style: TextStyle(fontSize: 12)),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '~${workout.calories} kcal',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                          color:
-                                              colorScheme.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        children: [
-                          FilledButton.tonal(
-                            onPressed: _activeWorkout == null
-                                ? () => _startWorkout(workout)
-                                : null,
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(isTurkish ? 'Başla' : 'Start',
-                                style: const TextStyle(fontSize: 12)),
-                          ),
-                          const SizedBox(height: 4),
-                          GestureDetector(
-                            onTap: () =>
-                                _showAddExerciseDialog(context, workout),
-                            child: Icon(Icons.add_circle_outline,
-                                color: colorScheme.primary, size: 22),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
-}

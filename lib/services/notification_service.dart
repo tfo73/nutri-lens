@@ -13,6 +13,8 @@ class NotificationService {
   static const String _mealChannelId = 'meal_reminder';
   static const String _summaryChannelId = 'daily_summary';
   static const String _goalChannelId = 'goal_reached';
+  static const String _birthdayChannelId = 'birthday';
+  static const String _weightChannelId = 'weight_reminder';
 
   static Future<void> initialize() async {
     tz_data.initializeTimeZones();
@@ -176,6 +178,102 @@ class NotificationService {
       body,
       details,
     );
+  }
+
+  static Future<void> showFastingCompleteNotification({required int fastingHours}) async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _goalChannelId,
+        'Hedef Bildirimleri',
+        channelDescription: 'Oruç tamamlanma bildirimi',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+    await _plugin.show(
+      600,
+      '🏆 Oruç Tamamlandı!',
+      '$fastingHours saatlik orucunuzu başarıyla tamamladınız!',
+      details,
+    );
+  }
+
+  /// Schedule a weekly Monday morning reminder to log weight.
+  static Future<void> scheduleWeeklyWeightReminder(bool enabled) async {
+    try { await _plugin.cancel(700); } catch (_) {}
+    if (!enabled) return;
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _weightChannelId,
+        'Haftalık Kilo Hatırlatıcısı',
+        channelDescription: 'Her Pazartesi sabahı kilo girişi için hatırlatıcı',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+    final now = tz.TZDateTime.now(tz.local);
+    // Find next Monday at 09:00
+    var next = tz.TZDateTime(tz.local, now.year, now.month, now.day, 9, 0);
+    while (next.weekday != DateTime.monday || next.isBefore(now)) {
+      next = next.add(const Duration(days: 1));
+    }
+    try {
+      await _plugin.zonedSchedule(
+        700,
+        '⚖️ Haftalık Kilo Takibi',
+        'Bu haftanın kilonu girmeyi unutma!',
+        next,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    } catch (e) {
+      debugPrint('Kilo hatırlatıcısı planlama hatası: $e');
+    }
+  }
+
+  static Future<void> scheduleBirthdayNotification({
+    required int day,
+    required int month,
+    required String name,
+  }) async {
+    await _plugin.cancel(600);
+
+    final now = tz.TZDateTime.now(tz.local);
+    var nextBirthday = tz.TZDateTime(tz.local, now.year, month, day, 9, 0);
+    if (nextBirthday.isBefore(now)) {
+      nextBirthday = tz.TZDateTime(tz.local, now.year + 1, month, day, 9, 0);
+    }
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _birthdayChannelId,
+        'Doğum Günü',
+        channelDescription: 'Yıllık doğum günü kutlama bildirimi',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+
+    try {
+      await _plugin.zonedSchedule(
+        600,
+        '🎂 Mutlu Yıllar, $name!',
+        'Bu özel günde seni kutluyoruz! Kendine iyi bak 🎉',
+        nextBirthday,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      );
+    } catch (e) {
+      debugPrint('Doğum günü bildirimi planlama hatası: $e');
+    }
   }
 
   static Future<void> _scheduleDailyNotification({

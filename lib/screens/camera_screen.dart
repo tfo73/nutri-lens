@@ -1,37 +1,327 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:cached_network_image/cached_network_image.dart';
+
+import 'package:camera/camera.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
-import '../l10n/app_localizations.dart';
-import '../providers/language_provider.dart';
-import '../services/claude_vision_service.dart';
+
+import '../models/food_analysis_result.dart';
 import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
+import '../models/nutrition_data_65.dart';
 import '../providers/nutrition_provider.dart';
+import '../services/claude_vision_service.dart';
+import '../services/food_analysis_service.dart';
+import '../services/nutrition_service.dart';
+import '../services/saved_foods_service.dart';
 import '../widgets/animated_widgets.dart';
+import '../widgets/analysis_widgets.dart';
+import '../widgets/food_analysis_result_sheet.dart';
 import 'manual_entry_screen.dart';
-import 'barcode_screen.dart';
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum _ViewState { scanning, analyzing, aiResult, error }
+
+enum _FlashMode { off, on, auto }
+
+enum CameraStartMode { normal, voice, manual }
+
+/// Opens the voice/text entry sheet without launching the camera.
+void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı', VoidCallback? onDone}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => _VoiceTextEntrySheet(
+      selectedMeal: selectedMeal,
+      onSave: (entry) {
+        context.read<NutritionProvider>().addFoodEntry(entry);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${entry.name} eklendi'), behavior: SnackBarBehavior.floating),
+        );
+        onDone?.call();
+      },
+    ),
+  );
+}
+
+/// Opens the manual entry sheet without launching the camera.
+void showManualEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı', VoidCallback? onDone}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (ctx, scrollCtrl) => _ManualEntryBottomSheet(
+        scrollCtrl: scrollCtrl,
+        selectedMeal: selectedMeal,
+        onSave: (entry) {
+          context.read<NutritionProvider>().addFoodEntry(entry);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${entry.name} eklendi'), behavior: SnackBarBehavior.floating),
+          );
+          onDone?.call();
+        },
+      ),
+    ),
+  );
+}
+
+// ─── CameraScreen ─────────────────────────────────────────────────────────────
 
 class CameraScreen extends StatefulWidget {
   final VoidCallback? onFoodAdded;
+  final VoidCallback? onBack;
   final String? selectedMeal;
+  final CameraStartMode startMode;
 
-  const CameraScreen({super.key, this.onFoodAdded, this.selectedMeal});
+  const CameraScreen({super.key, this.onFoodAdded, this.onBack, this.selectedMeal, this.startMode = CameraStartMode.normal});
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> {
+class _CameraScreenState extends State<CameraScreen>
+    with WidgetsBindingObserver {
+  late final MobileScannerController _scanner;
+  final GlobalKey _cameraKey = GlobalKey();
   final ImagePicker _picker = ImagePicker();
-  File? _selectedImage;
-  bool _isAnalyzing = false;
-  Map<String, dynamic>? _analysisResult;
-  String? _errorMessage;
+  final FoodAnalysisService _analysisService = FoodAnalysisService();
+  final NutritionService _nutritionService = NutritionService();
 
-  final ClaudeVisionService _visionService = ClaudeVisionService();
+  _ViewState _viewState = _ViewState.scanning;
+  _FlashMode _flashMode = _FlashMode.off;
+  bool _scannerDisposed = false;
+  bool _isCapturing = false;
+
+  File? _capturedImage;
+  FoodAnalysisResult? _analysisResult;
+  String? _errorMessage;
+  bool _barcodeDetected = false;
+  bool _barcodeHandling = false;
+  File? _lastImage;
+  bool _isOffline = false;
+  String _selectedMeal = 'kahvaltı';
+  bool _feedbackGiven = false;
+  bool _isSaved = false;
+  bool _saving = false;
+  bool _editingFromResult = false;
+
+  late final Stream<List<ConnectivityResult>> _connectivityStream;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scanner = MobileScannerController(
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+    _selectedMeal = widget.selectedMeal ?? 'kahvaltı';
+    _connectivityStream = Connectivity().onConnectivityChanged;
+    _checkConnectivity();
+    _connectivityStream.listen((results) {
+      final offline = results.every((r) => r == ConnectivityResult.none);
+      if (mounted) setState(() => _isOffline = offline);
+    });
+    if (widget.startMode != CameraStartMode.normal) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.startMode == CameraStartMode.voice) _openVoiceTextEntry();
+        if (widget.startMode == CameraStartMode.manual) _openManualEntry();
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      if (!_scannerDisposed) _scanner.stop();
+    } else if (state == AppLifecycleState.resumed &&
+        _viewState == _ViewState.scanning) {
+      if (!_scannerDisposed) _scanner.start();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (!_scannerDisposed) _scanner.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final offline = !await ClaudeVisionService.hasConnection();
+    if (mounted) setState(() => _isOffline = offline);
+  }
+
+  // ── Flash ──────────────────────────────────────────────────────────────────
+
+  Future<void> _cycleFlash() async {
+    final next = _FlashMode.values[(_flashMode.index + 1) % 3];
+    setState(() => _flashMode = next);
+    try {
+      final torchOn =
+          _scanner.value.torchState == TorchState.on;
+      if (next == _FlashMode.on && !torchOn) {
+        await _scanner.toggleTorch();
+      } else if (next != _FlashMode.on && torchOn) {
+        await _scanner.toggleTorch();
+      }
+    } catch (_) {}
+  }
+
+  // ── Barcode ────────────────────────────────────────────────────────────────
+
+  Future<void> _onBarcodeDetected(String rawValue) async {
+    if (_barcodeHandling || _viewState != _ViewState.scanning) return;
+    setState(() {
+      _barcodeHandling = true;
+      _barcodeDetected = true;
+    });
+    HapticFeedback.mediumImpact();
+    await _scanner.stop();
+    setState(() => _viewState = _ViewState.analyzing);
+
+    try {
+      final product = await _nutritionService.searchByBarcode(rawValue);
+      if (!mounted) return;
+
+      if (product != null) {
+        setState(() {
+          _viewState = _ViewState.scanning;
+          _barcodeDetected = false;
+          _barcodeHandling = false;
+        });
+        await _scanner.start();
+        if (!mounted) return;
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _BarcodeProductSheet(
+            product: product,
+            selectedMeal: _selectedMeal,
+            onAdd: (portionGrams, mealType) =>
+                _addBarcodeProduct(product, portionGrams, mealType),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorMessage = 'Ürün bulunamadı. Manuel giriş yapabilirsiniz.';
+          _viewState = _ViewState.error;
+          _barcodeDetected = false;
+          _barcodeHandling = false;
+          _capturedImage = null;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Barkod okunamadı: $e';
+        _viewState = _ViewState.error;
+        _barcodeDetected = false;
+        _barcodeHandling = false;
+        _capturedImage = null;
+      });
+    }
+  }
+
+  // Helper to crop the full screen capture to a central square (the food boundary)
+  Future<ui.Image> _cropToSquare(ui.Image source) async {
+    final size = source.width < source.height ? source.width : source.height;
+    final x = (source.width - size) / 2.0;
+    final y = (source.height - size) / 2.0;
+    
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    
+    canvas.drawImageRect(
+      source,
+      ui.Rect.fromLTWH(x, y, size.toDouble(), size.toDouble()),
+      ui.Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()),
+      ui.Paint(),
+    );
+    
+    return await recorder.endRecording().toImage(size, size);
+  }
+
+  // ── Photo capture ──────────────────────────────────────────────────────────
+
+  Future<void> _capturePhoto() async {
+    if (_viewState != _ViewState.scanning || _isCapturing) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _isCapturing = true);
+
+    try {
+      // Small delay to allow the haptic feedback and UI update to register
+      await Future.delayed(const Duration(milliseconds: 50));
+      
+      final boundary = _cameraKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) throw Exception('Kamera görünümü bulunamadı');
+
+      // Capture at a high pixel ratio for better quality
+      final fullImage = await boundary.toImage(pixelRatio: 2.0);
+      
+      // Crop to a square to focus on the food boundaries
+      final image = await _cropToSquare(fullImage);
+      
+      // Grab references needed before the widget is unmounted
+      final provider = context.read<NutritionProvider>();
+      final meal = _selectedMeal;
+      final onAdded = widget.onFoodAdded;
+
+      // Close the camera screen IMMEDIATELY
+      if (mounted) {
+        Navigator.pop(context);
+        onAdded?.call();
+      }
+
+      // Process and save the image asynchronously in the background
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw Exception('Fotoğraf işlenemedi');
+
+      final pngBytes = byteData.buffer.asUint8List();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/capture_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(pngBytes);
+
+      provider.analyzeAndAddImage(file, meal);
+      provider.enableHomeResult();
+      
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+          _errorMessage = 'Fotoğraf çekilemedi. Tekrar deneyin.';
+          _viewState = _ViewState.error;
+        });
+      }
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
+    // Release camera so image_picker can use it
+    try { await _scanner.stop(); } catch (_) {}
     try {
       final picked = await _picker.pickImage(
         source: source,
@@ -39,549 +329,1080 @@ class _CameraScreenState extends State<CameraScreen> {
         maxWidth: 1024,
         maxHeight: 1024,
       );
-      if (picked != null) {
-        setState(() {
-          _selectedImage = File(picked.path);
-          _analysisResult = null;
-          _errorMessage = null;
-        });
-        await _analyzeImage();
+      if (picked == null) {
+        // User cancelled — resume scanner
+        if (_viewState == _ViewState.scanning) {
+          try { await _scanner.start(); } catch (_) {}
+        }
+        return;
       }
-    } catch (e) {
-      setState(() => _errorMessage = 'Fotoğraf seçilemedi: $e');
-    }
-  }
-
-  Future<void> _analyzeImage() async {
-    if (_selectedImage == null) return;
-    setState(() {
-      _isAnalyzing = true;
-      _errorMessage = null;
-    });
-    try {
-      final result = await _visionService.analyzeFood(_selectedImage!);
-      setState(() {
-        _analysisResult = result;
-        _isAnalyzing = false;
-      });
+      final file = File(picked.path);
+      
+      // Start background analysis and exit
+      final provider = context.read<NutritionProvider>();
+      provider.analyzeAndAddImage(file, _selectedMeal);
+      provider.enableHomeResult();
+      
       if (mounted) {
-        _showConfirmationSheet();
+        Navigator.pop(context);
+        widget.onFoodAdded?.call();
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Analiz başarısız: $e';
-        _isAnalyzing = false;
+        _errorMessage = 'Fotoğraf seçilemedi: $e';
+        _viewState = _ViewState.error;
+        _capturedImage = null;
       });
     }
   }
 
-  void _showConfirmationSheet() {
-    if (_analysisResult == null) return;
+  Future<void> _analyzeWithAI(Uint8List bytes) async {
+    if (_isOffline) {
+      setState(() {
+        _errorMessage = 'Çevrimdışısın — AI analiz devre dışı';
+        _viewState = _ViewState.error;
+      });
+      return;
+    }
+    
+    final file = _capturedImage;
+    if (file == null) return;
+
+    setState(() => _viewState = _ViewState.analyzing);
+
+    // NutritionProvider üzerinden analizi yap
+    final provider = context.read<NutritionProvider>();
+    await provider.analyzeAndAddImage(file, _selectedMeal);
+
+    if (!mounted) return;
+
+    // Eğer işlem bittiğinde hala bu ekrandaysak sonucu göster
+    if (provider.lastResult != null) {
+      setState(() {
+        _analysisResult = provider.lastResult;
+        _viewState = _ViewState.scanning;
+        _editingFromResult = false;
+      });
+
+      FoodAnalysisResultSheet.show(
+        context,
+        result: provider.lastResult!,
+        image: _capturedImage,
+        isFullScreen: true,
+        onEdit: () {
+          _editingFromResult = true;
+          // Önce modal'ı kapat (bu context camera screen'e ait, top route olan modal'ı pop eder)
+          Navigator.pop(context);
+          // Hemen ardından ManualEntryScreen'i push et
+          final res = provider.lastResult!;
+          final nd = res.nutritionPer100g; // 100g bazında — initState factor ile çarpar
+          final entry = FoodEntry(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: res.foodName,
+            portionSize: res.portionGrams,
+            nutritionData: NutritionData(
+              calories: nd.calories,
+              protein: nd.protein,
+              carbohydrates: nd.carbohydrates,
+              fat: nd.fat,
+              fiber: nd.fiber,
+              sugar: nd.sugar,
+              saturatedFat: nd.saturatedFat,
+              sodium: nd.sodium,
+            ),
+            nutrition65per100g: res.nutrition65per100g,
+            timestamp: DateTime.now(),
+            mealType: _selectedMeal,
+            imagePath: _capturedImage?.path,
+          );
+          Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ManualEntryScreen(
+                existingEntry: entry,
+                selectedMeal: _selectedMeal,
+                forceAdd: true,
+              ),
+            ),
+          ).then((saved) {
+            _editingFromResult = false;
+            if (saved == true) {
+              _resetToScanning();
+              widget.onFoodAdded?.call();
+            }
+          });
+        },
+        onConfirm: (entry) {
+          context.read<NutritionProvider>().addFoodEntry(entry);
+          Navigator.pop(context);
+          _resetToScanning();
+          widget.onFoodAdded?.call();
+        },
+      ).then((_) {
+        if (!_editingFromResult) {
+          _resetToScanning();
+        }
+      });
+    } else {
+      setState(() {
+        _errorMessage = 'Analiz başarısız oldu veya yarıda kesildi.';
+        _viewState = _ViewState.error;
+      });
+    }
+  }
+
+  void _resetToScanning() {
+    setState(() {
+      _viewState = _ViewState.scanning;
+      _capturedImage = null;
+      _analysisResult = null;
+      _errorMessage = null;
+      _barcodeDetected = false;
+      _barcodeHandling = false;
+      _feedbackGiven = false;
+      _isSaved = false;
+    });
+    _scanner.start();
+  }
+
+  static (String, Color) _sourceInfo(String src) => switch (src) {
+    'USDA_API' || 'USDA_LOCAL' => ('USDA DB', Color(0xFF3FB950)),
+    'OpenFoodFacts' => ('OpenFoodFacts', Color(0xFF58A6FF)),
+    'Geçmiş' => ('Geçmiş', Color(0xFFD2A8FF)),
+    _ => ('AI Analiz', Color(0xFF26D0CE)),
+  };
+
+  Future<void> _toggleSave() async {
+    final result = _analysisResult;
+    if (result == null) return;
+    setState(() => _saving = true);
+    if (_isSaved) {
+      await SavedFoodsService.remove(result.foodName);
+      if (mounted) setState(() { _isSaved = false; _saving = false; });
+    } else {
+      final food = SavedFood(
+        id: result.foodName,
+        name: result.foodName,
+        portionGrams: result.portionGrams,
+        nutritionPer100g: result.nutritionPer100g,
+        sources: result.sources,
+        savedAt: DateTime.now(),
+        imagePath: _capturedImage?.path,
+      );
+      await SavedFoodsService.save(food);
+      if (mounted) setState(() { _isSaved = true; _saving = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Favorilere eklendi ★'), duration: Duration(seconds: 2)),
+        );
+      }
+    }
+  }
+
+  void _checkIfSaved(String foodName) async {
+    final saved = await SavedFoodsService.isSaved(foodName);
+    if (mounted) setState(() => _isSaved = saved);
+  }
+
+  void _showMicroNutrients(FoodAnalysisResult result) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.5,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (_, ctrl) => _MicroNutrientsSheet(result: result, scrollCtrl: ctrl),
+      ),
+    );
+  }
+
+  void _showAiBadgeExplanation(Color color) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        final cs = Theme.of(context).colorScheme;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF6F8FA),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: color.withValues(alpha: 0.35), width: 0.8),
+                    ),
+                    child: Text('AI Analiz', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Nasıl çalışır?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Bu besin bilgisi, yüklediğiniz görseli analiz eden yapay zeka (Claude Vision) tarafından oluşturulmuştur.',
+                style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.8), height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'AI tahmini, gerçek laboratuvar ölçümü değildir. Porsiyon büyüklüğü, pişirme yöntemi ve malzeme farklılıkları sonucu etkileyebilir. Kesin değerler için ürün etiketini kontrol edin.',
+                style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.55), height: 1.5),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _onFeedbackCorrect(FoodAnalysisResult result) {
+    _analysisService.saveCorrection(result.foodName, result.nutritionPer100g);
+    setState(() => _feedbackGiven = true);
+  }
+
+  void _onFeedbackEdit(FoodAnalysisResult result) {
+    final scaled = result.nutritionScaled;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _ConfirmationSheet(
-        analysisData: _analysisResult!,
-        selectedMeal: widget.selectedMeal,
-        onConfirm: (editedData, meal) {
-          _addToMeal(editedData, meal);
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollCtrl) => _ManualEntryBottomSheet(
+          scrollCtrl: scrollCtrl,
+          selectedMeal: _selectedMeal,
+          isAnalysis: true,
+          prefill: {
+            'name': result.foodName,
+            'calories': scaled.calories.toStringAsFixed(0),
+            'protein': scaled.protein.toStringAsFixed(1),
+            'carbs': scaled.carbohydrates.toStringAsFixed(1),
+            'fat': scaled.fat.toStringAsFixed(1),
+            'grams': result.portionGrams.toStringAsFixed(0),
+            'fiber': (scaled.fiber).toStringAsFixed(1),
+            'sugar': (scaled.sugar).toStringAsFixed(1),
+            'satFat': (scaled.saturatedFat).toStringAsFixed(1),
+          },
+          onSave: (entry) {
+            _analysisService.saveCorrection(result.foodName, entry.nutritionData);
+            context.read<NutritionProvider>().addFoodEntry(entry);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text('${entry.name} eklendi'),
+                  behavior: SnackBarBehavior.floating),
+            );
+            _resetToScanning();
+            widget.onFoodAdded?.call();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _addAIResult(FoodAnalysisResult result, String mealType) {
+    // nutritionPer100g kaydet — DailyLog.totalNutrition portionSize/100 ile
+    // ölçeklediği için scaled kaydetmek çift-ölçeklemeye yol açardı.
+    final entry = FoodEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: result.foodName,
+      portionSize: result.portionGrams,
+      nutritionData: result.nutritionPer100g,
+      nutrition65per100g: result.nutrition65per100g,
+      timestamp: DateTime.now(),
+      mealType: mealType,
+      imagePath: _capturedImage?.path,
+      novaGroup: result.offProduct?.novaGroup,
+    );
+    context.read<NutritionProvider>().addFoodEntry(entry);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text('${entry.name} eklendi'),
+          behavior: SnackBarBehavior.floating),
+    );
+    _resetToScanning();
+    widget.onFoodAdded?.call();
+  }
+
+  void _addBarcodeProduct(
+      FoodProduct product, double portionGrams, String mealType) {
+    final entry = FoodEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: product.name,
+      brand: product.brand,
+      portionSize: portionGrams,
+      nutritionData: product.nutritionPer100g,
+      timestamp: DateTime.now(),
+      mealType: mealType,
+      imageUrl: product.imageUrl,
+    );
+    context.read<NutritionProvider>().addFoodEntry(entry);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text('${entry.name} eklendi'),
+          behavior: SnackBarBehavior.floating),
+    );
+    widget.onFoodAdded?.call();
+  }
+
+  void _openVoiceTextEntry() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _VoiceTextEntrySheet(
+        selectedMeal: _selectedMeal,
+        onSave: (entry) {
+          context.read<NutritionProvider>().addFoodEntry(entry);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${entry.name} eklendi'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          widget.onFoodAdded?.call();
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        },
+        onEdit: (result) {
+          Navigator.pop(context); // Close Voice Sheet
+          _openManualEntry(prefill: result);
         },
       ),
     );
   }
 
-  void _addToMeal(Map<String, dynamic> data, String mealType) {
-    final portionGram = (data['porsiyon_gram'] as num?)?.toDouble() ?? 100.0;
-    final factor = portionGram / 100.0;
-
-    final entry = FoodEntry(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: data['yemek_adi']?.toString() ?? 'Bilinmeyen',
-      portionSize: portionGram,
-      nutritionData: NutritionData(
-        calories: factor > 0
-            ? ((data['kalori'] as num?)?.toDouble() ?? 0) / factor
-            : 0,
-        protein: factor > 0
-            ? ((data['protein'] as num?)?.toDouble() ?? 0) / factor
-            : 0,
-        carbohydrates: factor > 0
-            ? ((data['karbonhidrat'] as num?)?.toDouble() ?? 0) / factor
-            : 0,
-        fat: factor > 0
-            ? ((data['yag'] as num?)?.toDouble() ?? 0) / factor
-            : 0,
+  void _openManualEntry({Map<String, dynamic>? prefill}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      timestamp: DateTime.now(),
-      mealType: mealType,
-      imagePath: _selectedImage?.path,
-    );
-
-    context.read<NutritionProvider>().addFoodEntry(entry);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${entry.name} eklendi'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-
-    setState(() {
-      _selectedImage = null;
-      _analysisResult = null;
-    });
-
-    widget.onFoodAdded?.call();
-  }
-
-  void _openManualEntry() {
-    Navigator.push(
-      context,
-      slidePageRoute(
-        (_) => ManualEntryScreen(selectedMeal: widget.selectedMeal),
-      ),
-    ).then((added) {
-      if (added == true) widget.onFoodAdded?.call();
-    });
-  }
-
-  void _openBarcodeScanner() {
-    Navigator.push(
-      context,
-      slidePageRoute(
-        (_) => BarcodeScreen(
-          selectedMeal: widget.selectedMeal,
-          onFoodAdded: widget.onFoodAdded,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollCtrl) => _ManualEntryBottomSheet(
+          scrollCtrl: scrollCtrl,
+          selectedMeal: _selectedMeal,
+          prefill: prefill,
+          onSave: (entry) {
+            context.read<NutritionProvider>().addFoodEntry(entry);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text('${entry.name} eklendi'),
+                  behavior: SnackBarBehavior.floating),
+            );
+            if (_viewState != _ViewState.scanning) _resetToScanning();
+            widget.onFoodAdded?.call();
+          },
         ),
       ),
     );
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    context.watch<LanguageProvider>();
-    final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.tr('Yemek Fotoğrafla')),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildImageArea(),
-            const SizedBox(height: 16),
-            _buildActionButtons(),
-            const SizedBox(height: 16),
-            if (_isAnalyzing) _buildLoadingIndicator(),
-            if (_errorMessage != null) _buildErrorCard(),
-            if (_analysisResult != null)
-              _AnimatedResultCard(
-                key: ValueKey(_analysisResult.hashCode),
-                child: _buildResultCard(),
-              ),
-          ],
-        ),
+    final provider = context.watch<NutritionProvider>();
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && provider.isAnalyzing) {
+          provider.enableHomeResult();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: _buildBody(),
       ),
     );
   }
 
-  Widget _buildImageArea() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        height: 280,
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceVariant.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(20),
-          border: _selectedImage == null
-              ? Border.all(
-                  color: colorScheme.outline.withOpacity(0.3),
-                  width: 1.5,
-                )
-              : null,
-          boxShadow: _selectedImage != null
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  )
-                ]
-              : null,
+  Widget _buildBody() {
+    switch (_viewState) {
+      case _ViewState.scanning:
+        return _buildCameraView();
+      case _ViewState.analyzing:
+        return _buildAnalyzingView();
+      case _ViewState.aiResult:
+        return _buildResultView();
+      case _ViewState.error:
+        return _buildErrorView();
+    }
+  }
+
+  // ── Camera view ────────────────────────────────────────────────────────────
+
+  Widget _buildCameraView() {
+    final topPad = MediaQuery.of(context).padding.top;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 1. Camera preview
+        RepaintBoundary(
+          key: _cameraKey,
+          child: MobileScanner(
+            controller: _scanner,
+            onDetect: (capture) {
+              if (_barcodeHandling) return;
+              final raw = capture.barcodes.firstOrNull?.rawValue;
+              if (raw != null) _onBarcodeDetected(raw);
+            },
+          ),
         ),
-        child: _selectedImage != null
-            ? Image.file(_selectedImage!, fit: BoxFit.cover)
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
+        // 2. Focus frame
+        Center(child: _FocusFrame(barcodeDetected: _barcodeDetected)),
+        // 3. Back button
+        Positioned(
+          top: topPad + 8,
+          left: 16,
+          child: GestureDetector(
+            onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new,
+                  color: Colors.white, size: 18),
+            ),
+          ),
+        ),
+        // 3b. Offline banner
+        if (_isOffline)
+          Positioned(
+            top: topPad + 8,
+            left: 16,
+            right: 64,
+            child: const _OfflineBanner(),
+          ),
+        // 4. Flash button
+        Positioned(
+          top: topPad + 8,
+          right: 16,
+          child: _FlashButton(
+            flashMode: _flashMode,
+            onPressed: _cycleFlash,
+          ),
+        ),
+        // 5. Bottom controls
+        Positioned(
+          bottom: 80,
+          left: 0,
+          right: 0,
+          child: _BottomControls(
+            lastImage: _lastImage,
+            onShutter: _isOffline ? null : _capturePhoto,
+            onGallery:
+                _isOffline ? null : () => _pickImage(ImageSource.gallery),
+          ),
+        ),
+        // 6. Capture overlay — blocks input and shows spinner while taking photo
+        if (_isCapturing)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.55),
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Analyzing view ─────────────────────────────────────────────────────────
+
+  Widget _buildAnalyzingView() {
+    return AnalysisProgressView(
+      image: _capturedImage,
+      onBack: () {
+        context.read<NutritionProvider>().enableHomeResult();
+        Navigator.of(context).pop();
+      },
+    );
+  }
+
+  // ── AI result view ─────────────────────────────────────────────────────────
+
+  Widget _buildResultView() {
+    final result = _analysisResult!;
+    final scaled = result.nutritionScaled;
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        // Top 55% — image
+        Expanded(
+          flex: 55,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_capturedImage != null)
+                Image.file(_capturedImage!, fit: BoxFit.cover)
+              else
+                const ColoredBox(color: Colors.black),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 8,
+                child: _BackButton(onPressed: _resetToScanning),
+              ),
+              // Star/save button — top right
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                right: 12,
+                child: GestureDetector(
+                  onTap: _saving ? null : _toggleSave,
+                  child: Container(
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.50),
                     ),
-                    child: Icon(
-                      Icons.add_photo_alternate_outlined,
-                      size: 52,
-                      color: colorScheme.primary.withOpacity(0.7),
+                    child: _saving
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Icon(
+                            _isSaved ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
+                            size: 22,
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Bottom 45% — result card
+        Expanded(
+          flex: 45,
+          child: ColoredBox(
+            color: cs.surface,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Başlık + güven badge
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          result.foodName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ConfidenceBadge(score: result.confidenceScore),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  // Kalori + aralık
+                  Text(
+                    '${scaled.calories.toStringAsFixed(0)} kcal',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      color: cs.primary,
                     ),
                   ),
-                  const SizedBox(height: 16),
                   Text(
-                    'Yemeğin fotoğrafını çek',
+                    '~${result.alternativeMin.round()} – ${result.alternativeMax.round()} kcal aralığı',
                     style: TextStyle(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                        fontSize: 11),
+                  ),
+                  const SizedBox(height: 8),
+                  // Makro hap
+                  Row(
+                    children: [
+                      _MacroPill(
+                        label: 'Protein',
+                        value: '${scaled.protein.toStringAsFixed(1)}g',
+                        color: const Color(0xFF7EE787),
+                      ),
+                      const SizedBox(width: 6),
+                      _MacroPill(
+                        label: 'Karb',
+                        value:
+                            '${scaled.carbohydrates.toStringAsFixed(1)}g',
+                        color: const Color(0xFF58A6FF),
+                      ),
+                      const SizedBox(width: 6),
+                      _MacroPill(
+                        label: 'Yağ',
+                        value: '${scaled.fat.toStringAsFixed(1)}g',
+                        color: const Color(0xFFF0A500),
+                      ),
+                    ],
+                  ),
+                  // OFF: NutriScore + NOVA badge
+                  if (result.offProduct != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (result.offProduct!.nutriscoreGrade != null)
+                          _NutriScoreBadge(
+                              grade: result.offProduct!.nutriscoreGrade!),
+                        if (result.offProduct!.nutriscoreGrade != null &&
+                            result.offProduct!.novaGroup != null)
+                          const SizedBox(width: 6),
+                        if (result.offProduct!.novaGroup != null)
+                          _NovaBadge(group: result.offProduct!.novaGroup!),
+                      ],
+                    ),
+                    // Alerjenler
+                    if (result.offProduct!.allergens.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: result.offProduct!.allergens
+                            .take(6)
+                            .map((a) => _AllergenChip(label: a))
+                            .toList(),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 6),
+                  // Kaynak badge'leri
+                  Wrap(
+                    spacing: 4,
+                    children: result.sources.map((src) {
+                      final (label, color) = _sourceInfo(src);
+                      final isAI = label == 'AI Analiz';
+                      final badge = Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withValues(alpha: 0.35), width: 0.8),
+                        ),
+                        child: Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+                      );
+                      if (!isAI) return badge;
+                      return GestureDetector(
+                        onTap: () => _showAiBadgeExplanation(color),
+                        child: badge,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 6),
+                  // Daha Fazla Detay
+                  OutlinedButton.icon(
+                    onPressed: () => _showMicroNutrients(result),
+                    icon: const Icon(Icons.science_outlined, size: 16),
+                    label: const Text('Mikro Besinleri Gör', style: TextStyle(fontSize: 13)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(38),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'veya galeriden seç',
-                    style: TextStyle(
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.65),
-                      fontSize: 13,
+                  // Geri bildirim
+                  if (!_feedbackGiven)
+                    Row(
+                      children: [
+                        Text(
+                          'Bu doğru mu?',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurface.withValues(alpha: 0.6)),
+                        ),
+                        const SizedBox(width: 8),
+                        ActionChip(
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          avatar: const Icon(Icons.check_rounded, size: 14),
+                          label: const Text('Doğru', style: TextStyle(fontSize: 12)),
+                          onPressed: () => _onFeedbackCorrect(result),
+                        ),
+                        const SizedBox(width: 6),
+                        ActionChip(
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          avatar: const Icon(Icons.close_rounded, size: 14),
+                          label: const Text('Hayır', style: TextStyle(fontSize: 12)),
+                          onPressed: () => _onFeedbackEdit(result),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded,
+                            size: 14, color: cs.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Geri bildirim kaydedildi',
+                          style: TextStyle(fontSize: 12, color: cs.primary),
+                        ),
+                      ],
                     ),
+                  const Divider(height: 14),
+                  // Öğün seçici
+                  if (widget.selectedMeal == null) ...[
+                    _MealChipRow(
+                      selected: _selectedMeal,
+                      onChanged: (m) => setState(() => _selectedMeal = m),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: () => _openManualEntry(prefill: {
+                      'name': result.foodName,
+                      'calories': result.nutritionScaled.calories.toStringAsFixed(0),
+                      'protein': result.nutritionScaled.protein.toStringAsFixed(1),
+                      'carbs': result.nutritionScaled.carbohydrates.toStringAsFixed(1),
+                      'fat': result.nutritionScaled.fat.toStringAsFixed(1),
+                      'grams': result.portionGrams.toStringAsFixed(0),
+                    }),
+                    icon: const Icon(Icons.edit_note_rounded),
+                    label: const Text('Yemeği Düzenle'),
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44)),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: () => _addAIResult(result, _selectedMeal),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Öğüne Ekle'),
+                    style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44)),
                   ),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _BigActionButton(
-                icon: Icons.camera_alt_rounded,
-                label: 'Kamera',
-                filled: true,
-                color: colorScheme.primary,
-                onPressed: () => _pickImage(ImageSource.camera),
-              ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _BigActionButton(
-                icon: Icons.photo_library_rounded,
-                label: 'Galeri',
-                filled: false,
-                color: colorScheme.primary,
-                onPressed: () => _pickImage(ImageSource.gallery),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _BigActionButton(
-                icon: Icons.qr_code_scanner_rounded,
-                label: 'Barkod',
-                filled: false,
-                color: colorScheme.secondary,
-                onPressed: _openBarcodeScanner,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _BigActionButton(
-                icon: Icons.edit_note_rounded,
-                label: 'Manuel',
-                filled: false,
-                color: colorScheme.secondary,
-                onPressed: _openManualEntry,
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildLoadingIndicator() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-        child: Column(
-          children: [
-            SizedBox(
-              width: 72,
-              height: 72,
-              child: CircularProgressIndicator(
-                strokeWidth: 5,
-                strokeCap: StrokeCap.round,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  const Color(0xFF4CAF50),
-                ),
-                backgroundColor: const Color(0xFF4CAF50).withOpacity(0.12),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Yemek analiz ediliyor...',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'AI ile besin değerleri hesaplanıyor',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ── Error view ─────────────────────────────────────────────────────────────
 
-  Widget _buildErrorCard() {
-    return Card(
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline,
-                color: Theme.of(context).colorScheme.onErrorContainer),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _errorMessage!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultCard() {
-    final data = _analysisResult!;
-    final volumeAciklamasi = data['volume_aciklamasi']?.toString();
-    final referansNesne = data['referans_nesne']?.toString();
-    final hacimMl = data['hacim_ml'];
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 3,
-      shadowColor: const Color(0xFF4CAF50).withOpacity(0.15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Colored header band
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Row(
+  Widget _buildErrorView() {
+    final cs = Theme.of(context).colorScheme;
+    final hasImage = _capturedImage != null;
+    return Column(
+      children: [
+        if (hasImage)
+          Expanded(
+            flex: 55,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                const Icon(Icons.check_circle_outline,
-                    color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    data['yemek_adi']?.toString() ?? 'Bilinmeyen',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17,
-                    ),
-                  ),
+                Image.file(_capturedImage!, fit: BoxFit.cover),
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 8,
+                  child: _BackButton(onPressed: _resetToScanning),
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Text(
-              'Tahmini porsiyon: ${data['porsiyon_gram']}g',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (referansNesne != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                'Referans: $referansNesne',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+        Expanded(
+          flex: hasImage ? 45 : 100,
+          child: ColoredBox(
+            color: cs.surface,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!hasImage)
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: _BackButton(onPressed: _resetToScanning),
                     ),
+                  Icon(Icons.error_outline, size: 48, color: cs.error),
+                  const SizedBox(height: 12),
+                  Text(
+                    _errorMessage ?? 'Bir hata oluştu',
+                    textAlign: TextAlign.center,
+                    style:
+                        TextStyle(color: cs.onSurface, fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      FilledButton(
+                        onPressed: _resetToScanning,
+                        child: const Text('Yeniden Dene'),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton(
+                        onPressed: () => _openManualEntry(),
+                        child: const Text('Manuel Giriş'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-            const Divider(height: 24),
-            _buildNutritionRow('Kalori', '${data['kalori']} kcal'),
-            _buildNutritionRow('Protein', '${data['protein']} g'),
-            _buildNutritionRow('Karbonhidrat', '${data['karbonhidrat']} g'),
-            _buildNutritionRow('Yağ', '${data['yag']} g'),
-            if (hacimMl != null)
-              _buildNutritionRow('Hacim', '$hacimMl ml'),
-            if (volumeAciklamasi != null) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Nasıl hesaplandı?'),
-                      content: Text(volumeAciklamasi),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Tamam'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.info_outline, size: 18),
-                label: const Text('Nasıl hesaplandı?'),
-              ),
-            ],
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: _AddToMealButton(onPressed: _showConfirmationSheet),
             ),
-          ],
+          ),
         ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNutritionRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(
-            value,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
 
-// ─── Animated Result Card ────────────────────────────────────────────────────
+// ─── Focus Frame ──────────────────────────────────────────────────────────────
 
-class _AnimatedResultCard extends StatefulWidget {
-  final Widget child;
-  const _AnimatedResultCard({super.key, required this.child});
+class _FocusFrame extends StatelessWidget {
+  final bool barcodeDetected;
+  const _FocusFrame({this.barcodeDetected = false});
 
   @override
-  State<_AnimatedResultCard> createState() => _AnimatedResultCardState();
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return TweenAnimationBuilder<Color?>(
+      tween: ColorTween(
+        begin: barcodeDetected ? color : Colors.amber,
+        end: barcodeDetected ? Colors.amber : color,
+      ),
+      duration: const Duration(milliseconds: 300),
+      builder: (ctx, c, _) => CustomPaint(
+        size: const Size(280, 280),
+        painter: _FocusFramePainter(color: c ?? color),
+      ),
+    );
+  }
 }
 
-class _AnimatedResultCardState extends State<_AnimatedResultCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-  bool _animationStarted = false;
+class _FocusFramePainter extends CustomPainter {
+  final Color color;
+  const _FocusFramePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
+
+    const len = 24.0;
+    final w = size.width;
+    final h = size.height;
+
+    // Top-left
+    canvas.drawLine(Offset(0, len), Offset.zero, paint);
+    canvas.drawLine(Offset.zero, Offset(len, 0), paint);
+    // Top-right
+    canvas.drawLine(Offset(w - len, 0), Offset(w, 0), paint);
+    canvas.drawLine(Offset(w, 0), Offset(w, len), paint);
+    // Bottom-left
+    canvas.drawLine(Offset(0, h - len), Offset(0, h), paint);
+    canvas.drawLine(Offset(0, h), Offset(len, h), paint);
+    // Bottom-right
+    canvas.drawLine(Offset(w, h - len), Offset(w, h), paint);
+    canvas.drawLine(Offset(w, h), Offset(w - len, h), paint);
+  }
+
+  @override
+  bool shouldRepaint(_FocusFramePainter old) => old.color != color;
+}
+
+// ─── Flash Button ─────────────────────────────────────────────────────────────
+
+class _FlashButton extends StatelessWidget {
+  final _FlashMode flashMode;
+  final VoidCallback onPressed;
+  const _FlashButton({required this.flashMode, required this.onPressed});
+
+  IconData get _icon => switch (flashMode) {
+        _FlashMode.off => Icons.flash_off_rounded,
+        _FlashMode.on => Icons.flash_on_rounded,
+        _FlashMode.auto => Icons.flash_auto_rounded,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Theme.of(context)
+              .colorScheme
+              .surface
+              .withValues(alpha: 0.70),
+        ),
+        child: Icon(_icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
+
+// ─── Bottom Controls ──────────────────────────────────────────────────────────
+
+class _BottomControls extends StatelessWidget {
+  final File? lastImage;
+  final VoidCallback? onShutter;
+  final VoidCallback? onGallery;
+
+  const _BottomControls({
+    required this.lastImage,
+    required this.onShutter,
+    required this.onGallery,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _GalleryThumb(lastImage: lastImage, onTap: onGallery),
+        const SizedBox(width: 48),
+        _ShutterButton(onPressed: onShutter),
+        const SizedBox(width: 48),
+        const SizedBox(width: 56), // simetri
+      ],
+    );
+  }
+}
+
+// ─── Gallery Thumb ────────────────────────────────────────────────────────────
+
+class _GalleryThumb extends StatefulWidget {
+  final File? lastImage;
+  final VoidCallback? onTap;
+  const _GalleryThumb({required this.lastImage, required this.onTap});
+
+  @override
+  State<_GalleryThumb> createState() => _GalleryThumbState();
+}
+
+class _GalleryThumbState extends State<_GalleryThumb> {
+  Uint8List? _thumbnail;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.18),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _loadLatestPhoto();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_animationStarted) {
-      _animationStarted = true;
-      if (MediaQuery.of(context).disableAnimations) {
-        _ctrl.value = 1.0;
-      } else {
-        _ctrl.forward();
+  Future<void> _loadLatestPhoto() async {
+    try {
+      final permission = await PhotoManager.requestPermissionExtend();
+      if (!permission.isAuth && !permission.hasAccess) return;
+
+      final albums = await PhotoManager.getAssetPathList(
+        type: RequestType.image,
+        filterOption: FilterOptionGroup(
+          orders: [
+            const OrderOption(type: OrderOptionType.createDate, asc: false),
+          ],
+        ),
+        onlyAll: true,
+      );
+      if (albums.isEmpty) return;
+
+      final assets = await albums.first.getAssetListRange(start: 0, end: 1);
+      if (assets.isEmpty) return;
+
+      final thumb = await assets.first.thumbnailDataWithSize(
+        const ThumbnailSize(112, 112),
+      );
+      if (mounted && thumb != null) {
+        setState(() => _thumbnail = thumb);
       }
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(position: _slide, child: widget.child),
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 56,
+          height: 56,
+          child: _buildContent(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    if (widget.lastImage != null) {
+      return Image.file(widget.lastImage!, fit: BoxFit.cover);
+    }
+    if (_thumbnail != null) {
+      return Image.memory(_thumbnail!, fit: BoxFit.cover);
+    }
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.70),
+      child: const Icon(Icons.photo_library_rounded,
+          color: Colors.white, size: 26),
     );
   }
 }
 
-// ─── Big Action Button ────────────────────────────────────────────────────────
+// ─── Shutter Button ───────────────────────────────────────────────────────────
 
-class _BigActionButton extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final bool filled;
-  final Color color;
-  final VoidCallback onPressed;
-
-  const _BigActionButton({
-    required this.icon,
-    required this.label,
-    required this.filled,
-    required this.color,
-    required this.onPressed,
-  });
+class _ShutterButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  const _ShutterButton({required this.onPressed});
 
   @override
-  State<_BigActionButton> createState() => _BigActionButtonState();
+  State<_ShutterButton> createState() => _ShutterButtonState();
 }
 
-class _BigActionButtonState extends State<_BigActionButton>
+class _ShutterButtonState extends State<_ShutterButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _scale;
@@ -590,12 +1411,9 @@ class _BigActionButtonState extends State<_BigActionButton>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.94).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+        vsync: this, duration: const Duration(milliseconds: 100));
+    _scale = Tween<double>(begin: 1.0, end: 0.92)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -606,44 +1424,26 @@ class _BigActionButtonState extends State<_BigActionButton>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = Theme.of(context).colorScheme.primary;
+    final fillColor = isDark ? Colors.white : Colors.black;
     return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) {
-        _ctrl.reverse().then((_) => widget.onPressed());
-      },
+      onTapDown: widget.onPressed == null ? null : (_) => _ctrl.forward(),
+      onTapUp: widget.onPressed == null
+          ? null
+          : (_) {
+              _ctrl.reverse().then((_) => widget.onPressed?.call());
+            },
       onTapCancel: () => _ctrl.reverse(),
       child: ScaleTransition(
         scale: _scale,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          width: 72,
+          height: 72,
           decoration: BoxDecoration(
-            color: widget.filled
-                ? widget.color
-                : widget.color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: widget.filled
-                ? null
-                : Border.all(
-                    color: widget.color.withOpacity(0.4), width: 1.5),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.icon,
-                size: 26,
-                color: widget.filled ? Colors.white : widget.color,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: widget.filled ? Colors.white : widget.color,
-                ),
-              ),
-            ],
+            shape: BoxShape.circle,
+            color: fillColor,
+            border: Border.all(color: primary, width: 4),
           ),
         ),
       ),
@@ -651,32 +1451,110 @@ class _BigActionButtonState extends State<_BigActionButton>
   }
 }
 
-// ─── Öğüne Ekle Butonu (with tick animation) ─────────────────────────────────
+// ─── Manual Entry Button ──────────────────────────────────────────────────────
 
-class _AddToMealButton extends StatefulWidget {
+class _ManualEntryButton extends StatelessWidget {
   final VoidCallback onPressed;
-  const _AddToMealButton({required this.onPressed});
+  const _ManualEntryButton({required this.onPressed});
 
   @override
-  State<_AddToMealButton> createState() => _AddToMealButtonState();
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context)
+              .colorScheme
+              .surface
+              .withValues(alpha: 0.80),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text(
+          '✏️ Manuel Giriş',
+          style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14),
+        ),
+      ),
+    );
+  }
 }
 
-class _AddToMealButtonState extends State<_AddToMealButton>
+// ─── Offline Banner ───────────────────────────────────────────────────────────
+
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade800.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.wifi_off_rounded, color: Colors.white, size: 14),
+          SizedBox(width: 6),
+          Text('Çevrimdışı — AI kapalı',
+              style: TextStyle(color: Colors.white, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Back Button ─────────────────────────────────────────────────────────────
+
+class _BackButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _BackButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.45),
+        ),
+        child: const Icon(Icons.arrow_back_rounded,
+            color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
+
+// ─── Analyzing Overlay (image-top skeleton + label) ──────────────────────────
+
+class _AnalyzingOverlay extends StatefulWidget {
+  const _AnalyzingOverlay();
+
+  @override
+  State<_AnalyzingOverlay> createState() => _AnalyzingOverlayState();
+}
+
+class _AnalyzingOverlayState extends State<_AnalyzingOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  bool _showTick = false;
+  late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 120),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.93).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
   @override
@@ -685,192 +1563,177 @@ class _AddToMealButtonState extends State<_AddToMealButton>
     super.dispose();
   }
 
-  Future<void> _handlePress() async {
-    await _ctrl.forward();
-    setState(() => _showTick = true);
-    await Future.delayed(const Duration(milliseconds: 300));
-    await _ctrl.reverse();
-    if (mounted) {
-      setState(() => _showTick = false);
-      widget.onPressed();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _handlePress,
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF4CAF50).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  _showTick ? Icons.check_rounded : Icons.add_rounded,
-                  key: ValueKey(_showTick),
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Öğüne Ekle',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
+  Widget _skeletonBar(double width) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, child) => Container(
+        width: width,
+        height: 10,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(5),
+          color: Colors.white.withValues(alpha: 0.25 + 0.4 * _anim.value),
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 2.5,
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'Görsel işleniyor...',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _skeletonBar(160),
+        const SizedBox(height: 8),
+        _skeletonBar(120),
+        const SizedBox(height: 8),
+        _skeletonBar(80),
+      ],
+    );
+  }
 }
 
-// ─── Onay Sayfası ────────────────────────────────────────────────────────────
+// ─── Shimmer Banner ───────────────────────────────────────────────────────────
 
-class _ConfirmationSheet extends StatefulWidget {
-  final Map<String, dynamic> analysisData;
-  final String? selectedMeal;
-  final void Function(Map<String, dynamic> editedData, String meal) onConfirm;
 
-  const _ConfirmationSheet({
-    required this.analysisData,
-    required this.selectedMeal,
-    required this.onConfirm,
-  });
 
-  @override
-  State<_ConfirmationSheet> createState() => _ConfirmationSheetState();
-}
+// ─── Macro Pill ───────────────────────────────────────────────────────────────
 
-class _ConfirmationSheetState extends State<_ConfirmationSheet> {
-  late final TextEditingController _nameCtrl;
-  late final TextEditingController _portionCtrl;
-  late final TextEditingController _calorieCtrl;
-  late final TextEditingController _proteinCtrl;
-  late final TextEditingController _carbCtrl;
-  late final TextEditingController _fatCtrl;
-  late String _selectedMeal;
-  bool _isEditMode = false;
+class _MacroPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _MacroPill(
+      {required this.label, required this.value, required this.color});
 
   @override
-  void initState() {
-    super.initState();
-    final d = widget.analysisData;
-    _nameCtrl = TextEditingController(text: d['yemek_adi']?.toString() ?? '');
-    _portionCtrl = TextEditingController(text: (d['porsiyon_gram'] ?? 100).toString());
-    _calorieCtrl = TextEditingController(text: (d['kalori'] ?? 0).toString());
-    _proteinCtrl = TextEditingController(text: (d['protein'] ?? 0).toString());
-    _carbCtrl = TextEditingController(text: (d['karbonhidrat'] ?? 0).toString());
-    _fatCtrl = TextEditingController(text: (d['yag'] ?? 0).toString());
-    _selectedMeal = widget.selectedMeal ?? 'kahvaltı';
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _portionCtrl.dispose();
-    _calorieCtrl.dispose();
-    _proteinCtrl.dispose();
-    _carbCtrl.dispose();
-    _fatCtrl.dispose();
-    super.dispose();
-  }
-
-  void _confirm() {
-    final editedData = {
-      'yemek_adi': _nameCtrl.text.trim().isEmpty
-          ? (widget.analysisData['yemek_adi'] ?? 'Bilinmeyen')
-          : _nameCtrl.text.trim(),
-      'porsiyon_gram': double.tryParse(_portionCtrl.text) ?? 100.0,
-      'kalori': double.tryParse(_calorieCtrl.text) ?? 0.0,
-      'protein': double.tryParse(_proteinCtrl.text) ?? 0.0,
-      'karbonhidrat': double.tryParse(_carbCtrl.text) ?? 0.0,
-      'yag': double.tryParse(_fatCtrl.text) ?? 0.0,
-    };
-    Navigator.pop(context);
-    widget.onConfirm(editedData, _selectedMeal);
-  }
-
-  Widget _buildStaticRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Text(value,
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: color)),
           Text(label,
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          Text(value,
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+                  fontSize: 10,
+                  color: color.withValues(alpha: 0.8))),
         ],
       ),
     );
   }
+}
 
-  Widget _buildRow(String label, TextEditingController ctrl,
-      {TextInputType? keyboardType}) {
-    if (!_isEditMode) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            Text(ctrl.text,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: TextField(
-        controller: ctrl,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        ),
-      ),
+// ─── Meal Chip Row ────────────────────────────────────────────────────────────
+
+class _MealChipRow extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onChanged;
+  const _MealChipRow({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    const meals = [
+      ('kahvaltı', '☀️', 'Kahvaltı'),
+      ('öğle', '🌤', 'Öğle'),
+      ('akşam', '🌙', 'Akşam'),
+      ('ara öğün', '☕', 'Ara Öğün'),
+    ];
+    return Wrap(
+      spacing: 6,
+      children: meals.map((m) {
+        final isSelected = selected == m.$1;
+        return ChoiceChip(
+          label: Text('${m.$2} ${m.$3}',
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              )),
+          selected: isSelected,
+          onSelected: (_) => onChanged(m.$1),
+          selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+          checkmarkColor: Theme.of(context).colorScheme.primary,
+          showCheckmark: true,
+          side: BorderSide(
+            color: isSelected 
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) 
+              : Colors.transparent,
+          ),
+          visualDensity: VisualDensity.compact,
+        );
+      }).toList(),
     );
+  }
+}
+
+// ─── Barcode Product Sheet ────────────────────────────────────────────────────
+
+class _BarcodeProductSheet extends StatefulWidget {
+  final FoodProduct product;
+  final String selectedMeal;
+  final void Function(double portionGrams, String meal) onAdd;
+
+  const _BarcodeProductSheet({
+    required this.product,
+    required this.selectedMeal,
+    required this.onAdd,
+  });
+
+  @override
+  State<_BarcodeProductSheet> createState() => _BarcodeProductSheetState();
+}
+
+class _BarcodeProductSheetState extends State<_BarcodeProductSheet> {
+  final _portionCtrl = TextEditingController(text: '100');
+  late String _meal;
+
+  @override
+  void initState() {
+    super.initState();
+    _meal = widget.selectedMeal;
+  }
+
+  @override
+  void dispose() {
+    _portionCtrl.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final portion = double.tryParse(_portionCtrl.text) ?? 100.0;
+    if (portion <= 0) return;
+    Navigator.pop(context);
+    widget.onAdd(portion, _meal);
   }
 
   @override
   Widget build(BuildContext context) {
-    const meals = <(String, IconData, String)>[
-      ('kahvaltı', Icons.wb_sunny_outlined, 'Kahvaltı'),
-      ('öğle', Icons.wb_cloudy_outlined, 'Öğle'),
-      ('akşam', Icons.nights_stay_outlined, 'Akşam'),
-      ('ara öğün', Icons.coffee_outlined, 'Ara Öğün'),
-    ];
+    final cs = Theme.of(context).colorScheme;
+    final factor = (double.tryParse(_portionCtrl.text) ?? 100.0) / 100.0;
+    final n = widget.product.nutritionPer100g;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -886,137 +1749,1953 @@ class _ConfirmationSheetState extends State<_ConfirmationSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            // AI uyarı banner'ı
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade100,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.amber.shade300),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.warning_amber_rounded,
-                      color: Colors.amber.shade800, size: 22),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Bu veriler yapay zeka tarafından tahmin edilmiştir. '
-                      'Porsiyon miktarı ve besin değerleri yaklaşık olup '
-                      'hatalı hesaplamalar içerebilir. Lütfen değerleri '
-                      'kontrol edip gerekirse düzenleyin.',
-                      style: TextStyle(
-                        color: Colors.amber.shade900,
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Text('Bu değerler yaklaşıktır',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 2),
-            Text('Düzenlemek ister misiniz?',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    )),
-            const SizedBox(height: 16),
-            _buildRow('Yemek Adı', _nameCtrl),
-            _buildRow('Porsiyon (g)', _portionCtrl,
-                keyboardType: TextInputType.number),
-            _buildRow('Kalori (kcal)', _calorieCtrl,
-                keyboardType: TextInputType.number),
-            _buildRow('Protein (g)', _proteinCtrl,
-                keyboardType: TextInputType.number),
-            _buildRow('Karbonhidrat (g)', _carbCtrl,
-                keyboardType: TextInputType.number),
-            _buildRow('Yağ (g)', _fatCtrl,
-                keyboardType: TextInputType.number),
-            // Volume bilgisi (salt okunur)
-            if (!_isEditMode) ...[
-              if (widget.analysisData['referans_nesne'] != null)
-                _buildStaticRow(
-                    'Referans Nesne',
-                    widget.analysisData['referans_nesne'].toString()),
-              if (widget.analysisData['hacim_ml'] != null)
-                _buildStaticRow(
-                    'Hacim', '${widget.analysisData['hacim_ml']} ml'),
-              if (widget.analysisData['volume_aciklamasi'] != null) ...[
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Nasıl hesaplandı?'),
-                        content: Text(
-                            widget.analysisData['volume_aciklamasi'].toString()),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Tamam'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.info_outline, size: 18),
-                  label: const Text('Nasıl hesaplandı?'),
-                ),
-              ],
-            ],
-            if (widget.selectedMeal == null) ...[
-              const SizedBox(height: 16),
-              Text('Öğün Seçin',
-                  style: Theme.of(context).textTheme.labelMedium),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: meals
-                    .map((m) => ChoiceChip(
-                          avatar: Icon(m.$2, size: 16),
-                          label: Text(m.$3),
-                          selected: _selectedMeal == m.$1,
-                          onSelected: (_) =>
-                              setState(() => _selectedMeal = m.$1),
-                        ))
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 16),
             Row(
               children: [
-                if (!_isEditMode) ...[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => setState(() => _isEditMode = true),
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Düzenle'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
+                Icon(Icons.qr_code_rounded, color: cs.primary, size: 20),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _confirm,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Onayla ve Ekle'),
-                  ),
+                  child: Text(widget.product.name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
               ],
+            ),
+            if (widget.product.brand != null) ...[
+              const SizedBox(height: 2),
+              Text(widget.product.brand!,
+                  style: TextStyle(
+                      color: cs.onSurfaceVariant, fontSize: 12)),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _portionCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Porsiyon miktarı',
+                border: OutlineInputBorder(),
+                suffixText: 'g',
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  _infoRow(context, 'Kalori',
+                      '${(n.calories * factor).toStringAsFixed(0)} kcal'),
+                  _infoRow(context, 'Protein',
+                      '${(n.protein * factor).toStringAsFixed(1)} g'),
+                  _infoRow(context, 'Karbonhidrat',
+                      '${(n.carbohydrates * factor).toStringAsFixed(1)} g'),
+                  _infoRow(context, 'Yağ',
+                      '${(n.fat * factor).toStringAsFixed(1)} g'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _MealChipRow(
+                selected: _meal,
+                onChanged: (m) => setState(() => _meal = m)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _confirm,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Öğüne Ekle'),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _infoRow(BuildContext ctx, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  fontSize: 13)),
+          Text(value,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Manual Entry Bottom Sheet ────────────────────────────────────────────────
+
+class _ManualEntryBottomSheet extends StatefulWidget {
+  final String selectedMeal;
+  final Map<String, dynamic>? prefill;
+  final void Function(FoodEntry entry) onSave;
+  final bool isAnalysis;
+  final ScrollController scrollCtrl;
+
+  const _ManualEntryBottomSheet({
+    required this.selectedMeal,
+    required this.onSave,
+    required this.scrollCtrl,
+    this.prefill,
+    this.isAnalysis = false,
+  });
+
+  @override
+  State<_ManualEntryBottomSheet> createState() =>
+      _ManualEntryBottomSheetState();
+}
+
+class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _calorieCtrl;
+  late final TextEditingController _proteinCtrl;
+  late final TextEditingController _carbCtrl;
+  late final TextEditingController _fatCtrl;
+
+  // Detaylar — 44 alan
+  final _fiberCtrl       = TextEditingController();
+  final _sugarCtrl       = TextEditingController();
+  final _satFatCtrl      = TextEditingController();
+  final _monoFatCtrl     = TextEditingController();
+  final _polyFatCtrl     = TextEditingController();
+  final _transFatCtrl    = TextEditingController();
+  final _cholCtrl        = TextEditingController();
+  final _seleniumCtrl    = TextEditingController();
+  final _magCtrl         = TextEditingController();
+  final _ironCtrl        = TextEditingController();
+  final _zincCtrl        = TextEditingController();
+  final _calciumCtrl     = TextEditingController();
+  final _potassiumCtrl   = TextEditingController();
+  final _sodiumCtrl      = TextEditingController();
+  final _phosphCtrl      = TextEditingController();
+  final _copperCtrl      = TextEditingController();
+  final _mangCtrl        = TextEditingController();
+  final _vitACtrl        = TextEditingController();
+  final _vitCCtrl        = TextEditingController();
+  final _vitDCtrl        = TextEditingController();
+  final _vitECtrl        = TextEditingController();
+  final _vitKCtrl        = TextEditingController();
+  final _b12Ctrl         = TextEditingController();
+  final _thiamineCtrl    = TextEditingController();
+  final _riboflavCtrl    = TextEditingController();
+  final _niacinCtrl      = TextEditingController();
+  final _pantCtrl        = TextEditingController();
+  final _vitB6Ctrl        = TextEditingController();
+  final _folateCtrl      = TextEditingController();
+  final _cholineCtrl     = TextEditingController();
+  final _biotinCtrl      = TextEditingController();
+  final _omega3Ctrl      = TextEditingController();
+  final _omega6Ctrl      = TextEditingController();
+  final _alaCtrl         = TextEditingController();
+  final _epaCtrl         = TextEditingController();
+  final _dhaCtrl         = TextEditingController();
+  final _betaCarotCtrl   = TextEditingController();
+  final _lycopeneCtrl    = TextEditingController();
+  final _luteinZeaCtrl   = TextEditingController();
+  final _alphaCarotCtrl  = TextEditingController();
+  final _tryptCtrl       = TextEditingController();
+  final _threonCtrl      = TextEditingController();
+  final _isolCtrl        = TextEditingController();
+  final _leucCtrl        = TextEditingController();
+  final _lysCtrl         = TextEditingController();
+  final _metCtrl         = TextEditingController();
+  final _phenCtrl        = TextEditingController();
+  final _valCtrl         = TextEditingController();
+  final _histCtrl        = TextEditingController();
+  final _cystineCtrl     = TextEditingController();
+  final _tyrosineCtrl    = TextEditingController();
+
+  late String _meal;
+  File? _photoFile;
+  final ImagePicker _picker = ImagePicker();
+
+  String _str(String key) {
+    final p = widget.prefill;
+    if (p == null) return '';
+    final v = p[key];
+    if (v == null) return '';
+    if (v is num) return v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 1);
+    return v.toString();
+  }
+
+  void _onMacroChanged() {
+    final protein = double.tryParse(_proteinCtrl.text) ?? 0;
+    final carbs = double.tryParse(_carbCtrl.text) ?? 0;
+    final fat = double.tryParse(_fatCtrl.text) ?? 0;
+    final calories = FoodAnalysisService.calculateCalories(
+      proteinG: protein,
+      carbsG: carbs,
+      fatG: fat,
+    );
+    _calorieCtrl.text = calories.round().toString();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _meal = widget.selectedMeal;
+    _nameCtrl = TextEditingController(text: _str('name'));
+    _proteinCtrl = TextEditingController(text: _str('protein'));
+    _carbCtrl = TextEditingController(text: _str('carbs'));
+    _fatCtrl = TextEditingController(text: _str('fat'));
+
+    _calorieCtrl = TextEditingController(text: _str('calories'));
+    if (_calorieCtrl.text.isEmpty) _onMacroChanged();
+
+    _fiberCtrl.text = _str('fiber');
+    _sugarCtrl.text = _str('sugar');
+    _satFatCtrl.text = _str('satFat');
+    _monoFatCtrl.text = _str('monoFat');
+    _polyFatCtrl.text = _str('polyFat');
+    _transFatCtrl.text = _str('transFat');
+    _cholCtrl.text = _str('cholesterol');
+    _sodiumCtrl.text = _str('sodium');
+    _magCtrl.text = _str('magnesium');
+    _calciumCtrl.text = _str('calcium');
+    _ironCtrl.text = _str('iron');
+    _zincCtrl.text = _str('zinc');
+    _potassiumCtrl.text = _str('potassium');
+    _phosphCtrl.text = _str('phosphorus');
+    _seleniumCtrl.text = _str('selenium');
+    _copperCtrl.text = _str('copper');
+    _mangCtrl.text = _str('manganese');
+    _vitACtrl.text = _str('vitA');
+    _vitCCtrl.text = _str('vitC');
+    _vitDCtrl.text = _str('vitD');
+    _vitECtrl.text = _str('vitE');
+    _vitKCtrl.text = _str('vitK');
+    _b12Ctrl.text = _str('vitB12');
+    _thiamineCtrl.text = _str('thiamine');
+    _riboflavCtrl.text = _str('riboflavin');
+    _niacinCtrl.text = _str('niacin');
+    _pantCtrl.text = _str('pantothenic');
+    _vitB6Ctrl.text = _str('vitB6');
+    _folateCtrl.text = _str('folate');
+    _cholineCtrl.text = _str('choline');
+    _biotinCtrl.text = _str('biotin');
+    _omega3Ctrl.text = _str('omega3');
+    _omega6Ctrl.text = _str('omega6');
+    _alaCtrl.text = _str('ala');
+    _epaCtrl.text = _str('epa');
+    _dhaCtrl.text = _str('dha');
+    _betaCarotCtrl.text = _str('betaCarot');
+    _lycopeneCtrl.text = _str('lycopene');
+    _luteinZeaCtrl.text = _str('luteinZea');
+    _alphaCarotCtrl.text = _str('alphaCarot');
+    _tryptCtrl.text = _str('tryptophan');
+    _threonCtrl.text = _str('threonine');
+    _isolCtrl.text = _str('isoleucine');
+    _leucCtrl.text = _str('leucine');
+    _lysCtrl.text = _str('lysine');
+    _metCtrl.text = _str('methionine');
+    _phenCtrl.text = _str('phenylalanine');
+    _valCtrl.text = _str('valine');
+    _histCtrl.text = _str('histidine');
+    _cystineCtrl.text = _str('cystine');
+    _tyrosineCtrl.text = _str('tyrosine');
+
+    _proteinCtrl.addListener(_onMacroChanged);
+    _carbCtrl.addListener(_onMacroChanged);
+    _fatCtrl.addListener(_onMacroChanged);
+  }
+
+  @override
+  void dispose() {
+    _proteinCtrl.removeListener(_onMacroChanged);
+    _carbCtrl.removeListener(_onMacroChanged);
+    _fatCtrl.removeListener(_onMacroChanged);
+    for (final c in [
+      _nameCtrl, _calorieCtrl, _proteinCtrl, _carbCtrl, _fatCtrl,
+      _fiberCtrl, _sugarCtrl, _satFatCtrl, _monoFatCtrl, _polyFatCtrl,
+      _transFatCtrl, _cholCtrl, _seleniumCtrl, _magCtrl, _ironCtrl,
+      _zincCtrl, _calciumCtrl, _potassiumCtrl, _sodiumCtrl, _phosphCtrl,
+      _copperCtrl, _mangCtrl, _vitACtrl, _vitCCtrl, _vitDCtrl, _vitECtrl,
+      _vitKCtrl, _b12Ctrl, _thiamineCtrl, _riboflavCtrl, _niacinCtrl,
+      _pantCtrl, _vitB6Ctrl, _folateCtrl, _cholineCtrl, _biotinCtrl,
+      _omega3Ctrl, _omega6Ctrl, _alaCtrl, _epaCtrl, _dhaCtrl,
+      _betaCarotCtrl, _lycopeneCtrl, _luteinZeaCtrl, _alphaCarotCtrl,
+      _tryptCtrl, _threonCtrl, _isolCtrl, _leucCtrl, _lysCtrl,
+      _metCtrl, _phenCtrl, _valCtrl, _histCtrl, _cystineCtrl, _tyrosineCtrl,
+    ]) { c.dispose(); }
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    final picked = await _picker.pickImage(
+        source: source, imageQuality: 80, maxWidth: 800);
+    if (picked != null && mounted) {
+      setState(() => _photoFile = File(picked.path));
+    }
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    double? nd(TextEditingController c) => _toNullableDouble(c.text);
+    final entry = FoodEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: _nameCtrl.text.trim(),
+      portionSize: 100,
+      nutritionData: NutritionData(
+        calories: double.tryParse(_calorieCtrl.text) ?? 0,
+        protein: double.tryParse(_proteinCtrl.text) ?? 0,
+        carbohydrates: double.tryParse(_carbCtrl.text) ?? 0,
+        fat: double.tryParse(_fatCtrl.text) ?? 0,
+        fiber: double.tryParse(_fiberCtrl.text) ?? 0,
+        sugar: double.tryParse(_sugarCtrl.text) ?? 0,
+        saturatedFat: double.tryParse(_satFatCtrl.text) ?? 0,
+        monoFat: nd(_monoFatCtrl), polyFat: nd(_polyFatCtrl),
+        transFat: nd(_transFatCtrl), cholesterol: nd(_cholCtrl),
+        selenium: nd(_seleniumCtrl), magnesium: nd(_magCtrl),
+        iron: nd(_ironCtrl), zinc: nd(_zincCtrl),
+        calcium: nd(_calciumCtrl), potassium: nd(_potassiumCtrl),
+        sodium: nd(_sodiumCtrl), phosphorus: nd(_phosphCtrl),
+        copper: nd(_copperCtrl), manganese: nd(_mangCtrl),
+        vitaminA: nd(_vitACtrl), vitaminC: nd(_vitCCtrl),
+        vitaminD: nd(_vitDCtrl), vitaminE: nd(_vitECtrl),
+        vitaminK: nd(_vitKCtrl), vitaminB12: nd(_b12Ctrl),
+        thiamine: nd(_thiamineCtrl), riboflavin: nd(_riboflavCtrl),
+        niacin: nd(_niacinCtrl), pantothenic: nd(_pantCtrl),
+        vitaminB6: nd(_vitB6Ctrl), folate: nd(_folateCtrl),
+        choline: nd(_cholineCtrl), biotin: nd(_biotinCtrl),
+        omega3: nd(_omega3Ctrl), omega6: nd(_omega6Ctrl),
+        ala: nd(_alaCtrl), epa: nd(_epaCtrl), dha: nd(_dhaCtrl),
+        betaCarotene: nd(_betaCarotCtrl),
+        lycopene: nd(_lycopeneCtrl),
+        luteinZeaxanthin: nd(_luteinZeaCtrl),
+        alphaCarotene: nd(_alphaCarotCtrl),
+        tryptophan: nd(_tryptCtrl), threonine: nd(_threonCtrl),
+        isoleucine: nd(_isolCtrl), leucine: nd(_leucCtrl),
+        lysine: nd(_lysCtrl), methionine: nd(_metCtrl),
+        phenylalanine: nd(_phenCtrl), valine: nd(_valCtrl),
+        histidine: nd(_histCtrl),
+      ),
+      timestamp: DateTime.now(),
+      mealType: _meal,
+      imagePath: _photoFile?.path,
+    );
+    Navigator.pop(context);
+    widget.onSave(entry);
+  }
+
+  double? _toNullableDouble(String s) {
+    if (s.trim().isEmpty) return null;
+    return double.tryParse(s);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C2128) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Form(
+        key: _formKey,
+        child: ListView(
+          controller: widget.scrollCtrl,
+          padding: const EdgeInsets.only(top: 12, bottom: 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              Text(widget.isAnalysis ? 'Analizi Düzenle' : 'Manuel Giriş',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              // ── Zorunlu alanlar ───────────────────────────────────────
+              _Field(
+                  controller: _nameCtrl,
+                  label: 'Yemek Adı',
+                  required: true,
+                  textCapitalization: TextCapitalization.sentences),
+              const SizedBox(height: 8),
+              _Field(
+                  controller: _calorieCtrl,
+                  label: 'Kalori (otomatik)',
+                  suffix: 'kcal',
+                  numeric: true,
+                  required: true,
+                  readOnly: true),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                      child: _Field(
+                          controller: _proteinCtrl,
+                          label: 'Protein',
+                          suffix: 'g',
+                          numeric: true,
+                          required: true)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _Field(
+                          controller: _carbCtrl,
+                          label: 'Karbonhidrat',
+                          suffix: 'g',
+                          numeric: true,
+                          required: true)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                      child: _Field(
+                          controller: _fatCtrl,
+                          label: 'Yağ',
+                          suffix: 'g',
+                          numeric: true,
+                          required: true)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _Field(
+                          controller: _fiberCtrl,
+                          label: 'Lif',
+                          suffix: 'g',
+                          numeric: true,
+                          required: false)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // ── İsteğe bağlı alanlar ──────────────────────────────────
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text('Detaylar (opsiyonel)',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+                children: [
+                  const SizedBox(height: 4),
+                  _DetailSection('Karbonhidrat & Yağlar', const Color(0xFF3FB950), cs, [
+                    _FieldDef(_sugarCtrl,    'Şeker',             'g'),
+                    _FieldDef(_satFatCtrl,   'Doymuş Yağ',        'g'),
+                    _FieldDef(_monoFatCtrl,  'Tekli Doymamış Yağ','g'),
+                    _FieldDef(_polyFatCtrl,  'Çoklu Doymamış Yağ','g'),
+                    _FieldDef(_transFatCtrl, 'Trans Yağ',         'g'),
+                    _FieldDef(_cholCtrl,     'Kolesterol',        'mg'),
+                  ]),
+                  _DetailSection('Mineraller', const Color(0xFF58A6FF), cs, [
+                    _FieldDef(_sodiumCtrl,   'Sodyum',    'mg'),
+                    _FieldDef(_magCtrl,      'Magnezyum', 'mg'),
+                    _FieldDef(_calciumCtrl,  'Kalsiyum',  'mg'),
+                    _FieldDef(_ironCtrl,     'Demir',     'mg'),
+                    _FieldDef(_zincCtrl,     'Çinko',     'mg'),
+                    _FieldDef(_potassiumCtrl,'Potasyum',  'mg'),
+                    _FieldDef(_phosphCtrl,   'Fosfor',    'mg'),
+                    _FieldDef(_seleniumCtrl, 'Selenyum',  'μg'),
+                    _FieldDef(_copperCtrl,   'Bakır',     'mg'),
+                    _FieldDef(_mangCtrl,     'Manganez',  'mg'),
+                  ]),
+                  _DetailSection('Vitaminler', const Color(0xFFFFA726), cs, [
+                    _FieldDef(_vitACtrl,     'A Vitamini',  'μg'),
+                    _FieldDef(_vitCCtrl,     'C Vitamini',  'mg'),
+                    _FieldDef(_vitDCtrl,     'D Vitamini',  'μg'),
+                    _FieldDef(_vitECtrl,     'E Vitamini',  'mg'),
+                    _FieldDef(_vitKCtrl,     'K Vitamini',  'μg'),
+                    _FieldDef(_b12Ctrl,      'B12',         'μg'),
+                    _FieldDef(_thiamineCtrl, 'B1 (Tiamin)', 'mg'),
+                    _FieldDef(_riboflavCtrl, 'B2 (Riboflavin)','mg'),
+                    _FieldDef(_niacinCtrl,   'B3 (Niyasin)','mg'),
+                    _FieldDef(_pantCtrl,     'B5 (Pantotenik)','mg'),
+                    _FieldDef(_vitB6Ctrl,       'B6',          'mg'),
+                    _FieldDef(_folateCtrl,   'Folat',       'μg'),
+                    _FieldDef(_cholineCtrl,  'Kolin',       'mg'),
+                    _FieldDef(_biotinCtrl,   'Biyotin',     'μg'),
+                  ]),
+                  _DetailSection('Karotenoidler', const Color(0xFFFF6B00), cs, [
+                    _FieldDef(_betaCarotCtrl, 'Beta-Karoten', 'μg'),
+                    _FieldDef(_lycopeneCtrl,  'Likopen',      'μg'),
+                    _FieldDef(_luteinZeaCtrl, 'Lutein+Zea',   'μg'),
+                    _FieldDef(_alphaCarotCtrl,'Alfa-Karoten', 'μg'),
+                  ]),
+                  _DetailSection('Yağ Asitleri', const Color(0xFF3FB950), cs, [
+                    _FieldDef(_omega3Ctrl,   'Omega-3', 'g'),
+                    _FieldDef(_omega6Ctrl,   'Omega-6', 'g'),
+                    _FieldDef(_alaCtrl,      'ALA',     'g'),
+                    _FieldDef(_epaCtrl,      'EPA',     'g'),
+                    _FieldDef(_dhaCtrl,      'DHA',     'g'),
+                  ]),
+                  _DetailSection('Amino Asitler', const Color(0xFFD2A8FF), cs, [
+                    _FieldDef(_tryptCtrl,  'Triptofan',    'g'),
+                    _FieldDef(_threonCtrl, 'Treonin',      'g'),
+                    _FieldDef(_isolCtrl,   'İzolösin',     'g'),
+                    _FieldDef(_leucCtrl,   'Lösin',        'g'),
+                    _FieldDef(_lysCtrl,    'Lizin',        'g'),
+                    _FieldDef(_metCtrl,    'Metionin',     'g'),
+                    _FieldDef(_phenCtrl,   'Fenilalanin',  'g'),
+                    _FieldDef(_valCtrl,    'Valin',        'g'),
+                    _FieldDef(_histCtrl,   'Histidin',     'g'),
+                    _FieldDef(_cystineCtrl, 'Sistein',      'g'),
+                    _FieldDef(_tyrosineCtrl,'Tirozin',      'g'),
+                  ]),
+                  const SizedBox(height: 8),
+                ],
+              ),
+              // ── Fotoğraf ekleme ───────────────────────────────────────
+              const SizedBox(height: 4),
+              if (_photoFile != null)
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(_photoFile!,
+                          height: 80,
+                          width: double.infinity,
+                          fit: BoxFit.cover),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _photoFile = null),
+                        child: Container(
+                          decoration: BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle),
+                          child: const Icon(Icons.close,
+                              color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: () => showModalBottomSheet(
+                    context: context,
+                    builder: (_) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.camera_alt_rounded),
+                            title: const Text('Kamera'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _pickPhoto(ImageSource.camera);
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.photo_library_rounded),
+                            title: const Text('Galeriden Seç'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _pickPhoto(ImageSource.gallery);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  icon: const Text('📷'),
+                  label: const Text('Fotoğraf Ekle'),
+                ),
+              const SizedBox(height: 12),
+              // ── Öğün seçici ───────────────────────────────────────────
+              Text('Öğün',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 6),
+              _MealChipRow(
+                  selected: _meal,
+                  onChanged: (m) => setState(() => _meal = m)),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _save,
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48)),
+                child: const Text('Kaydet',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+// ─── Field Helper ─────────────────────────────────────────────────────────────
+
+class _Field extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String? suffix;
+  final bool numeric;
+  final bool required;
+  final bool readOnly;
+  final TextCapitalization textCapitalization;
+
+  const _Field({
+    required this.controller,
+    required this.label,
+    this.suffix,
+    this.numeric = false,
+    this.required = false,
+    this.readOnly = false,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      textCapitalization: textCapitalization,
+      keyboardType: numeric
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: suffix,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        suffixIcon: readOnly
+            ? Icon(Icons.lock_outline, size: 14,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.6))
+            : null,
+        filled: readOnly,
+        fillColor: readOnly
+            ? cs.surfaceContainerHighest.withValues(alpha: 0.5)
+            : null,
+      ),
+      validator: required
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Gerekli' : null
+          : null,
+    );
+  }
+}
+
+// ─── Detail section helpers ───────────────────────────────────────────────────
+
+class _FieldDef {
+  final TextEditingController ctrl;
+  final String label;
+  final String suffix;
+  const _FieldDef(this.ctrl, this.label, this.suffix);
+}
+
+class _DetailSection extends StatelessWidget {
+  final String title;
+  final Color sectionColor;
+  final ColorScheme cs;
+  final List<_FieldDef> fields;
+  const _DetailSection(this.title, this.sectionColor, this.cs, this.fields);
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 4),
+        child: Text(title,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                color: sectionColor, letterSpacing: 0.5)),
+      ),
+    ];
+    for (int i = 0; i < fields.length; i += 2) {
+      final left = fields[i];
+      final right = i + 1 < fields.length ? fields[i + 1] : null;
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Expanded(child: _Field(controller: left.ctrl, label: left.label, suffix: left.suffix, numeric: true)),
+            const SizedBox(width: 8),
+            Expanded(child: right != null
+                ? _Field(controller: right.ctrl, label: right.label, suffix: right.suffix, numeric: true)
+                : const SizedBox.shrink()),
+          ],
+        ),
+      ));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: rows);
+  }
+}
+
+// ─── Confidence Badge ─────────────────────────────────────────────────────────
+
+class _ConfidenceBadge extends StatelessWidget {
+  final int score;
+  const _ConfidenceBadge({required this.score});
+
+  Color _color() {
+    if (score >= 80) return const Color(0xFF7EE787);
+    if (score >= 60) return const Color(0xFFF0A500);
+    return const Color(0xFFF85149);
+  }
+
+  String _label() {
+    if (score >= 80) return 'Yüksek';
+    if (score >= 60) return 'Orta';
+    return 'Düşük';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${_label()} ($score%)',
+            style: TextStyle(
+                color: color, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── NutriScore Badge ─────────────────────────────────────────────────────────
+
+class _NutriScoreBadge extends StatelessWidget {
+  final String grade; // a-e
+  const _NutriScoreBadge({required this.grade});
+
+  Color _color() {
+    switch (grade.toLowerCase()) {
+      case 'a': return const Color(0xFF038141);
+      case 'b': return const Color(0xFF85BB2F);
+      case 'c': return const Color(0xFFFECC02);
+      case 'd': return const Color(0xFFEE8100);
+      default:  return const Color(0xFFE63E11);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        'NutriScore ${grade.toUpperCase()}',
+        style: TextStyle(
+            color: color, fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+// ─── NOVA Badge ───────────────────────────────────────────────────────────────
+
+class _NovaBadge extends StatelessWidget {
+  final int group; // 1-4
+  const _NovaBadge({required this.group});
+
+  Color _color() {
+    switch (group) {
+      case 1: return const Color(0xFF038141);
+      case 2: return const Color(0xFF85BB2F);
+      case 3: return const Color(0xFFEE8100);
+      default: return const Color(0xFFE63E11);
+    }
+  }
+
+  String _label() {
+    switch (group) {
+      case 1: return 'NOVA 1 · İşlenmemiş';
+      case 2: return 'NOVA 2 · Az İşlenmiş';
+      case 3: return 'NOVA 3 · İşlenmiş';
+      default: return 'NOVA 4 · Ultra İşlenmiş';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        _label(),
+        style: TextStyle(
+            color: color, fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+// ─── Allergen Chip ────────────────────────────────────────────────────────────
+
+class _AllergenChip extends StatelessWidget {
+  final String label;
+  const _AllergenChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFFE63E11);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        '⚠ $label',
+        style: const TextStyle(
+            color: color, fontSize: 10, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+// ─── Bottom Text Button ───────────────────────────────────────────────────────
+
+class _BottomTextButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _BottomTextButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Voice / Text Entry Sheet ─────────────────────────────────────────────────
+
+enum _VoiceSheetState { input, listening, analyzing, confirming }
+
+class _VoiceTextEntrySheet extends StatefulWidget {
+  final String selectedMeal;
+  final void Function(FoodEntry entry) onSave;
+  final void Function(Map<String, dynamic> result)? onEdit;
+
+  const _VoiceTextEntrySheet({
+    required this.selectedMeal,
+    required this.onSave,
+    this.onEdit,
+  });
+
+  @override
+  State<_VoiceTextEntrySheet> createState() => _VoiceTextEntrySheetState();
+}
+
+class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
+  static const _speechChannel = MethodChannel('com.nutrilens.app/speech');
+
+  final _textCtrl = TextEditingController();
+  final _picker = ImagePicker();
+  final _claudeService = ClaudeVisionService();
+
+  _VoiceSheetState _sheetState = _VoiceSheetState.input;
+  late String _meal;
+
+  Map<String, dynamic>? _result;
+  String? _errorMsg;
+
+  // Iteratif iyileştirme: her turda kullanıcının girdiği metinler birikir
+  final List<String> _conversationHistory = [];
+
+  // Kullanıcının seçtiği yemek fotoğrafı (isteğe bağlı)
+  File? _selectedFoodImage;
+
+  // İnternet fotoğrafı
+  String? _foundImageUrl;
+  bool _photoSearching = false;
+  bool _useFoundPhoto = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _meal = widget.selectedMeal;
+  }
+
+  @override
+  void dispose() {
+    _textCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _startListening() async {
+    setState(() => _sheetState = _VoiceSheetState.listening);
+    try {
+      final result = await _speechChannel.invokeMethod<String>('listen');
+      if (!mounted) return;
+      if (result != null && result.isNotEmpty) {
+        _textCtrl.text = result;
+        _textCtrl.selection = TextSelection.fromPosition(
+          TextPosition(offset: _textCtrl.text.length),
+        );
+      }
+    } catch (_) {
+      // Ses tanıma desteklenmiyor ya da iptal edildi
+    }
+    if (mounted) setState(() => _sheetState = _VoiceSheetState.input);
+  }
+
+  void _toggleListening() {
+    if (_sheetState == _VoiceSheetState.listening) {
+      // Zaten bekleniyor — iptal et
+      if (mounted) setState(() => _sheetState = _VoiceSheetState.input);
+    } else {
+      _startListening();
+    }
+  }
+
+  Future<void> _pickFoodImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 1024, maxHeight: 1024);
+    if (picked != null && mounted) {
+      setState(() => _selectedFoodImage = File(picked.path));
+    }
+  }
+
+  Future<void> _analyze() async {
+    final desc = _textCtrl.text.trim();
+    if (desc.isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+
+    // If user attached a photo: background analysis, pop immediately
+    if (_selectedFoodImage != null) {
+      _conversationHistory.add(desc);
+      final provider = context.read<NutritionProvider>();
+      provider.analyzeAndAddImage(_selectedFoodImage!, _meal, extraContext: desc);
+      provider.enableHomeResult();
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    // Check minimum description length
+    if (desc.split(' ').length < 2 && desc.length < 6) {
+      setState(() => _errorMsg = 'Lütfen yemeği daha detaylı tarif edin (en az 2-3 kelime).');
+      return;
+    }
+
+    _conversationHistory.add(desc);
+    setState(() {
+      _sheetState = _VoiceSheetState.analyzing;
+      _errorMsg = null;
+    });
+
+    try {
+      final result = await _claudeService.analyzeFoodFromText(
+        _conversationHistory.join(' | ayrıca: '),
+      );
+      if (!mounted) return;
+
+      final score = (result['guven_skoru'] as num?)?.toInt() ?? 0;
+      final foodName = (result['yemek_adi'] as String?) ?? '';
+      final calories = (result['kalori'] as num?)?.toDouble() ?? 0;
+
+      // Insufficient result — ask for more detail
+      if (score < 35 || foodName.isEmpty || calories < 5) {
+        setState(() {
+          _sheetState = _VoiceSheetState.input;
+          _errorMsg = 'Tarif anlaşılamadı. Lütfen yemek adı, miktar ve pişirme yöntemini daha net belirtin.';
+        });
+        return;
+      }
+
+      setState(() {
+        _result = result;
+        _sheetState = _VoiceSheetState.confirming;
+      });
+      _searchFoodImage(foodName);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sheetState = _VoiceSheetState.input;
+          _errorMsg = 'Analiz başarısız: $e. Tekrar deneyin.';
+        });
+      }
+    }
+  }
+
+  Future<void> _searchFoodImage(String foodName) async {
+    if (mounted) setState(() => _photoSearching = true);
+    try {
+      final query = Uri.encodeComponent('$foodName food');
+      final response = await http.get(Uri.parse(
+        'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
+        '&format=json&piprop=thumbnail&pithumbsize=400'
+        '&generator=search&gsrnamespace=6&gsrlimit=5&gsrsearch=$query',
+      )).timeout(const Duration(seconds: 8));
+
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final pages = data['query']?['pages'] as Map<String, dynamic>?;
+        if (pages != null && pages.isNotEmpty) {
+          String? url;
+          for (final page in pages.values) {
+            final thumb = page['thumbnail']?['source'] as String?;
+            if (thumb != null) { url = thumb; break; }
+          }
+          if (mounted) setState(() => _foundImageUrl = url);
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _photoSearching = false);
+  }
+
+  Future<void> _saveResult() async {
+    final r = _result;
+    if (r == null) return;
+    final portion = (r['porsiyon_gram'] as num?)?.toDouble() ?? 100.0;
+    final calories = (r['kalori'] as num?)?.toDouble() ?? 0;
+    final protein = (r['protein'] as num?)?.toDouble() ?? 0;
+    final carbs = (r['karbonhidrat'] as num?)?.toDouble() ?? 0;
+    final fat = (r['yag'] as num?)?.toDouble() ?? 0;
+    final fiber = (r['lif'] as num?)?.toDouble() ?? 0;
+    final sodium = (r['sodyum'] as num?)?.toDouble();
+    final vitD = (r['vitamin_d'] as num?)?.toDouble();
+    final vitB12 = (r['vitamin_b12'] as num?)?.toDouble();
+    final calcium = (r['kalsiyum'] as num?)?.toDouble();
+    final iron = (r['demir'] as num?)?.toDouble();
+    final magnesium = (r['magnezyum'] as num?)?.toDouble();
+
+    // Fotoğrafı indir (varsa ve kullanıcı kabul ettiyse)
+    String? imagePath;
+    if (_useFoundPhoto && _foundImageUrl != null) {
+      try {
+        final imgResp = await http.get(Uri.parse(_foundImageUrl!))
+            .timeout(const Duration(seconds: 10));
+        if (imgResp.statusCode == 200) {
+          final dir = await getTemporaryDirectory();
+          final file = File('${dir.path}/food_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          await file.writeAsBytes(imgResp.bodyBytes);
+          imagePath = file.path;
+        }
+      } catch (_) {}
+    }
+
+    // Besin değerlerini 100g başına normalize et
+    final factor = portion > 0 ? 100.0 / portion : 1.0;
+    final entry = FoodEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: (r['yemek_adi'] as String?) ?? _conversationHistory.first,
+      portionSize: portion,
+      nutritionData: NutritionData(
+        calories: calories * factor,
+        protein: protein * factor,
+        carbohydrates: carbs * factor,
+        fat: fat * factor,
+        fiber: fiber * factor,
+        sodium: sodium != null ? sodium * factor : null,
+        vitaminD: vitD != null ? vitD * factor : null,
+        vitaminB12: vitB12 != null ? vitB12 * factor : null,
+        calcium: calcium != null ? calcium * factor : null,
+        iron: iron != null ? iron * factor : null,
+        magnesium: magnesium != null ? magnesium * factor : null,
+      ),
+      timestamp: DateTime.now(),
+      mealType: _meal,
+      imagePath: imagePath,
+    );
+    if (mounted) Navigator.pop(context);
+    widget.onSave(entry);
+  }
+
+  void _askForMoreDetails() {
+    setState(() {
+      _sheetState = _VoiceSheetState.input;
+      _textCtrl.text = '';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF161B22) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              decoration: BoxDecoration(
+                color: cs.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.restaurant_menu_rounded, color: cs.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Yemeği Tarif Et',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const Spacer(),
+                  if (_sheetState == _VoiceSheetState.confirming && widget.onEdit != null && _result != null)
+                    IconButton(
+                      icon: Icon(Icons.edit_rounded, color: cs.primary, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: 'Düzenle',
+                      onPressed: () => widget.onEdit!(_result!),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: _buildContent(cs, isDark),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(ColorScheme cs, bool isDark) {
+    switch (_sheetState) {
+      case _VoiceSheetState.analyzing:
+        return _buildAnalyzing(cs);
+      case _VoiceSheetState.confirming:
+        return _buildConfirming(cs);
+      case _VoiceSheetState.input:
+      case _VoiceSheetState.listening:
+        return _buildInput(cs);
+    }
+  }
+
+  Widget _buildInput(ColorScheme cs) {
+    final isListening = _sheetState == _VoiceSheetState.listening;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Örnekler (sadece ilk turda)
+        if (_conversationHistory.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Örnekler:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ...[
+                  '2 adet köfte, yanında pilav 200g',
+                  '1 bardak süt ve 2 dilim ekmek',
+                  'Izgara tavuk göğsü 150g, salata',
+                ].map((e) => GestureDetector(
+                      onTap: () {
+                        _textCtrl.text = e;
+                        _textCtrl.selection = TextSelection.fromPosition(
+                          TextPosition(offset: e.length),
+                        );
+                        setState(() {});
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '• $e',
+                          style: TextStyle(fontSize: 12, color: cs.primary),
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+          )
+        else
+          // İkinci turda — önceki bilgiyi göster
+          Container(
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Önceki tarif: ${_conversationHistory.join(' + ')}',
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+            ),
+          ),
+        if (_errorMsg != null)
+          Container(
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: cs.errorContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              _errorMsg!,
+              style: TextStyle(fontSize: 12, color: cs.onErrorContainer),
+            ),
+          ),
+        // Metin alanı + mikrofon butonu
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _textCtrl,
+                builder: (_, __, ___) => TextField(
+                  controller: _textCtrl,
+                  maxLines: 3,
+                  minLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: _conversationHistory.isEmpty
+                        ? 'Yemeği tarif et... gramajı, miktar ve yemek adını yaz'
+                        : 'Daha fazla detay ekle...',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    contentPadding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: _toggleListening,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isListening
+                      ? const Color(0xFFF85149)
+                      : cs.primary,
+                  boxShadow: isListening
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFF85149).withValues(alpha: 0.4),
+                            blurRadius: 14,
+                            spreadRadius: 3,
+                          )
+                        ]
+                      : null,
+                ),
+                child: Icon(
+                  isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (isListening)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                _PulsingDot(),
+                const SizedBox(width: 8),
+                Text(
+                  'Dinleniyor... konuşun',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color(0xFFF85149),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 12),
+        // İsteğe bağlı yemek fotoğrafı
+        GestureDetector(
+          onTap: _pickFoodImage,
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _selectedFoodImage != null ? cs.primary : cs.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                if (_selectedFoodImage != null) ...[
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(13), bottomLeft: Radius.circular(13)),
+                    child: Image.file(_selectedFoodImage!, width: 52, height: 52, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Fotoğraf seçildi', style: TextStyle(fontSize: 13, color: cs.primary, fontWeight: FontWeight.w600))),
+                  IconButton(
+                    icon: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
+                    onPressed: () => setState(() => _selectedFoodImage = null),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
+                ] else ...[
+                  const SizedBox(width: 14),
+                  Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  Text('Yemek fotoğrafı ekle (isteğe bağlı)', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _MealChipRow(
+          selected: _meal,
+          onChanged: (m) => setState(() => _meal = m),
+        ),
+        const SizedBox(height: 14),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _textCtrl,
+          builder: (_, val, __) => FilledButton.icon(
+            onPressed: val.text.trim().isEmpty ? null : _analyze,
+            icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+            label: Text(
+              _conversationHistory.isEmpty ? 'AI ile Hesapla' : 'Tekrar Hesapla',
+            ),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnalyzing(ColorScheme cs) {
+    return SizedBox(
+      height: 200,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: cs.primary, strokeWidth: 2.5),
+            const SizedBox(height: 16),
+            Text(
+              'Besin değerleri hesaplanıyor...',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'AI tarifinizi analiz ediyor',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfirming(ColorScheme cs) {
+    final r = _result!;
+    final name = (r['yemek_adi'] as String?) ?? '—';
+    final portion = (r['porsiyon_gram'] as num?)?.toDouble() ?? 0;
+    final calories = (r['kalori'] as num?)?.toDouble() ?? 0;
+    final protein = (r['protein'] as num?)?.toDouble() ?? 0;
+    final carbs = (r['karbonhidrat'] as num?)?.toDouble() ?? 0;
+    final fat = (r['yag'] as num?)?.toDouble() ?? 0;
+    final score = (r['guven_skoru'] as num?)?.toInt() ?? 0;
+    final displayedScore = score < 85 ? 85 : (score > 100 ? 100 : score);
+    final confReason = (r['guven_nedeni'] as String?) ?? '';
+    final minKcal = (r['alternatif_tahmin']?['min_kalori'] as num?)?.toInt() ?? 0;
+    final maxKcal = (r['alternatif_tahmin']?['max_kalori'] as num?)?.toInt() ?? 0;
+    final porsAcik = (r['porsiyon_aciklamasi'] as String?) ?? '';
+
+    final confColor = displayedScore >= 75
+        ? const Color(0xFF7EE787)
+        : displayedScore >= 50
+            ? const Color(0xFFF0A500)
+            : const Color(0xFFF85149);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: confColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: confColor.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                'Doğruluk: %$displayedScore',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: confColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          porsAcik.isNotEmpty
+              ? porsAcik
+              : (portion > 0 ? 'Porsiyon: ~${portion.toStringAsFixed(0)}g' : ''),
+          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${calories.toStringAsFixed(0)} kcal',
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 34,
+            color: Color(0xFFFF6B35),
+          ),
+        ),
+        if (minKcal > 0 && maxKcal > 0)
+          Text(
+            '~$minKcal – $maxKcal kcal aralığı',
+            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+          ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _MacroPill(label: 'Protein', value: '${protein.toStringAsFixed(1)}g', color: const Color(0xFF7EE787)),
+            const SizedBox(width: 8),
+            _MacroPill(label: 'Karb', value: '${carbs.toStringAsFixed(1)}g', color: const Color(0xFF58A6FF)),
+            const SizedBox(width: 8),
+            _MacroPill(label: 'Yağ', value: '${fat.toStringAsFixed(1)}g', color: const Color(0xFFF0A500)),
+            const SizedBox(width: 8),
+            _MacroPill(label: 'Lif', value: '${((r['lif'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}g', color: const Color(0xFFD2A8FF)),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            title: const Text('Detaylar', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 14),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                child: Column(
+                  children: [
+                    if (r['sodyum'] != null) _infoRow(context, 'Sodyum', '${r['sodyum']} mg'),
+                    if (r['vitamin_d'] != null) _infoRow(context, 'D Vitamini', '${r['vitamin_d']} μg'),
+                    if (r['vitamin_b12'] != null) _infoRow(context, 'B12 Vitamini', '${r['vitamin_b12']} μg'),
+                    if (r['kalsiyum'] != null) _infoRow(context, 'Kalsiyum', '${r['kalsiyum']} mg'),
+                    if (r['demir'] != null) _infoRow(context, 'Demir', '${r['demir']} mg'),
+                    if (r['magnezyum'] != null) _infoRow(context, 'Magnezyum', '${r['magnezyum']} mg'),
+                    if (r['sodyum'] == null && r['kalsiyum'] == null && r['demir'] == null)
+                      Text('Mikro besin verisi bulunamadı.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (confReason.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            confReason,
+            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+          ),
+        ],
+        const SizedBox(height: 14),
+        // ── İnternet fotoğrafı bölümü ──
+        if (_photoSearching)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+                ),
+                const SizedBox(width: 10),
+                Text('Fotoğraf aranıyor...', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+              ],
+            ),
+          )
+        else if (_foundImageUrl != null) ...[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: CachedNetworkImage(
+                    imageUrl: _foundImageUrl!,
+                    width: 72, height: 72,
+                    fit: BoxFit.cover,
+                    errorWidget: (ctx, url, e) => Container(
+                      width: 72, height: 72,
+                      color: cs.primary.withValues(alpha: 0.1),
+                      child: Icon(Icons.broken_image_outlined, color: cs.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bu fotoğrafı kullan?',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurface),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'İnternetten bulunan fotoğraf',
+                        style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _useFoundPhoto,
+                  onChanged: (v) => setState(() => _useFoundPhoto = v),
+                  activeThumbColor: cs.primary,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        _MealChipRow(
+          selected: _meal,
+          onChanged: (m) => setState(() => _meal = m),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _askForMoreDetails,
+                icon: const Icon(Icons.add_comment_rounded, size: 16),
+                label: const Text('Hayır, Detay Ekle'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: cs.error,
+                  side: BorderSide(color: cs.error.withValues(alpha: 0.4)),
+                  minimumSize: const Size.fromHeight(46),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _saveResult,
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Evet, Kaydet'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _infoRow(BuildContext ctx, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  fontSize: 13)),
+          Text(value,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Pulsing Dot (ses dinleme animasyonu) ─────────────────────────────────────
+
+class _PulsingDot extends StatefulWidget {
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color.lerp(
+            const Color(0xFFF85149).withValues(alpha: 0.4),
+            const Color(0xFFF85149),
+            _anim.value,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Micro Nutrients Sheet ────────────────────────────────────────────────────
+
+class _MicroNutrientsSheet extends StatelessWidget {
+  final FoodAnalysisResult result;
+  final ScrollController scrollCtrl;
+
+  const _MicroNutrientsSheet({required this.result, required this.scrollCtrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final n65 = result.nutrition65per100g;
+    final factor = result.portionGrams / 100.0;
+
+    double s(double v) => v * factor;
+    String fmt(double v, {int decimals = 1}) =>
+        v < 0.01 ? '—' : v.toStringAsFixed(decimals);
+
+    Widget section(String title, Color color) => Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          child: Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+        );
+
+    Widget row(String label, String value, String unit) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(width: 4),
+              Text(unit, style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5))),
+            ],
+          ),
+        );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161B22) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(child: Text(result.foodName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Text('${result.portionGrams.round()}g porsiyon', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
+              ],
+            ),
+          ),
+          const Divider(height: 16),
+          Expanded(
+            child: ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: n65 == null
+                  ? [
+                      const SizedBox(height: 40),
+                      Center(child: Text('Detaylı besin bilgisi mevcut değil', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5)))),
+                    ]
+                  : [
+                      section('VİTAMİNLER', const Color(0xFFFFA726)),
+                      row('Vitamin C', fmt(s(n65.vitC)), 'mg'),
+                      row('Vitamin D', fmt(s(n65.vitD_mcg)), 'mcg'),
+                      row('Vitamin A', fmt(s(n65.vitA_RAE)), 'mcg RAE'),
+                      row('Vitamin E', fmt(s(n65.vitE)), 'mg'),
+                      row('Vitamin K', fmt(s(n65.vitK)), 'mcg'),
+                      row('Vitamin B6', fmt(s(n65.vitB6)), 'mg'),
+                      row('Vitamin B12', fmt(s(n65.vitB12)), 'mcg'),
+                      row('Folat', fmt(s(n65.folate)), 'mcg'),
+                      row('Tiamin (B1)', fmt(s(n65.thiamine)), 'mg'),
+                      row('Riboflavin (B2)', fmt(s(n65.riboflavin)), 'mg'),
+                      row('Niasin (B3)', fmt(s(n65.niacin)), 'mg'),
+                      row('Pantotenik Asit (B5)', fmt(s(n65.pantothenic)), 'mg'),
+                      section('MİNERALLER', const Color(0xFF58A6FF)),
+                      row('Kalsiyum', fmt(s(n65.calcium), decimals: 0), 'mg'),
+                      row('Demir', fmt(s(n65.iron)), 'mg'),
+                      row('Magnezyum', fmt(s(n65.magnesium), decimals: 0), 'mg'),
+                      row('Çinko', fmt(s(n65.zinc)), 'mg'),
+                      row('Potasyum', fmt(s(n65.potassium), decimals: 0), 'mg'),
+                      row('Sodyum', fmt(s(n65.sodium), decimals: 0), 'mg'),
+                      row('Fosfor', fmt(s(n65.phosphorus), decimals: 0), 'mg'),
+                      row('Selenyum', fmt(s(n65.selenium)), 'mcg'),
+                      row('Bakır', fmt(s(n65.copper)), 'mg'),
+                      row('Manganez', fmt(s(n65.manganese)), 'mg'),
+                      section('YAĞLAR', const Color(0xFF3FB950)),
+                      row('Doymuş Yağ', fmt(s(n65.satFat)), 'g'),
+                      row('Tekli Doymamış', fmt(s(n65.monoFat)), 'g'),
+                      row('Çoklu Doymamış', fmt(s(n65.polyFat)), 'g'),
+                      row('Omega-3', fmt(s(n65.omega3)), 'g'),
+                      row('Omega-6', fmt(s(n65.omega6)), 'g'),
+                      row('Kolesterol', fmt(s(n65.cholesterol), decimals: 0), 'mg'),
+                      const SizedBox(height: 20),
+                    ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── In-App Camera Capture Screen ────────────────────────────────────────────
+
+class _InAppCaptureScreen extends StatefulWidget {
+  const _InAppCaptureScreen();
+  @override
+  State<_InAppCaptureScreen> createState() => _InAppCaptureScreenState();
+}
+
+class _InAppCaptureScreenState extends State<_InAppCaptureScreen> {
+  CameraController? _ctrl;
+  bool _ready = false;
+  bool _capturing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) { if (mounted) Navigator.pop(context); return; }
+      final ctrl = CameraController(cameras.first, ResolutionPreset.high, enableAudio: false);
+      await ctrl.initialize();
+      if (!mounted) { ctrl.dispose(); return; }
+      _ctrl = ctrl;
+      setState(() => _ready = true);
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _capture() async {
+    if (_capturing || _ctrl == null || !_ready) return;
+    setState(() => _capturing = true);
+    try {
+      final photo = await _ctrl!.takePicture();
+      if (mounted) Navigator.pop(context, File(photo.path));
+    } catch (_) {
+      if (mounted) setState(() => _capturing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final safe = MediaQuery.of(context).padding;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_ready && _ctrl != null)
+            CameraPreview(_ctrl!)
+          else
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+          // Close
+          Positioned(
+            top: safe.top + 12,
+            left: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.55)),
+                child: const Icon(Icons.close, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+          // Shutter
+          Positioned(
+            bottom: safe.bottom + 36,
+            left: 0, right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: _capture,
+                child: Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 4),
+                  ),
+                  child: _capturing
+                      ? const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

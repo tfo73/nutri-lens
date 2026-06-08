@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "808142209819",
+    "project_id": "nutrilens-app-ae2ab",
+    "storage_bucket": "nutrilens-app-ae2ab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:808142209819:android:9e27aa6353807197a8c9be",
+        "android_client_info": {
+          "package_name": "com.nutrilens.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "808142209819-hppu90dfelcvo4bejjsptf39vmalkltd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nutrilens.app",
+            "certificate_hash": "6c3b0767266c5fb0b72d44c66aaff4a2aa948c4e"
+          }
+        },
+        {
+          "client_id": "808142209819-v49fjgjon70egf6j2mc9rov7mcfn8ang.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbYOIiRU2Hr6NLAWUfJZcAhxq5Etu4Bxk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "808142209819-v49fjgjon70egf6j2mc9rov7mcfn8ang.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

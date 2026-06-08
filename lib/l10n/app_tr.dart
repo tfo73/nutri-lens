@@ -23,6 +23,7 @@ class AppTr {
     'Sil': 'Sil',
     'Protein': 'Protein',
     'Karbonhidrat': 'Karbonhidrat',
+    'Karbonhidrat Kaldı': 'Karbonhidrat Kaldı',
     'Yağ': 'Yağ',
     'Kalori': 'Kalori',
     'Beslenme Önerileri': 'Beslenme Önerileri',

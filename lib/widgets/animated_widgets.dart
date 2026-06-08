@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 // ─── Fade + Slide from below ───────────────────────────────────────────────────
@@ -232,4 +233,200 @@ class ShimmerCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Scanner Animation Effect ──────────────────────────────────────────────────
+
+class ScannerEffect extends StatefulWidget {
+  final Widget child;
+  final bool isScanning;
+  final Color scannerColor;
+
+  const ScannerEffect({
+    super.key,
+    required this.child,
+    this.isScanning = true,
+    this.scannerColor = const Color(0xFF007AFF), // Apple Blue / LensEat Brand Blue
+  });
+
+  @override
+  State<ScannerEffect> createState() => _ScannerEffectState();
+}
+
+class _ScannerEffectState extends State<ScannerEffect>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4000),
+    );
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutSine),
+    );
+
+    if (widget.isScanning) {
+      _ctrl.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(ScannerEffect oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isScanning != oldWidget.isScanning) {
+      if (widget.isScanning) {
+        _ctrl.repeat(reverse: true);
+      } else {
+        _ctrl.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+        if (widget.isScanning)
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final top = _animation.value * constraints.maxHeight;
+                  return Stack(
+                    children: [
+                      // Scanner Line
+                      Positioned(
+                        top: top - 1,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 2,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.scannerColor.withValues(alpha: 0.8),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: widget.scannerColor.withValues(alpha: 0.5),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.scannerColor.withValues(alpha: 0.01),
+                                widget.scannerColor,
+                                widget.scannerColor.withValues(alpha: 0.01),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Scanner Glow Gradient (Trailing)
+                      Positioned(
+                        top: _ctrl.status == AnimationStatus.forward 
+                            ? top - 80 
+                            : top,
+                        left: 0, 
+                        right: 0,
+                        height: 80,
+                        child: Opacity(
+                          opacity: 0.12,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: _ctrl.status == AnimationStatus.forward 
+                                    ? Alignment.bottomCenter 
+                                    : Alignment.topCenter,
+                                end: _ctrl.status == AnimationStatus.forward 
+                                    ? Alignment.topCenter 
+                                    : Alignment.bottomCenter,
+                                colors: [
+                                  widget.scannerColor,
+                                  widget.scannerColor.withValues(alpha: 0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+// ─── Border Trace Animation Painter ──────────────────────────────────────────
+
+class BorderTracePainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double borderRadius;
+  final double strokeWidth;
+
+  BorderTracePainter({
+    required this.progress,
+    required this.color,
+    required this.borderRadius,
+    this.strokeWidth = 2.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final startX = size.width / 2;
+    final path = Path();
+    path.moveTo(startX, 0);
+    path.lineTo(size.width - borderRadius, 0);
+    path.arcToPoint(Offset(size.width, borderRadius), radius: Radius.circular(borderRadius));
+    path.lineTo(size.width, size.height - borderRadius);
+    path.arcToPoint(Offset(size.width - borderRadius, size.height), radius: Radius.circular(borderRadius));
+    path.lineTo(borderRadius, size.height);
+    path.arcToPoint(Offset(0, size.height - borderRadius), radius: Radius.circular(borderRadius));
+    path.lineTo(0, borderRadius);
+    path.arcToPoint(Offset(borderRadius, 0), radius: Radius.circular(borderRadius));
+    path.lineTo(startX, 0);
+
+    final metrics = path.computeMetrics().first;
+    final totalLength = metrics.length;
+    final segmentLength = totalLength * 0.25; // 25% of the total perimeter
+    final currentOffset = totalLength * progress;
+
+    Path extract;
+    if (currentOffset + segmentLength <= totalLength) {
+      extract = metrics.extractPath(currentOffset, currentOffset + segmentLength);
+    } else {
+      extract = metrics.extractPath(currentOffset, totalLength);
+      extract.addPath(metrics.extractPath(0, (currentOffset + segmentLength) % totalLength), Offset.zero);
+    }
+    
+    canvas.drawPath(extract, paint);
+  }
+
+  @override
+  bool shouldRepaint(BorderTracePainter oldDelegate) => oldDelegate.progress != progress;
 }

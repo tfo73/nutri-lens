@@ -7,14 +7,14 @@ class ProfileSwitcherButton extends StatelessWidget {
   const ProfileSwitcherButton({super.key});
 
   static const List<Color> _avatarColors = [
-    Color(0xFF4CAF50),
-    Color(0xFF2196F3),
+    Color(0xFF7EE787),
+    Color(0xFF58A6FF),
     Color(0xFFE91E63),
-    Color(0xFFFF9800),
+    Color(0xFFF0A500),
     Color(0xFF9C27B0),
     Color(0xFF00BCD4),
-    Color(0xFFFF5722),
-    Color(0xFF607D8B),
+    Color(0xFFF85149),
+    Color(0xFF8B949E),
   ];
 
   Color _colorForId(String id) {
@@ -117,7 +117,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Image.asset(
-                      'assets/icon/icon.png',
+                      'assets/icon/icon.webp',
                       width: 24,
                       height: 24,
                       fit: BoxFit.cover,
@@ -125,7 +125,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'NutriLens',
+                    'LensEat',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -177,13 +177,13 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Color(0xFF4CAF50),
+                backgroundColor: Color(0xFF58A6FF),
                 child: Icon(Icons.add, color: Colors.white),
               ),
               title: const Text(
                 'Yeni Profil Ekle +',
                 style: TextStyle(
-                  color: Color(0xFF4CAF50),
+                  color: Color(0xFF58A6FF),
                   fontWeight: FontWeight.w600,
                 ),
               ),

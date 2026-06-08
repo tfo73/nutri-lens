@@ -323,23 +323,16 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               const SizedBox(height: 24),
               _buildBmiScale(context, bmi),
               const SizedBox(height: 24),
-              _buildCategoryTable(context, bmi),
-              const SizedBox(height: 20),
-              _buildCategoryDetail(context, bmi),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
+              if (bmi >= 18.5 && bmi < 25.0)
+                Text(
+                  '🎉 Tebrikler! BMI değeriniz normal aralıkta.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                child: Text(
-                  'Not: BMI kas kütlesini dikkate almaz, tek başına yeterli bir ölçüt değildir.',
-                  style:
-                      TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ),
               const SizedBox(height: 16),
             ],
           ),
@@ -410,109 +403,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-  Widget _buildCategoryTable(BuildContext context, double bmi) {
-    final rows = [
-      (Colors.blue, '< 18.5', 'Zayıf'),
-      (Colors.green, '18.5 – 24.9', 'Normal'),
-      (Colors.amber, '25.0 – 29.9', 'Fazla Kilolu'),
-      (Colors.red, '≥ 30.0', 'Obez'),
-    ];
-
-    return Table(
-      border: TableBorder.all(color: Colors.grey.shade200),
-      columnWidths: const {
-        0: FixedColumnWidth(16),
-        1: FlexColumnWidth(2),
-        2: FlexColumnWidth(3),
-      },
-      children: [
-        TableRow(
-          decoration: BoxDecoration(color: Colors.grey.shade100),
-          children: [
-            const SizedBox.shrink(),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text('BMI',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text('Kategori',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-        ...rows.map((r) {
-          final isCurrentCategory = _bmiCategory(bmi) == r.$3;
-          return TableRow(
-            decoration: isCurrentCategory
-                ? BoxDecoration(color: r.$1.withOpacity(0.1))
-                : null,
-            children: [
-              Container(
-                  width: 16,
-                  color: r.$1,
-                  child: const SizedBox(height: 36)),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(r.$2,
-                    style: TextStyle(
-                        fontWeight: isCurrentCategory
-                            ? FontWeight.bold
-                            : FontWeight.normal)),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(r.$3,
-                    style: TextStyle(
-                        fontWeight: isCurrentCategory
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isCurrentCategory ? r.$1 : null)),
-              ),
-            ],
-          );
-        }),
-      ],
-    );
-  }
-
   String _bmiCategory(double bmi) {
     if (bmi < 18.5) return 'Zayıf';
     if (bmi < 25) return 'Normal';
     if (bmi < 30) return 'Fazla Kilolu';
     return 'Obez';
-  }
-
-  Widget _buildCategoryDetail(BuildContext context, double bmi) {
-    String detail;
-    if (bmi < 18.5) {
-      detail =
-          'Vücut ağırlığınız sağlıklı aralığın altında. Kilo almanıza yardımcı olmak için dengeli ve kalori yoğun besinler tüketin. Bir beslenme uzmanına danışmanız önerilir.';
-    } else if (bmi < 25) {
-      detail =
-          'Tebrikler! BMI değeriniz sağlıklı aralıkta. Mevcut beslenme ve egzersiz alışkanlıklarınızı sürdürün.';
-    } else if (bmi < 30) {
-      detail =
-          'BMI değeriniz fazla kilolu aralığında. Düzenli egzersiz ve dengeli beslenme ile sağlıklı kiloya ulaşabilirsiniz. Günlük adım sayınızı artırın.';
-    } else {
-      detail =
-          'BMI değeriniz obezite aralığında. Sağlık riskleri açısından bir doktora başvurmanız önerilir. Düzenli egzersiz ve kalori kısıtlı beslenme planı hazırlanması faydalı olacaktır.';
-    }
-    return Card(
-      color: Theme.of(context).colorScheme.surfaceVariant,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(detail,
-            style: Theme.of(context).textTheme.bodyMedium),
-      ),
-    );
   }
 
   Widget _buildBmiCard(BuildContext context, UserProfile profile) {
@@ -969,7 +864,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   color: const Color(0xFF1E1E1E),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFF4CAF50).withOpacity(0.6),
+                    color: const Color(0xFF7EE787).withOpacity(0.6),
                   ),
                 ),
                 textStyle: const TextStyle(
@@ -1028,8 +923,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   Color _avatarColor(String name) {
     const colors = [
-      Color(0xFF4CAF50),
-      Color(0xFF2196F3),
+      Color(0xFF7EE787),
+      Color(0xFF58A6FF),
       Color(0xFFFF5722),
       Color(0xFF9C27B0),
       Color(0xFFFF9800),

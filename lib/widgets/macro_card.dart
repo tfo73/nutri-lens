@@ -76,7 +76,7 @@ class _MacroCardState extends State<MacroCard>
 
     return Card(
       elevation: 2,
-      shadowColor: widget.color.withOpacity(0.18),
+      shadowColor: widget.color.withValues(alpha: 0.18),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -88,7 +88,7 @@ class _MacroCardState extends State<MacroCard>
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: widget.color.withOpacity(0.15),
+                    color: widget.color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(widget.icon, size: 15, color: widget.color),
@@ -115,6 +115,7 @@ class _MacroCardState extends State<MacroCard>
                     : _anim.value;
                 final progress =
                     widget.goal > 0 ? (v / widget.goal).clamp(0.0, 1.0) : 0.0;
+                final isDone = widget.goal > 0 && widget.current >= widget.goal;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -125,12 +126,33 @@ class _MacroCardState extends State<MacroCard>
                             color: isOverGoal ? colorScheme.error : null,
                           ),
                     ),
-                    Text(
-                      '/ ${widget.goal.toStringAsFixed(0)}${widget.unit}',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                    if (isDone)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                    ),
+                          child: Text(
+                            '${widget.label} Tamamlandı!',
+                            style: TextStyle(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        '/ ${widget.goal.toStringAsFixed(0)}${widget.unit}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      ),
                     const SizedBox(height: 7),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
@@ -138,7 +160,7 @@ class _MacroCardState extends State<MacroCard>
                         value: progress,
                         minHeight: 6,
                         color: isOverGoal ? colorScheme.error : widget.color,
-                        backgroundColor: widget.color.withOpacity(0.12),
+                        backgroundColor: widget.color.withValues(alpha: 0.12),
                       ),
                     ),
                   ],

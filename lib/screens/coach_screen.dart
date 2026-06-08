@@ -1,100 +1,518 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/profile_provider.dart';
-
-class _ChatMessage {
-  final String id;
-  final String content;
-  final bool isUser;
-  final DateTime timestamp;
-
-  const _ChatMessage({
-    required this.id,
-    required this.content,
-    required this.isUser,
-    required this.timestamp,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'content': content,
-        'isUser': isUser,
-        'timestamp': timestamp.toIso8601String(),
-      };
-
-  factory _ChatMessage.fromJson(Map<String, dynamic> json) => _ChatMessage(
-        id: json['id'] as String,
-        content: json['content'] as String,
-        isUser: json['isUser'] as bool,
-        timestamp: DateTime.parse(json['timestamp'] as String),
-      );
-}
+import '../providers/coach_provider.dart';
+import '../providers/wellness_provider.dart';
+import '../services/config_service.dart';
+import '../widgets/wave_background.dart';
 
 class CoachScreen extends StatefulWidget {
   final bool isDialog;
-  const CoachScreen({super.key, this.isDialog = false});
+  final bool isEmbedded;
+  const CoachScreen({super.key, this.isDialog = false, this.isEmbedded = false});
 
   @override
   State<CoachScreen> createState() => _CoachScreenState();
+
+  // External access to history sheet
+  Future<void> showHistoryExternal(BuildContext context) async {
+    final coachProv = context.read<CoachProvider>();
+    final history = coachProv.history;
+    
+    if (history.isEmpty) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Geçmiş Yok'),
+            content: const Text('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    if (context.mounted) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) {
+          DateTime? selectedDate;
+          return StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              return DraggableScrollableSheet(
+                initialChildSize: 0.7,
+                minChildSize: 0.4,
+                maxChildSize: 0.95,
+                expand: false,
+                builder: (sheetCtx, ctrl) => Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF161B22) : Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40, height: 4,
+                        margin: const EdgeInsets.only(top: 12, bottom: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text('Geçmiş Konuşmalar',
+                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            ),
+                            if (selectedDate != null)
+                              TextButton(
+                                onPressed: () => setSheetState(() => selectedDate = null),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  minimumSize: Size.zero,
+                                ),
+                                child: Text(
+                                  '${selectedDate!.day}.${selectedDate!.month}.${selectedDate!.year} ✕',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.calendar_today_rounded,
+                                size: 20,
+                                color: selectedDate != null
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              onPressed: () async {
+                                final now = DateTime.now();
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate ?? now,
+                                  firstDate: DateTime(now.year - 2),
+                                  lastDate: now,
+                                );
+                                if (picked != null) {
+                                  setSheetState(() => selectedDate = picked);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: Consumer<CoachProvider>(
+                          builder: (ctx2, coach, _) {
+                            var sortedHistory = List<CoachSession>.from(coach.history);
+                            sortedHistory.sort((a, b) {
+                              if (a.isFavorite != b.isFavorite) return b.isFavorite ? 1 : -1;
+                              if (a.isFavorite) {
+                                final aFavTime = DateTime.tryParse(a.favoritedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                                final bFavTime = DateTime.tryParse(b.favoritedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                                return bFavTime.compareTo(aFavTime);
+                              } else {
+                                final aTime = DateTime.tryParse(a.archivedAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                                final bTime = DateTime.tryParse(b.archivedAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                                return bTime.compareTo(aTime);
+                              }
+                            });
+
+                            if (selectedDate != null) {
+                              sortedHistory = sortedHistory.where((s) {
+                                final d = DateTime.tryParse(s.archivedAt);
+                                return d != null &&
+                                    d.year == selectedDate!.year &&
+                                    d.month == selectedDate!.month &&
+                                    d.day == selectedDate!.day;
+                              }).toList();
+                            }
+
+                            if (sortedHistory.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  selectedDate != null
+                                      ? 'Bu tarihte konuşma yok'
+                                      : 'Geçmiş bulunamadı',
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                              );
+                            }
+
+                            return ListView.builder(
+                              controller: ctrl,
+                              itemCount: sortedHistory.length,
+                              itemBuilder: (_, i) {
+                                final session = sortedHistory[i];
+                                final archivedAt = DateTime.tryParse(session.archivedAt) ?? DateTime.now();
+                                final isFavorite = session.isFavorite;
+                                final msgs = session.messages;
+                                final preview = msgs.isNotEmpty
+                                    ? msgs.first.content.substring(0, msgs.first.content.length.clamp(0, 60))
+                                    : '';
+
+                                return Dismissible(
+                                  key: ValueKey('${session.archivedAt}-$isFavorite'),
+                                  direction: DismissDirection.horizontal,
+                                  background: Container(
+                                    alignment: Alignment.centerLeft,
+                                    padding: const EdgeInsets.only(left: 20),
+                                    color: Colors.amber,
+                                    child: Icon(isFavorite ? Icons.star_border : Icons.star, color: Colors.white),
+                                  ),
+                                  secondaryBackground: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20),
+                                    color: Colors.red,
+                                    child: const Icon(Icons.delete_outline, color: Colors.white),
+                                  ),
+                                  confirmDismiss: (direction) async {
+                                    if (direction == DismissDirection.startToEnd) {
+                                      coach.toggleFavorite(session.archivedAt);
+                                      return false;
+                                    }
+                                    return true;
+                                  },
+                                  onDismissed: (_) async {
+                                    coach.deleteSession(session.archivedAt);
+                                  },
+                                  child: ListTile(
+                                    leading: Icon(isFavorite ? Icons.star : Icons.chat_bubble_outline,
+                                        color: isFavorite ? Colors.amber : null),
+                                    title: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
+                                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    subtitle: Text('$preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    trailing: Text('${msgs.length} mesaj',
+                                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                                    onTap: () {
+                                      _showConversationDetailExternal(context, session);
+                                    },
+                                  ),
+                                );
+                              },
+                            );
+                          }
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    }
+  }
+
+  static void _showConversationDetailExternal(BuildContext context, CoachSession session) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final msgs = session.messages;
+    final archivedAt = DateTime.tryParse(session.archivedAt) ?? DateTime.now();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, dCtrl) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161B22) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 8), decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+              Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: dCtrl,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: msgs.length,
+                  itemBuilder: (_, i) {
+                    final m = msgs[i];
+                    final isUser = m.isUser;
+                    final content = m.content;
+                    return Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(ctx).size.width * 0.75),
+                        decoration: BoxDecoration(
+                          color: isUser
+                              ? Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.15)
+                              : Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: RichText(text: TextSpan(children: _parseMarkdownSpans(content, Theme.of(ctx).colorScheme.onSurface))),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _CoachScreenState extends State<CoachScreen> {
+class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
-  final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
+  List<String> _currentQuestions = [];
+  List<String> _symptomQuestions = [];
 
-  final String apiKey = const String.fromEnvironment('ANTHROPIC_API_KEY', defaultValue: '');
-  static const _maxMessages = 50;
+  String get _apiKey => ConfigService.anthropicKey;
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    WidgetsBinding.instance.addObserver(this);
+    _currentQuestions = _buildDynamicQuestions(context);
+    _symptomQuestions = _buildSymptomQuestions(context);
+    // Start at the bottom
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(force: true));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+      context.read<CoachProvider>().archiveSession();
+    }
+  }
+
+  @override
+  void deactivate() {
+    FocusScope.of(context).unfocus();
+    super.deactivate();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  String _storageKey(BuildContext context) {
-    final profileId = context.read<ProfileProvider>().activeProfileId;
-    return 'coach_messages_$profileId';
-  }
-
-  Future<void> _loadMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    final key = _storageKey(context);
-    final json = prefs.getString(key);
-    if (json != null) {
-      try {
-        final List<dynamic> decoded = jsonDecode(json) as List<dynamic>;
-        final msgs = decoded
-            .map((e) => _ChatMessage.fromJson(e as Map<String, dynamic>))
-            .toList();
-        setState(() => _messages.addAll(msgs));
-        _scrollToBottom();
-      } catch (_) {}
+  Future<void> _showHistory(BuildContext context) async {
+    final coachProv = context.read<CoachProvider>();
+    final history = coachProv.history;
+    
+    if (history.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Geçmiş Yok'),
+          content: const Text('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+          ],
+        ),
+      );
+      return;
     }
+    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (ctx, ctrl) => Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF161B22) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Geçmiş Konuşmalar',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Consumer<CoachProvider>(
+                    builder: (ctx, coach, _) {
+                      final sortedHistory = List<CoachSession>.from(coach.history);
+                      sortedHistory.sort((a, b) {
+                        if (a.isFavorite != b.isFavorite) return b.isFavorite ? 1 : -1;
+                        if (a.isFavorite) {
+                          final aFavTime = DateTime.tryParse(a.favoritedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          final bFavTime = DateTime.tryParse(b.favoritedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          return bFavTime.compareTo(aFavTime);
+                        } else {
+                          final aTime = DateTime.tryParse(a.archivedAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          final bTime = DateTime.tryParse(b.archivedAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          return bTime.compareTo(aTime);
+                        }
+                      });
+
+                      return ListView.builder(
+                        controller: ctrl,
+                        itemCount: sortedHistory.length,
+                        itemBuilder: (_, i) {
+                          final session = sortedHistory[i];
+                          final archivedAt = DateTime.tryParse(session.archivedAt) ?? DateTime.now();
+                          final isFavorite = session.isFavorite;
+                          final msgs = session.messages;
+                          final preview = msgs.isNotEmpty
+                              ? msgs.first.content.substring(0, msgs.first.content.length.clamp(0, 60))
+                              : '';
+                          
+                          return Dismissible(
+                            key: ValueKey('${session.archivedAt}-$isFavorite'),
+                            direction: DismissDirection.horizontal,
+                            background: Container(
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 20),
+                              color: Colors.amber,
+                              child: Icon(isFavorite ? Icons.star_border : Icons.star, color: Colors.white),
+                            ),
+                            secondaryBackground: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              color: Colors.red,
+                              child: const Icon(Icons.delete_outline, color: Colors.white),
+                            ),
+                            confirmDismiss: (direction) async {
+                              if (direction == DismissDirection.startToEnd) {
+                                coach.toggleFavorite(session.archivedAt);
+                                return false; 
+                              }
+                              return true; // Delete
+                            },
+                            onDismissed: (_) async {
+                              coach.deleteSession(session.archivedAt);
+                            },
+                            child: ListTile(
+                              leading: Icon(isFavorite ? Icons.star : Icons.chat_bubble_outline, 
+                                  color: isFavorite ? Colors.amber : null),
+                              title: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                              subtitle: Text('$preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              trailing: Text('${msgs.length} mesaj',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                              onTap: () => _showConversationDetail(context, session),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  Future<void> _saveMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    final key = _storageKey(context);
-    final toSave = _messages.length > _maxMessages
-        ? _messages.sublist(_messages.length - _maxMessages)
-        : _messages;
-    await prefs.setString(
-        key, jsonEncode(toSave.map((m) => m.toJson()).toList()));
+  void _showConversationDetail(BuildContext context, CoachSession session) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final msgs = session.messages;
+    final archivedAt = DateTime.tryParse(session.archivedAt) ?? DateTime.now();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, ctrl) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161B22) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  '${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: ctrl,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: msgs.length,
+                  itemBuilder: (_, i) {
+                    final m = msgs[i];
+                    final isUser = m.isUser;
+                    final content = m.content;
+                    return Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(ctx).size.width * 0.75),
+                        decoration: BoxDecoration(
+                          color: isUser
+                              ? Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.15)
+                              : Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: RichText(text: TextSpan(children: _parseMarkdownSpans(content, Theme.of(ctx).colorScheme.onSurface))),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _buildSystemPrompt(BuildContext context) {
@@ -115,33 +533,36 @@ Protein: ${today.protein.toStringAsFixed(1)}g (hedef: ${profile.proteinGoal.toSt
 Karbonhidrat: ${today.carbohydrates.toStringAsFixed(1)}g (hedef: ${profile.carbGoal.toStringAsFixed(0)}g)
 Yağ: ${today.fat.toStringAsFixed(1)}g (hedef: ${profile.fatGoal.toStringAsFixed(0)}g)
 
-Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.''';
+Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. Yanıtının başına "Ahmet'in beslenme önerileri" gibi başlıklar koyma, direkt konuya gir.''';
   }
 
-  Future<void> _sendMessage(String text) async {
+  Future<void> _sendMessage(String text, {String? displayText}) async {
     if (text.trim().isEmpty) return;
     _textController.clear();
 
-    final userMsg = _ChatMessage(
+    final coachProv = context.read<CoachProvider>();
+
+    // Show displayText (short version) in bubble, but send 'text' (long version) to AI
+    final userMsg = CoachMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: text.trim(),
+      content: (displayText ?? text).trim(),
       isUser: true,
       timestamp: DateTime.now(),
     );
 
+    coachProv.addMessage(userMsg);
     setState(() {
-      _messages.add(userMsg);
       _isTyping = true;
     });
-    _scrollToBottom();
+    _scrollToBottom(force: true);
 
     try {
       final systemPrompt = _buildSystemPrompt(context);
 
       // Build conversation history (last 10 messages)
-      final historyMsgs = _messages.length > 10
-          ? _messages.sublist(_messages.length - 10)
-          : List<_ChatMessage>.from(_messages);
+      final historyMsgs = coachProv.currentMessages.length > 10
+          ? coachProv.currentMessages.sublist(coachProv.currentMessages.length - 10)
+          : List<CoachMessage>.from(coachProv.currentMessages);
 
       final apiMessages = historyMsgs.map((m) => {
             'role': m.isUser ? 'user' : 'assistant',
@@ -151,7 +572,7 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
       final response = await http.post(
         Uri.parse('https://api.anthropic.com/v1/messages'),
         headers: {
-          'x-api-key': apiKey,
+          'x-api-key': _apiKey,
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
         },
@@ -159,83 +580,142 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
           'model': 'claude-haiku-4-5-20251001',
           'max_tokens': 512,
           'system': systemPrompt,
-          'messages': apiMessages,
+          'messages': [
+            ...apiMessages.sublist(0, apiMessages.length - 1),
+            {'role': 'user', 'content': text} // Send the LONG version to AI
+          ],
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final replyText =
+        String replyText =
             (data['content'] as List<dynamic>)[0]['text'] as String;
 
-        final aiMsg = _ChatMessage(
+        final lines = replyText.split('\n');
+        if (lines.isNotEmpty && lines.first.toLowerCase().contains('öneri')) {
+          replyText = lines.skip(1).join('\n').trim();
+        }
+
+        final aiMsg = CoachMessage(
           id: '${DateTime.now().millisecondsSinceEpoch}_ai',
           content: replyText,
           isUser: false,
           timestamp: DateTime.now(),
         );
 
+        coachProv.addMessage(aiMsg);
         setState(() {
-          _messages.add(aiMsg);
           _isTyping = false;
         });
+        // Double scroll to ensure we catch the new message height after rebuild
+        _scrollToBottom(force: true);
+        Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(force: true));
       } else {
         _addErrorMessage('API hatası: ${response.statusCode}');
       }
     } catch (e) {
       _addErrorMessage('Bağlantı hatası. Lütfen tekrar deneyin.');
     }
-
-    await _saveMessages();
-    _scrollToBottom();
+    _scrollToBottom(force: true);
   }
 
   void _addErrorMessage(String text) {
+    context.read<CoachProvider>().addMessage(CoachMessage(
+          id: '${DateTime.now().millisecondsSinceEpoch}_err',
+          content: text,
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
     setState(() {
-      _messages.add(_ChatMessage(
-        id: '${DateTime.now().millisecondsSinceEpoch}_err',
-        content: text,
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
       _isTyping = false;
     });
+    _scrollToBottom(force: true);
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool force = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        final pos = _scrollController.position;
+        // Only auto-scroll if near bottom or forced
+        if (force || (pos.maxScrollExtent - pos.pixels < 120)) {
+          _scrollController.animateTo(
+            pos.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       }
     });
   }
 
   Widget _buildChatBody(BuildContext context) {
-    return Column(
-      children: [
-        _buildQuickQuestions(context),
-        Expanded(
-          child: _messages.isEmpty
-              ? _buildEmptyState(context)
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  itemCount: _messages.length + (_isTyping ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _messages.length && _isTyping) {
-                      return _buildTypingIndicator(context);
-                    }
-                    return _buildMessageBubble(context, _messages[index]);
-                  },
+    final coach = context.watch<CoachProvider>();
+    // Set to 0 for a seamless connection with the tab bar
+    final bottomPadding = widget.isEmbedded ? (MediaQuery.of(context).padding.bottom + 0) : 0.0;
+    
+    return WaveBackground(
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(bottom: bottomPadding),
+            child: Column(
+              children: [
+                Expanded(
+                  child: coach.currentMessages.isEmpty
+                      ? _buildEmptyState(context)
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          itemCount: coach.currentMessages.length + (_isTyping ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == coach.currentMessages.length && _isTyping) {
+                              return _buildTypingIndicator(context);
+                            }
+                            return _buildMessageBubble(context, coach.currentMessages[index]);
+                          },
+                        ),
                 ),
-        ),
-        _buildInputArea(context),
-      ],
+                if (!widget.isDialog)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12, bottom: 4),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1C2128)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.history, size: 20),
+                          color: const Color(0xFF58A6FF),
+                          tooltip: 'Geçmiş',
+                          onPressed: () => _showHistory(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                _buildQuickQuestions(context),
+                _buildInputArea(context),
+              ],
+            ),
+          ),
+
+        ],
+      ),
     );
   }
 
@@ -246,56 +726,69 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
     if (widget.isDialog) {
       return Column(
         children: [
-          // Title bar
+          // HIG title bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
             decoration: BoxDecoration(
               color: colorScheme.surface,
               border: Border(
-                bottom: BorderSide(
-                    color: colorScheme.outlineVariant, width: 0.5),
+                bottom: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
               ),
             ),
             child: Row(
               children: [
-                ClipOval(
-                  child: SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: Image.asset(
-                      'assets/icon/icon.png',
-                      fit: BoxFit.cover,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20)),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Expanded(
+                const SizedBox(width: 10),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('AI Beslenme Koçu',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text('AI Asistan',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.normal)),
+                      const Text(
+                        'Beslenme Koçu',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF58A6FF),
+                        ),
+                      ),
+                      Text(
+                        'Kişisel asistanın',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline),
+                  icon: Icon(Icons.history,
+                      color: colorScheme.onSurfaceVariant),
                   iconSize: 20,
-                  tooltip: 'Sohbeti Temizle',
-                  onPressed: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    if (!mounted) return;
-                    await prefs.remove(_storageKey(context));
-                    setState(() => _messages.clear());
-                  },
+                  tooltip: 'Geçmiş',
+                  onPressed: () => _showHistory(context),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
                   iconSize: 20,
                   onPressed: () => Navigator.of(context).pop(),
                 ),
@@ -307,44 +800,58 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
       );
     }
 
+    if (widget.isEmbedded) {
+      return _buildChatBody(context);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Icon(Icons.psychology,
-                  size: 18, color: colorScheme.onPrimaryContainer),
+            Container(
+              width: 32, height: 32,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 18)),
             ),
             const SizedBox(width: 8),
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Beslenme Koçu',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('AI Asistan',
+                Text(
+                  'Beslenme Koçu',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF58A6FF),
+                  ),
+                ),
+                Text('Kişisel asistanın',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal)),
               ],
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Sohbeti Temizle',
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              if (!mounted) return;
-              await prefs.remove(_storageKey(context));
-              setState(() => _messages.clear());
-            },
-          ),
-        ],
       ),
       body: _buildChatBody(context),
     );
+  }
+
+  List<String> _buildSymptomQuestions(BuildContext context) {
+    try {
+      final wellness = context.read<WellnessProvider>();
+      final symptoms = wellness.today.symptoms;
+      if (symptoms.isEmpty) return [];
+      return symptoms.take(2).map((s) => '🚨 $s ile beslenme bağlantısı?').toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   List<String> _buildDynamicQuestions(BuildContext context) {
@@ -354,204 +861,307 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
     final today = nutrition.totalNutrition;
     final calorieGoal = context.read<ProfileProvider>().calorieGoal;
     final waterIntakeMl = nutrition.todayLog.waterIntakeMl;
-    const waterGoalMl = 2500.0;
+    final waterGoalMl = context.read<ProfileProvider>().waterGoalMl.toDouble();
 
     final questions = <String>[];
 
     // 1. Sabah soruları (06:00 - 12:00)
     if (hour >= 6 && hour < 12) {
-      questions.add('Sabah kahvaltısı için ne önerirsin?');
-      questions.add('Bugün ne yemem gerekir?');
+      questions.add('🍳 Kahvaltı önerisi?');
+      questions.add('🗓️ Bugün ne yemeliyim?');
     }
 
     // 2. Akşam/Gece soruları (19:00 - 06:00)
     if (hour >= 19 || hour < 6) {
-      questions.add('Uyku kalitemi artıracak besinler neler?');
-      questions.add('Bugünkü beslenmeyi değerlendir');
+      questions.add('💤 Uyku dostu besinler?');
+      questions.add('📊 Günümü değerlendir');
     }
 
     // 3. Koşullu sorular
     if (nutrition.todayLog.exercises.isNotEmpty) {
-      questions.add('Spor sonrası ne yemeliyim?');
+      questions.add('🏃‍♂️ Spor sonrası ne yemeliyim?');
     }
 
     if (waterIntakeMl < waterGoalMl * 0.8) {
-      questions.add('Su tüketimimi artırmak için öneriler');
+      questions.add('💧 Su içme tüyoları?');
     }
 
     if (calorieGoal > 0 && today.calories < calorieGoal * 0.7) {
-      questions.add('Kalori açığımı nasıl kapatabilirim?');
+      questions.add('⚖️ Kalori açığı tavsiyesi?');
     }
 
     if (profile != null) {
       if (profile.proteinGoal > 0 && today.protein < profile.proteinGoal * 0.7) {
-        questions.add('Protein hedefime nasıl ulaşırım?');
+        questions.add('🍗 Protein hedefi?');
       }
       if (profile.carbGoal > 0 && today.carbohydrates < profile.carbGoal * 0.7) {
-        questions.add('Karbonhidrat hedefime nasıl ulaşabilirim?');
+        questions.add('🥖 Karbonhidrat desteği?');
       }
       if (profile.fatGoal > 0 && today.fat < profile.fatGoal * 0.7) {
-        questions.add('Yağ tüketimimi nasıl düzenlemeliyim?');
+        questions.add('🥑 Sağlıklı yağlar?');
       }
     }
 
-    // 4. Her zaman göster
-    questions.add('Bana sağlıklı bir tarif öner');
-    questions.add('Bağışıklığımı güçlendirmek için ne yemeliyim?');
+    // Her zaman olan genel sorular
+    questions.add('🍎 Sağlıklı atıştırmalık?');
+    questions.add('⚡ Metabolizma hızlandırma?');
+    questions.add('🥗 Pratik öğle yemeği?');
 
-    return questions;
-  }
-
-  Widget _buildQuickQuestions(BuildContext context) {
-    final questions = _buildDynamicQuestions(context);
-
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.only(top: 4),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: questions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          return ActionChip(
-            label: Text(questions[index],
-                style: const TextStyle(fontSize: 12)),
-            onPressed: _isTyping ? null : () => _sendMessage(questions[index]),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            visualDensity: VisualDensity.compact,
-          );
-        },
-      ),
-    );
+    questions.shuffle();
+    return questions.take(4).toList();
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    final profile = context.watch<ProfileProvider>().activeProfile;
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.psychology_outlined,
-              size: 72,
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-          const SizedBox(height: 16),
-          Text(
-            profile != null
-                ? 'Merhaba ${profile.name}! 👋'
-                : 'Merhaba! 👋',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Beslenme hakkında soru sorabilirsin\nveya yukarıdaki hızlı sorulardan birini seç.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(BuildContext context, _ChatMessage message) {
-    final isUser = message.isUser;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser) ...[
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Icon(Icons.psychology,
-                  size: 14, color: colorScheme.onPrimaryContainer),
+          Container(
+            width: 88,
+            height: 88,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isUser
-                    ? const Color(0xFF4CAF50)
-                    : colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isUser ? 18 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 18),
+            child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 44)),
+          ),
+          const SizedBox(height: 24),
+          FittedBox(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFF58A6FF), Color(0xFF79C0FF)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ).createShader(bounds),
+                  child: const Text(
+                    'Merhaba!',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white),
+                  ),
                 ),
-              ),
-              child: Text(
-                message.content,
-                style: TextStyle(
-                  color: isUser ? Colors.white : colorScheme.onSurface,
-                  fontSize: 14,
+                const SizedBox(width: 6),
+                const Text(
+                  'Ben senin beslenme koçunum.',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                 ),
-              ),
+              ],
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: 6),
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: colorScheme.secondaryContainer,
-              child: Icon(Icons.person,
-                  size: 14, color: colorScheme.onSecondaryContainer),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Profil bilgilerine ve bugünkü verilerine göre sana özel öneriler sunabilirim. Nereden başlayalım?',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTypingIndicator(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: colorScheme.primaryContainer,
-            child: Icon(Icons.psychology,
-                size: 14, color: colorScheme.onPrimaryContainer),
-          ),
-          const SizedBox(width: 6),
+          _buildAiAvatar(context),
+          const SizedBox(width: 8),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(18),
-              ),
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(
-              children: [
-                _DotAnimation(delay: 0),
-                const SizedBox(width: 4),
-                _DotAnimation(delay: 200),
-                const SizedBox(width: 4),
-                _DotAnimation(delay: 400),
-              ],
-            ),
+            child: const _TypingStatusText(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(BuildContext context, CoachMessage message) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isUser = message.isUser;
+    final profile = context.read<ProfileProvider>().activeProfile;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isUser) _buildAiAvatar(context),
+          if (!isUser) const SizedBox(width: 8),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: RichText(
+                text: TextSpan(
+                  children: _parseMarkdown(
+                    message.content,
+                    isUser ? colorScheme.onPrimary : colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (isUser) const SizedBox(width: 8),
+          if (isUser) _buildUserAvatar(context, profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiAvatar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+      ),
+      child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20)),
+    );
+  }
+
+  Widget _buildUserAvatar(BuildContext context, UserProfile? profile) {
+    final cs = Theme.of(context).colorScheme;
+    if (profile?.imagePath != null && File(profile!.imagePath!).existsSync()) {
+      return CircleAvatar(
+        radius: 16,
+        backgroundImage: FileImage(File(profile.imagePath!)),
+      );
+    }
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: const Color(0xFF58A6FF).withValues(alpha: 0.2), // Same as profile screen
+      child: Text(
+        profile?.name.isNotEmpty == true ? profile!.name[0].toUpperCase() : 'U',
+        style: const TextStyle(color: Color(0xFF58A6FF), fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  List<TextSpan> _parseMarkdown(String text, Color baseColor) =>
+      _parseMarkdownSpans(text, baseColor, fontSize: 14);
+
+  Widget _buildQuickQuestions(BuildContext context) {
+    final allItems = [
+      ...List.generate(_symptomQuestions.length, (i) => (true, i)),
+      ...List.generate(_currentQuestions.length, (i) => (false, i)),
+    ];
+    if (allItems.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 48,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: allItems.length,
+        itemBuilder: (context, index) {
+          final (isSymptom, itemIndex) = allItems[index];
+          final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ActionChip(
+              label: Text(label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isSymptom
+                        ? (isDark ? const Color(0xFFFFCDD2) : const Color(0xFFC62828))
+                        : null,
+                    fontWeight: isSymptom ? FontWeight.w600 : FontWeight.normal,
+                  )),
+              onPressed: () {
+                final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
+                String prompt = label;
+
+                // Symptom-specific prompt
+                if (isSymptom) {
+                  final symptomText = label.replaceAll('🚨 ', '').replaceAll(' ile beslenme bağlantısı?', '');
+                  prompt = "$symptomText semptomunu yaşıyorum. Bu semptomun beslenme ile bağlantısı ne olabilir? Hangi besinleri tüketmeli veya kaçınmalıyım? Somut öneriler verir misin?";
+                // Map short labels to detailed, expert prompts for ALL questions
+                } else if (label.contains('Kahvaltı')) {
+                  prompt = "Bana bugünkü profilime uygun, pratik ve sağlıklı bir kahvaltı tarifi verir misin?";
+                } else if (label.contains('Akşam')) {
+                  prompt = "Akşam yemeği için bugünkü makrolarımı dengeleyecek hafif ve doyurucu ne önerebilirsin?";
+                } else if (label.contains('Su içmeli') || label.contains('Su içme') || label.contains('💧')) {
+                  prompt = "Bugünkü su tüketimimi analiz edip bana su içme alışkanlığım hakkında tavsiye verir misin?";
+                } else if (label.contains('Adım') || label.contains('hedefi') || label.contains('🏃‍♂️')) {
+                  prompt = "Günlük adım hedefime ulaşmak için bugünkü verilerime göre bana motivasyonel bir tavsiye verir misin?";
+                } else if (label.contains('atıştırmalık') || label.contains('🍎')) {
+                  prompt = "Kan şekerimi dengede tutacak, kalorisi düşük ama tok tutan atıştırmalık fikirleri verebilir misin?";
+                } else if (label.contains('Enerjim') || label.contains('yorgun') || label.contains('⚡')) {
+                  prompt = "Şu an enerjim düşük hissediyorum, beni zinde tutacak sağlıklı besin önerilerin neler?";
+                } else if (label.contains('nasılım') || label.contains('değerlendir') || label.contains('Günümü') || label.contains('📊') || label.contains('Bugün')) {
+                  prompt = "Bugünkü yediklerime ve aktiviteme göre günümü genel olarak değerlendirip bana bir puan verir misin?";
+                } else if (label.contains('Spor') || label.contains('egzersiz')) {
+                  prompt = "Yaptığım egzersize göre kas gelişimimi destekleyecek en iyi spor sonrası öğün önerin nedir?";
+                } else if (label.contains('Metabolizma')) {
+                  prompt = "Metabolizmamı doğal yollarla hızlandıracak beslenme tüyoları verebilir misin?";
+                } else if (label.contains('Uyku') || label.contains('💤')) {
+                  prompt = "Daha kaliteli bir uyku için akşam saatlerinde tüketmemi veya kaçınmamı önerdiğin besinler nelerdir?";
+                } else if (label.contains('Kalori') || label.contains('⚖️')) {
+                  prompt = "Hedeflediğim kalori miktarına ulaşmak için sağlıklı ve dengeli bir şekilde kalori alımımı nasıl düzenleyebilirim?";
+                } else if (label.contains('Protein') || label.contains('🍗')) {
+                  prompt = "Bugünkü protein ihtiyacımı karşılamak için tüketebileceğim en kaliteli protein kaynakları nelerdir?";
+                } else if (label.contains('Karbonhidrat') || label.contains('🥖')) {
+                  prompt = "Vücudumun enerji ihtiyacını karşılayacak en sağlıklı ve kompleks karbonhidrat kaynakları hakkında bilgi verir misin?";
+                } else if (label.contains('yağlar') || label.contains('🥑')) {
+                  prompt = "Beslenme düzenime ekleyebileceğim kalp dostu ve sağlıklı yağ kaynakları hakkında öneri verir misin?";
+                } else if (label.contains('Öğle') || label.contains('🥗')) {
+                  prompt = "Öğle yemeği için beni akşama kadar tok tutacak, besleyici ve pratik bir menü önerir misin?";
+                }
+                
+                _sendMessage(prompt);
+              },
+              backgroundColor: isSymptom
+                  ? (isDark ? const Color(0xFF5C1A1A) : const Color(0xFFFFCDD2))
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              side: isSymptom
+                  ? BorderSide(color: isDark ? const Color(0xFFEF9A9A) : const Color(0xFFEF5350), width: 0.8)
+                  : BorderSide.none,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+            ),
+          );
+        },
       ),
     );
   }
@@ -559,62 +1169,44 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
   Widget _buildInputArea(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 8,
-        top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 8,
-      ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(
+          top: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
+        ),
       ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _textController,
-              enabled: !_isTyping,
-              maxLines: null,
-              textInputAction: TextInputAction.newline,
+              textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                hintText: 'Mesaj yaz...',
+                hintText: 'Koçuna bir şey sor...',
+                hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                 filled: true,
-                fillColor: colorScheme.surfaceContainerHighest,
+                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
               ),
+              onSubmitted: _sendMessage,
             ),
           ),
           const SizedBox(width: 8),
-          FloatingActionButton.small(
-            onPressed: _isTyping
-                ? null
-                : () => _sendMessage(_textController.text),
-            backgroundColor: _isTyping
-                ? colorScheme.surfaceContainerHighest
-                : const Color(0xFF4CAF50),
-            elevation: 0,
-            child: _isTyping
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                : const Icon(Icons.send, color: Colors.white, size: 18),
+          Container(
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_upward),
+              color: colorScheme.onPrimary,
+              onPressed: () => _sendMessage(_textController.text),
+            ),
           ),
         ],
       ),
@@ -622,55 +1214,144 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan.'
   }
 }
 
-class _DotAnimation extends StatefulWidget {
-  final int delay;
-  const _DotAnimation({required this.delay});
+// ─── Markdown parser (top-level so history sheet can use it) ─────────────────
 
-  @override
-  State<_DotAnimation> createState() => _DotAnimationState();
+List<TextSpan> _parseMarkdownSpans(String text, Color baseColor, {double fontSize = 13}) {
+  final spans = <TextSpan>[];
+  final regex = RegExp(r'\*\*(.*?)\*\*');
+  int lastEnd = 0;
+  for (final m in regex.allMatches(text)) {
+    if (m.start > lastEnd) {
+      spans.add(TextSpan(text: text.substring(lastEnd, m.start), style: TextStyle(color: baseColor, fontSize: fontSize)));
+    }
+    spans.add(TextSpan(text: m.group(1), style: TextStyle(color: baseColor, fontSize: fontSize, fontWeight: FontWeight.w900)));
+    lastEnd = m.end;
+  }
+  if (lastEnd < text.length) {
+    spans.add(TextSpan(text: text.substring(lastEnd), style: TextStyle(color: baseColor, fontSize: fontSize)));
+  }
+  if (spans.isEmpty) {
+    spans.add(TextSpan(text: text, style: TextStyle(color: baseColor, fontSize: fontSize)));
+  }
+  return spans;
 }
 
-class _DotAnimationState extends State<_DotAnimation>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
+// ─── Typing Status Text Widget ────────────────────────────────────────────────
+
+class _TypingStatusText extends StatefulWidget {
+  const _TypingStatusText();
+  @override
+  State<_TypingStatusText> createState() => _TypingStatusTextState();
+}
+
+class _TypingStatusTextState extends State<_TypingStatusText> {
+  static const _messages = [
+    'Öğünlerin inceleniyor',
+    'Kalori alışına bakılıyor',
+    'Besin değerlerin hesaplanıyor',
+    'Hedeflerinle karşılaştırılıyor',
+    'Günlük ilerleme analiz ediliyor',
+    'Önerin hazırlanıyor',
+  ];
+
+  int _index = 0;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _anim = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _ctrl.repeat(reverse: true);
+    _timer = Timer.periodic(const Duration(milliseconds: 2400), (_) {
+      if (mounted) setState(() => _index = (_index + 1) % _messages.length);
     });
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Opacity(
-        opacity: 0.3 + _anim.value * 0.7,
-        child: Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            shape: BoxShape.circle,
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeInOut),
+            child: SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+              child: child,
+            ),
+          ),
+          child: Text(
+            _messages[_index],
+            key: ValueKey(_index),
+            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: cs.onSurface),
           ),
         ),
-      ),
+        const SizedBox(width: 4),
+        const _AnimatedDots(),
+      ],
+    );
+  }
+}
+
+// ─── Animated Dots Widget ────────────────────────────────────────────────────
+
+class _AnimatedDots extends StatefulWidget {
+  const _AnimatedDots();
+  @override
+  State<_AnimatedDots> createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<_AnimatedDots> with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (i) => AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    ));
+    _animations = _controllers.map((c) => Tween<double>(begin: 0.25, end: 1.0)
+        .animate(CurvedAnimation(parent: c, curve: Curves.easeInOut))).toList();
+
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 160), () {
+        if (mounted) _controllers[i].repeat(reverse: true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) { c.dispose(); }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1.5),
+        child: FadeTransition(
+          opacity: _animations[i],
+          child: Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+        ),
+      )),
     );
   }
 }

@@ -1,5 +1,6 @@
 import '../models/nutrition_data.dart';
 import '../providers/profile_provider.dart';
+import 'open_food_facts_service.dart';
 
 class NutritionConflict {
   final String message;
@@ -13,122 +14,162 @@ class NutritionConflict {
   });
 }
 
+class _DeficiencyCandidate {
+  final double deficit; // fraction 0–1, higher = worse
+  final NutritionConflict conflict;
+  const _DeficiencyCandidate({required this.deficit, required this.conflict});
+}
+
 class ConflictDetectionService {
   static List<NutritionConflict> detect({
     required NutritionData consumed,
     required UserProfile profile,
   }) {
-    final conflicts = <NutritionConflict>[];
-    final calorieGoal = profile.calorieGoal;
-
-    // 1. Kalori doldu ama protein hedefine ulaşılamaz
-    final remainingCal = calorieGoal - consumed.calories;
-    final remainingProtein = profile.proteinGoal - consumed.protein;
-    if (remainingCal < remainingProtein * 4 && remainingProtein > 10) {
-      conflicts.add(NutritionConflict(
-        message:
-            'Bugün protein hedefinize ulaşmak artık mümkün değil. Kalan kalori: ${remainingCal.toInt()} kcal',
-        severity: 'warning',
-        icon: '⚠️',
-      ));
-    }
-
-    // 2. Yağ limiti doldu ama Omega-3 alınmadı
-    if (consumed.fat >= profile.fatGoal * 0.9 &&
-        (consumed.omega3 ?? 0) < profile.omega3Goal * 0.3) {
-      conflicts.add(const NutritionConflict(
-        message: 'Omega-3 açığınız var. Balık yağı takviyesi düşünün.',
-        severity: 'warning',
-        icon: '🐟',
-      ));
-    }
-
-    // 3. Omega-6/Omega-3 oranı bozuk
-    final omega3 = consumed.omega3 ?? 0;
-    final omega6 = consumed.omega6 ?? 0;
-    if (omega3 > 0 && omega6 > 0) {
-      final ratio = omega6 / omega3;
-      if (ratio > 15) {
-        conflicts.add(NutritionConflict(
-          message:
-              'Omega-6/Omega-3 oranınız ${ratio.toStringAsFixed(0)}:1 (ideal: <10:1)',
-          severity: 'warning',
-          icon: '⚖️',
-        ));
-      }
-    }
-
-    // 4. Magnezyum var ama D vitamini eksik — absorpsiyon azalır
-    if ((consumed.magnesium ?? 0) > profile.magnesiumGoal * 0.5 &&
-        (consumed.vitaminD ?? 0) < profile.vitaminDGoal * 0.2) {
-      conflicts.add(const NutritionConflict(
-        message: 'D vitamini eksik — magnezyum absorpsiyonu azalacak.',
-        severity: 'info',
-        icon: '☀️',
-      ));
-    }
-
-    // 5. SIBO + Lif uyarısı
-    if (profile.healthConditions.contains('SIBO') &&
-        consumed.fiber > 5) {
-      conflicts.add(const NutritionConflict(
+    // ── Health condition-specific warnings (highest priority) ──────────────
+    if (profile.healthConditions.contains('SIBO') && consumed.fiber > 5) {
+      return [const NutritionConflict(
         message: "SIBO'nuz var: yüksek lif içeriği semptomları artırabilir.",
         severity: 'warning',
         icon: '🔴',
-      ));
+      )];
     }
 
-    // 6. Diyabet / İnsülin Direnci + Şeker uyarısı
     if ((profile.healthConditions.contains('Tip 2 Diyabet') ||
             profile.healthConditions.contains('İnsülin Direnci')) &&
         consumed.sugar > 30) {
-      conflicts.add(NutritionConflict(
-        message:
-            'Bugün ${consumed.sugar.toStringAsFixed(0)}g şeker aldınız. Diyabet için öneri: <25g/gün',
+      return [NutritionConflict(
+        message: 'Bugün ${consumed.sugar.toStringAsFixed(0)}g şeker aldınız. Diyabet için öneri: <25g/gün',
         severity: 'warning',
         icon: '🩸',
-      ));
+      )];
     }
 
-    // 7. Hipertansiyon + Sodyum
     if (profile.healthConditions.contains('Hipertansiyon') &&
         (consumed.sodium ?? 0) > 1500) {
-      conflicts.add(NutritionConflict(
-        message:
-            'Sodyum limitinizi (1500mg) aştınız: ${consumed.sodium?.toStringAsFixed(0)}mg',
+      return [NutritionConflict(
+        message: 'Sodyum limitinizi (1500mg) aştınız: ${consumed.sodium?.toStringAsFixed(0)}mg',
         severity: 'warning',
         icon: '❤️',
-      ));
+      )];
     }
 
-    // 8. Böbrek Hastalığı + Potasyum
     if (profile.healthConditions.contains('Böbrek Hastalığı') &&
         (consumed.potassium ?? 0) > 2000) {
-      conflicts.add(NutritionConflict(
-        message:
-            'Böbrek hastaları için potasyum limiti (2000mg) aşıldı: ${consumed.potassium?.toStringAsFixed(0)}mg',
+      return [NutritionConflict(
+        message: 'Böbrek hastaları için potasyum limiti (2000mg) aşıldı: ${consumed.potassium?.toStringAsFixed(0)}mg',
         severity: 'warning',
         icon: '🫘',
-      ));
+      )];
     }
 
-    // 9. Gut Hastalığı + yüksek sodyum (şiddetli tuz) uyarısı
     if (profile.healthConditions.contains('Gut Hastalığı') &&
         (consumed.sodium ?? 0) > 2000) {
-      conflicts.add(const NutritionConflict(
+      return [const NutritionConflict(
         message: 'Gut hastalığında yüksek sodyum inflamasyonu artırabilir.',
         severity: 'info',
         icon: '🦴',
-      ));
+      )];
     }
 
-    // 10. Çölyak + Gluten uyarısı (kullanıcıya genel hatırlatma)
-    if (profile.healthConditions.contains('Çölyak') ||
-        profile.dietaryPreferences.contains('Gluten-Free')) {
-      // Bu kontrol yemek bazlı değil, günlük hatırlatma niteliğinde
-      // Sadece bir kez göster (entries varsa)
-      if (consumed.calories > 100) {
-        // placeholder — gerçek gluten tespiti yemek adı analizine gerek duyar
+    // ── Micro-nutrient deficiency: pick single worst ───────────────────────
+    if (consumed.calories < 600) return [];
+
+    final candidates = <_DeficiencyCandidate>[];
+
+    void addIfDeficient(double consumedVal, double goal, NutritionConflict conflict, {double threshold = 0.3}) {
+      if (goal <= 0) return;
+      final deficit = consumedVal < goal ? (goal - consumedVal) / goal : 0.0;
+      if (deficit > threshold) candidates.add(_DeficiencyCandidate(deficit: deficit, conflict: conflict));
+    }
+
+    // Omega-3
+    addIfDeficient(consumed.omega3 ?? 0, profile.omega3Goal,
+      const NutritionConflict(message: 'Omega-3 açığınız var. Balık, ceviz veya keten tohumu ekleyin.', severity: 'warning', icon: '🐟'));
+
+    // Protein
+    addIfDeficient(consumed.protein, profile.proteinGoal,
+      NutritionConflict(message: 'Protein alımınız düşük (${consumed.protein.toStringAsFixed(0)}g / ${profile.proteinGoal.toStringAsFixed(0)}g). Tavuk, balık veya baklagil ekleyin.', severity: 'info', icon: '💪'),
+      threshold: 0.35);
+
+    if (consumed.calories > 800) {
+      // D Vitamini
+      addIfDeficient(consumed.vitaminD ?? 0, profile.vitaminDGoal,
+        const NutritionConflict(message: 'D vitamini çok düşük. Güneş ışığı veya takviye düşünün.', severity: 'warning', icon: '☀️'));
+
+      // Demir
+      final ironC = consumed.iron ?? 0;
+      addIfDeficient(ironC, profile.ironGoal,
+        NutritionConflict(message: 'Demir alımınız düşük (${ironC.toStringAsFixed(1)}mg / ${profile.ironGoal.toStringAsFixed(0)}mg). Kırmızı et veya baklagil ekleyin.', severity: 'warning', icon: '🩸'));
+
+      // Kalsiyum
+      final calcC = consumed.calcium ?? 0;
+      addIfDeficient(calcC, profile.calciumGoal,
+        NutritionConflict(message: 'Kalsiyum alımınız düşük (${calcC.toStringAsFixed(0)}mg / ${profile.calciumGoal.toStringAsFixed(0)}mg). Süt ürünleri veya yeşil yapraklı sebzeler ekleyin.', severity: 'info', icon: '🦷'));
+
+      // Magnezyum
+      final mgC = consumed.magnesium ?? 0;
+      addIfDeficient(mgC, profile.magnesiumGoal,
+        NutritionConflict(message: 'Magnezyum alımınız düşük (${mgC.toStringAsFixed(0)}mg / ${profile.magnesiumGoal.toStringAsFixed(0)}mg). Fındık, tohumlar veya koyu yeşil sebzeler ekleyin.', severity: 'info', icon: '🌿'));
+
+      // Çinko
+      final zincC = consumed.zinc ?? 0;
+      addIfDeficient(zincC, profile.zincGoal,
+        NutritionConflict(message: 'Çinko alımınız düşük (${zincC.toStringAsFixed(1)}mg / ${profile.zincGoal.toStringAsFixed(0)}mg). Et, kabuklu deniz ürünleri veya baklagil ekleyin.', severity: 'info', icon: '⚡'));
+
+      // Potasyum
+      final potC = consumed.potassium ?? 0;
+      addIfDeficient(potC, profile.potassiumGoal,
+        NutritionConflict(message: 'Potasyum alımınız düşük (${potC.toStringAsFixed(0)}mg / ${profile.potassiumGoal.toStringAsFixed(0)}mg). Muz, patates veya domates ekleyin.', severity: 'info', icon: '🍌'));
+
+      // B12 Vitamini
+      final b12C = consumed.vitaminB12 ?? 0;
+      addIfDeficient(b12C, profile.vitaminB12Goal,
+        NutritionConflict(message: 'B12 vitamini düşük (${b12C.toStringAsFixed(1)}mcg / ${profile.vitaminB12Goal.toStringAsFixed(1)}mcg). Et, yumurta veya süt ürünleri ekleyin.', severity: 'warning', icon: '💊'));
+    }
+
+    // Lif (SIBO yoksa)
+    if (!profile.healthConditions.contains('SIBO')) {
+      addIfDeficient(consumed.fiber, profile.fiberGoal,
+        NutritionConflict(message: 'Lif alımınız düşük (${consumed.fiber.toStringAsFixed(1)}g / ${profile.fiberGoal.toStringAsFixed(0)}g). Sebze ve tahıl ekleyin.', severity: 'info', icon: '🌾'));
+    }
+
+    if (candidates.isEmpty) return [];
+    candidates.sort((a, b) => b.deficit.compareTo(a.deficit));
+    return [candidates.first.conflict];
+  }
+
+  /// OFF ürününün alerjenlerini kullanıcı sağlık koşullarıyla karşılaştırır.
+  static List<NutritionConflict> checkAllergens({
+    required List<String> userConditions,
+    required OFFProduct? product,
+  }) {
+    if (product == null || product.allergens.isEmpty) return [];
+
+    const allergenMap = <String, List<String>>{
+      'Çölyak':    ['gluten', 'wheat', 'barley', 'rye', 'oat'],
+      'Gluten-Free': ['gluten', 'wheat', 'barley', 'rye', 'oat'],
+      'Süt Alerjisi': ['milk', 'dairy', 'lactose', 'casein'],
+      'Yumurta Alerjisi': ['egg', 'eggs'],
+      'Fıstık Alerjisi': ['peanut', 'peanuts', 'nut', 'nuts', 'almond', 'hazelnut'],
+      'Deniz Ürünleri Alerjisi': ['fish', 'shellfish', 'crustacean', 'mollusc'],
+      'Soya Alerjisi': ['soy', 'soya', 'soybean'],
+    };
+
+    final conflicts = <NutritionConflict>[];
+    final allergenLower = product.allergens.map((a) => a.toLowerCase()).toList();
+
+    for (final condition in userConditions) {
+      final keywords = allergenMap[condition];
+      if (keywords == null) continue;
+      for (final keyword in keywords) {
+        if (allergenLower.any((a) => a.contains(keyword))) {
+          conflicts.add(NutritionConflict(
+            message: '$condition uyarısı: "${product.name}" ürününde $keyword içeriği tespit edildi.',
+            severity: 'warning',
+            icon: '⚠️',
+          ));
+          break;
+        }
       }
     }
 

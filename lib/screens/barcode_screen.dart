@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -111,38 +112,81 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Barkod Tara'),
-        centerTitle: true,
-      ),
+      backgroundColor: Colors.black,
       body: _isScanned ? _buildResultArea() : _buildScannerArea(),
     );
   }
 
   Widget _buildScannerArea() {
-    return Column(
+    final topPad = MediaQuery.of(context).padding.top;
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Expanded(
-          child: MobileScanner(
-            controller: _controller,
-            onDetect: (capture) {
-              if (_isScanned) return;
-              final barcodes = capture.barcodes;
-              if (barcodes.isNotEmpty) {
-                final rawValue = barcodes.first.rawValue;
-                if (rawValue != null) _handleBarcode(rawValue);
-              }
-            },
+        MobileScanner(
+          controller: _controller,
+          onDetect: (capture) {
+            if (_isScanned) return;
+            final barcodes = capture.barcodes;
+            if (barcodes.isNotEmpty) {
+              final rawValue = barcodes.first.rawValue;
+              if (rawValue != null) _handleBarcode(rawValue);
+            }
+          },
+        ),
+        Center(
+          child: _FocusFrame(barcodeDetected: _isScanned),
+        ),
+        // Back Button
+        Positioned(
+          top: topPad + 8,
+          left: 16,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+            ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'Ürünün barkodunu kameraya tutun',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            textAlign: TextAlign.center,
+        // Flash Button
+        Positioned(
+          top: topPad + 8,
+          right: 16,
+          child: GestureDetector(
+            onTap: () => _controller.toggleTorch(),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+              child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+        // Instruction text
+        Positioned(
+          bottom: 120,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Ürünün barkodunu kameraya tutun',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
           ),
         ),
       ],
@@ -206,12 +250,12 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                     if (_product!.imageUrl != null) ...[
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          _product!.imageUrl!,
+                        child: CachedNetworkImage(
+                          imageUrl: _product!.imageUrl!,
                           height: 140,
                           width: double.infinity,
                           fit: BoxFit.contain,
-                          errorBuilder: (ctx, e, s) => const SizedBox.shrink(),
+                          errorWidget: (ctx, url, e) => const SizedBox.shrink(),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -452,4 +496,61 @@ class _ProductAddSheetState extends State<_ProductAddSheet> {
       ),
     );
   }
+}
+
+// ─── Focus Frame ──────────────────────────────────────────────────────────────
+
+class _FocusFrame extends StatelessWidget {
+  final bool barcodeDetected;
+  const _FocusFrame({this.barcodeDetected = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return TweenAnimationBuilder<Color?>(
+      tween: ColorTween(
+        begin: barcodeDetected ? color : Colors.amber,
+        end: barcodeDetected ? Colors.amber : color,
+      ),
+      duration: const Duration(milliseconds: 300),
+      builder: (ctx, c, _) => CustomPaint(
+        size: const Size(280, 280),
+        painter: _FocusFramePainter(color: c ?? color),
+      ),
+    );
+  }
+}
+
+class _FocusFramePainter extends CustomPainter {
+  final Color color;
+  const _FocusFramePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
+
+    const len = 24.0;
+    final w = size.width;
+    final h = size.height;
+
+    // Top-left
+    canvas.drawLine(Offset(0, len), Offset.zero, paint);
+    canvas.drawLine(Offset.zero, Offset(len, 0), paint);
+    // Top-right
+    canvas.drawLine(Offset(w - len, 0), Offset(w, 0), paint);
+    canvas.drawLine(Offset(w, 0), Offset(w, len), paint);
+    // Bottom-left
+    canvas.drawLine(Offset(0, h - len), Offset(0, h), paint);
+    canvas.drawLine(Offset(0, h), Offset(len, h), paint);
+    // Bottom-right
+    canvas.drawLine(Offset(w, h - len), Offset(w, h), paint);
+    canvas.drawLine(Offset(w, h), Offset(w - len, h), paint);
+  }
+
+  @override
+  bool shouldRepaint(_FocusFramePainter old) => old.color != color;
 }
