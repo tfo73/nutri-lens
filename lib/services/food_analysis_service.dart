@@ -168,6 +168,8 @@ Kural 1 (Pişirme Kaybı): Et/Tavuk/Balık ürünleri piştiklerinde su kaybeder
 Kural 2 (Su Çekme): Pilav/Makarna haşlandığında su çeker, karbonhidrat oranları (100g için) çiğ haline göre düşer (örn: pişmiş beyaz pirinç ~28g carb).
 Kural 3 (Yağ Emilimi): Kızartma işlemi 100g'da ekstra 5-10g yağ emilimi yaratır. Değerlere ekle.
 Kural 4 (Soslar): Zeytinyağlı/Soslu sebzelerde lif yüksektir, ancak sos kaynaklı ekstra yağ/kalori vardır.
+Kural 5 (Mikro Besin Sabitleme - ÇOK ÖNEMLİ): Mikro besin (vitamin/mineral) değerlerini asla rastgele üretme. Tabağın ana bileşenleri için KESİN bir USDA standart tablosu (örn: USDA 170456 Cooked Salmon) seç ve o tablonun mikro besin oranlarını sabit tutarak ağırlıkla çarp. 
+Kural 6 (Oran Yuvarlama): Stabilite için segmentasyon oranlarını her zaman en yakın %10'luk veya %25'lik dilimlere yuvarla (örn: %50 et, %50 pilav). Ufak farklılıklarda mikro değerleri değiştirme. Aynı yemek tipi her zaman aynı sabit mikro değer profiline sahip olmalıdır.
 ------------------------------------------------------------------------
 ${hint != null ? '\nKullanıcı notu: "$hint"\n' : ''}
 Görseldeki pişirme yöntemini (kızartmanın yağ oranını veya haşlamanın su oranını etkilemesi gibi) mutlaka dikkate al ve değerlere yansıt.
@@ -377,6 +379,7 @@ Her bir malzemenin ortalama porsiyon ağırlığını hesapla ve bu malzemelerin
 --- IN-CONTEXT EĞİTİM VERİLERİ (KALİBRASYON) ---
 Kural 1: Etler piştikçe hacim küçülür, 100g başına makro değerleri artar.
 Kural 2: Tahıllar piştikçe su çeker, 100g başına makro değerleri düşer.
+Kural 3: Mikro besinler için rastgele değer üretme. USDA standart profillerini (örn: Cooked Chicken Breast) zihninde referans olarak kilitle ve mikro besin oranlarını sabit tut. Oranları %10'luk dilimlere yuvarla ki stabilite artsın.
 ------------------------------------------------
 
 SADECE JSON döndür, başka hiçbir şey yazma. Tüm değerler 100g başına olmalı:
