@@ -590,29 +590,32 @@ class _HigTabBar extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             // "+" Butonu (Ayrı yuvarlak bar)
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark 
-                    ? [Colors.white, Colors.grey.shade300] 
-                    : [Colors.black, Colors.grey.shade900],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 4),
+            GestureDetector(
+              onTap: isAnalyzing ? null : onAddPressed,
+              child: Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark 
+                      ? [Colors.white, Colors.grey.shade300] 
+                      : [Colors.black, Colors.grey.shade900],
                   ),
-                ],
-              ),
-              child: Center(
-                child: _buildAddButton(),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: _buildAddButton(),
+                ),
               ),
             ),
           ],
@@ -644,20 +647,17 @@ class _HigTabBar extends StatelessWidget {
     return AnimatedOpacity(
       opacity: isAnalyzing ? 0.5 : 1.0,
       duration: const Duration(milliseconds: 300),
-      child: GestureDetector(
-        onTap: isAnalyzing ? null : onAddPressed,
-        child: SizedBox(
-          width: 52,
-          height: 52,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-            child: Icon(
-              isMenuOpen ? Icons.close_rounded : Icons.add_rounded,
-              key: ValueKey(isMenuOpen),
-              color: isDark ? Colors.black : Colors.white,
-              size: 30,
-            ),
+      child: SizedBox(
+        width: 52,
+        height: 52,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          child: Icon(
+            isMenuOpen ? Icons.close_rounded : Icons.add_rounded,
+            key: ValueKey(isMenuOpen),
+            color: isDark ? Colors.black : Colors.white,
+            size: 30,
           ),
         ),
       ),

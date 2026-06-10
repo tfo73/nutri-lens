@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriLens — Longevity İçin 65+ Besin Zekası</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0D1117;
+    --surface: #161B22;
+    --surface2: #1C2128;
+    --text: #E6EDF3;
+    --muted: #8B949E;
+    --blue: #58A6FF;
+    --mint: #7EE787;
+    --border: rgba(230,237,243,0.08);
+    --border-hover: rgba(88,166,255,0.3);
+    --glow-blue: rgba(88,166,255,0.15);
+    --glow-mint: rgba(126,231,135,0.12);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5%;
+    height: 64px;
+    background: rgba(13,17,23,0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--blue), #a5d6ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .nav-links { display: flex; gap: 32px; list-style: none; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    background: var(--blue); color: #0D1117;
+    border: none; border-radius: 20px;
+    padding: 9px 20px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+  }
+  .nav-cta:hover { background: #79b8ff; transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; align-items: center;
+    padding: 120px 5% 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg-orb {
+    position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none;
+  }
+  .hero-bg-orb.blue {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(88,166,255,0.12) 0%, transparent 70%);
+    top: -100px; left: -100px;
+  }
+  .hero-bg-orb.mint {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(88,166,255,0.07) 0%, transparent 70%);
+    bottom: -50px; right: 10%;
+  }
+
+  .hero-inner {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 80px; align-items: center;
+    max-width: 1200px; margin: 0 auto; width: 100%;
+    position: relative; z-index: 1;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(88,166,255,0.08);
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.8px;
+    color: var(--blue); text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .hero-eyebrow-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--blue);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero-title {
+    font-size: clamp(40px, 5vw, 68px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 24px;
+  }
+
+  .hero-title .accent-blue {
+    background: linear-gradient(135deg, var(--blue), #a5d6ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-title .accent-mint {
+    background: linear-gradient(135deg, #79b8ff, #a5d6ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-desc {
+    font-size: 17px; color: var(--muted); line-height: 1.75;
+    margin-bottom: 40px; max-width: 480px;
+  }
+
+  .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--blue);
+    color: #0D1117; border: none;
+    border-radius: 14px; padding: 16px 28px;
+    font-size: 16px; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.25s;
+    box-shadow: 0 0 40px rgba(88,166,255,0.3), 0 4px 20px rgba(88,166,255,0.2);
+  }
+  .btn-primary:hover {
+    background: #79b8ff;
+    transform: translateY(-2px);
+    box-shadow: 0 0 60px rgba(88,166,255,0.4), 0 8px 30px rgba(88,166,255,0.3);
+  }
+  .btn-primary svg { width: 20px; height: 20px; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent;
+    color: var(--text); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 24px;
+    font-size: 15px; font-weight: 500;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.25s;
+  }
+  .btn-secondary:hover { border-color: rgba(230,237,243,0.2); background: rgba(230,237,243,0.04); }
+
+  .hero-stats {
+    display: flex; gap: 32px; margin-top: 48px;
+    padding-top: 32px; border-top: 1px solid var(--border);
+  }
+  .hero-stat-number {
+    font-size: 28px; font-weight: 800; letter-spacing: -1px;
+    color: var(--text);
+  }
+  .hero-stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* ── PHONE MOCKUP ── */
+  .phone-wrap {
+    display: flex; justify-content: center; align-items: center;
+    position: relative;
+  }
+
+  .phone-glow {
+    position: absolute;
+    width: 420px; height: 420px;
+    background: radial-gradient(circle, rgba(88,166,255,0.18) 0%, transparent 65%);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+
+  .phone-frame {
+    width: 340px;
+    height: 720px;
+    background: var(--surface);
+    border-radius: 44px;
+    border: 1.5px solid rgba(88,166,255,0.25);
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.05),
+      0 40px 80px rgba(0,0,0,0.5),
+      0 0 60px rgba(88,166,255,0.1);
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+
+  .phone-notch {
+    width: 110px; height: 32px;
+    background: #000000;
+    border-radius: 24px;
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20;
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+  .phone-notch::after {
+    content: ''; width: 12px; height: 12px; border-radius: 50%; background: #1a1a1a; box-shadow: inset 0 0 4px rgba(255,255,255,0.1);
+  }
+
+  .phone-screen {
+    padding: 34px 14px 100px;
+    background: #0D1117;
+    height: 100%;
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+  .phone-screen::-webkit-scrollbar { display: none; }
+
+  .phone-screen-header {
+    padding: 10px 0 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .phone-app-name {
+    font-size: 13px; font-weight: 700; letter-spacing: -0.3px;
+    background: linear-gradient(135deg, var(--blue), #a5d6ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .phone-badge {
+    background: var(--blue); color: #0D1117;
+    font-size: 9px; font-weight: 700;
+    padding: 3px 8px; border-radius: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .phone-ring-wrap {
+    display: flex; justify-content: center; padding: 8px 0 16px;
+  }
+  .phone-ring {
+    width: 120px; height: 120px; position: relative;
+  }
+  .phone-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .phone-ring-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    text-align: center;
+  }
+  .phone-ring-kcal { font-size: 18px; font-weight: 800; color: var(--text); }
+  .phone-ring-sub { font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+
+  .phone-macros { display: flex; flex-direction: column; gap: 7px; }
+  .phone-macro-row { display: flex; align-items: center; gap: 8px; }
+  .phone-macro-label { font-size: 9px; color: var(--muted); width: 52px; }
+  .phone-macro-bar-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .phone-macro-bar { height: 100%; border-radius: 2px; }
+  .phone-macro-val { font-size: 9px; color: var(--muted); width: 32px; text-align: right; }
+
+  .phone-micro-row {
+    margin-top: 14px; padding: 10px;
+    background: rgba(88,166,255,0.06);
+    border: 1px solid rgba(88,166,255,0.12);
+    border-radius: 12px;
+  }
+  .phone-micro-title { font-size: 9px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .phone-micro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .phone-micro-item { background: rgba(255,255,255,0.03); border-radius: 6px; padding: 5px 6px; }
+  .phone-micro-item-name { font-size: 8px; color: var(--muted); }
+  .phone-micro-item-val { font-size: 10px; font-weight: 600; color: var(--blue); margin-top: 1px; }
+
+  /* ── SECTION COMMONS ── */
+  section { padding: 100px 5%; }
+  .section-inner { max-width: 1200px; margin: 0 auto; }
+
+  .section-eyebrow {
+    display: inline-block;
+    font-size: 12px; font-weight: 600; letter-spacing: 1px;
+    color: var(--blue); text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 800; letter-spacing: -1.5px;
+    line-height: 1.1; margin-bottom: 16px;
+  }
+  .section-desc {
+    font-size: 17px; color: var(--muted); max-width: 560px;
+    line-height: 1.75;
+  }
+
+  /* ── LONGEVITY SECTION ── */
+  .longevity-section { background: linear-gradient(180deg, var(--bg) 0%, #0a0f16 100%); }
+
+  .longevity-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 60px; align-items: center;
+    margin-top: 60px;
+  }
+
+  .longevity-list { display: flex; flex-direction: column; gap: 28px; }
+
+  .longevity-item {
+    display: flex; gap: 20px; align-items: flex-start;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    transition: all 0.3s;
+  }
+  .longevity-item:hover {
+    border-color: rgba(88,166,255,0.25);
+    background: rgba(22,27,34,0.8);
+    transform: translateX(6px);
+  }
+
+  .longevity-icon-wrap {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(88,166,255,0.1);
+    border: 1px solid rgba(88,166,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .longevity-icon-wrap svg { width: 22px; height: 22px; stroke: var(--blue); }
+  .longevity-item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .longevity-item-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .longevity-visual {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .longevity-visual::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(88,166,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .longevity-visual-title { font-size: 13px; color: var(--muted); margin-bottom: 20px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .aging-chart { width: 100%; height: 160px; margin-bottom: 24px; }
+
+  .biomarkers { display: flex; flex-direction: column; gap: 10px; }
+  .biomarker-row { display: flex; align-items: center; gap: 12px; }
+  .biomarker-name { font-size: 12px; color: var(--muted); width: 80px; }
+  .biomarker-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .biomarker-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--blue), #a5d6ff); transition: width 1s ease; }
+  .biomarker-val { font-size: 12px; font-weight: 600; color: var(--blue); width: 40px; text-align: right; }
+
+  /* ── FEATURES BENTO ── */
+  .features-section {}
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: minmax(100px, auto);
+    gap: 16px;
+    margin-top: 60px;
+  }
+
+  .bento-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    position: relative; overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: default;
+  }
+  .bento-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-hover);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 30px var(--glow-blue);
+  }
+  .bento-card.mint-hover:hover {
+    border-color: rgba(88,166,255,0.3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 30px var(--glow-blue);
+  }
+
+  .bento-card.span-5 { grid-column: span 5; }
+  .bento-card.span-4 { grid-column: span 4; }
+  .bento-card.span-3 { grid-column: span 3; }
+  .bento-card.span-6 { grid-column: span 6; }
+  .bento-card.span-7 { grid-column: span 7; }
+  .bento-card.span-8 { grid-column: span 8; }
+
+  .bento-card.featured {
+    background: linear-gradient(135deg, rgba(88,166,255,0.08) 0%, rgba(22,27,34,1) 60%);
+    border-color: rgba(88,166,255,0.2);
+  }
+  .bento-card.featured-mint {
+    background: linear-gradient(135deg, rgba(88,166,255,0.06) 0%, rgba(22,27,34,1) 60%);
+    border-color: rgba(88,166,255,0.18);
+  }
+
+  .bento-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .bento-icon svg { width: 22px; height: 22px; }
+  .bento-icon.blue { background: rgba(88,166,255,0.12); border: 1px solid rgba(88,166,255,0.2); }
+  .bento-icon.blue svg { stroke: var(--blue); }
+  .bento-icon.mint { background: rgba(126,231,135,0.08); border: 1px solid rgba(126,231,135,0.18); }
+  .bento-icon.mint svg { stroke: #7EE787; }
+  .bento-icon.purple { background: rgba(163,113,247,0.1); border: 1px solid rgba(163,113,247,0.2); }
+  .bento-icon.purple svg { stroke: #a371f7; }
+  .bento-icon.orange { background: rgba(255,166,87,0.1); border: 1px solid rgba(255,166,87,0.2); }
+  .bento-icon.orange svg { stroke: #ffa657; }
+  .bento-icon.pink { background: rgba(255,111,160,0.1); border: 1px solid rgba(255,111,160,0.2); }
+  .bento-icon.pink svg { stroke: #ff7eb6; }
+  .bento-icon.teal { background: rgba(64,196,214,0.1); border: 1px solid rgba(64,196,214,0.2); }
+  .bento-icon.teal svg { stroke: #40c4d6; }
+
+  .bento-tag {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 6px; margin-bottom: 12px;
+  }
+  .bento-tag.blue { background: rgba(88,166,255,0.12); color: var(--blue); }
+  .bento-tag.mint { background: rgba(88,166,255,0.1); color: var(--blue); }
+
+  .bento-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .bento-desc { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+  .bento-big-number {
+    font-size: 52px; font-weight: 900; letter-spacing: -3px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--blue), var(--mint));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  /* visual accent inside cards */
+  .mini-chart { margin-top: 16px; }
+  .mini-chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 50px; }
+  .mini-bar { flex: 1; border-radius: 3px 3px 0 0; background: rgba(88,166,255,0.2); transition: background 0.3s; }
+  .mini-bar.active { background: var(--blue); }
+  .mini-bar.mint { background: var(--mint); }
+
+  /* ── SOCIAL PROOF ── */
+  .social-section {
+    background: rgba(22,27,34,0.5);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px; }
+
+  .review-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    transition: all 0.3s;
+  }
+  .review-card:hover { border-color: rgba(88,166,255,0.2); transform: translateY(-2px); }
+
+  .review-stars { display: flex; gap: 3px; margin-bottom: 12px; }
+  .review-star { color: #fbbf24; font-size: 14px; }
+  .review-text { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+  .review-author { display: flex; align-items: center; gap: 10px; }
+  .review-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--mint));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #0D1117;
+  }
+  .review-name { font-size: 13px; font-weight: 600; }
+  .review-sub { font-size: 11px; color: var(--muted); }
+
+  /* ── CTA SECTION ── */
+  .cta-section {
+    text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .cta-section::before {
+    content: '';
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(88,166,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-inner { position: relative; z-index: 1; }
+  .cta-title {
+    font-size: clamp(36px, 5vw, 60px);
+    font-weight: 800; letter-spacing: -2px; margin-bottom: 20px;
+  }
+  .cta-desc { font-size: 18px; color: var(--muted); margin-bottom: 40px; }
+
+  .store-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .store-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px 24px;
+    text-decoration: none; color: var(--text);
+    transition: all 0.3s;
+  }
+  .store-btn:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 40px rgba(88,166,255,0.15);
+  }
+  .store-btn svg { width: 28px; height: 28px; fill: var(--text); }
+  .store-btn-text { text-align: left; }
+  .store-btn-small { font-size: 11px; color: var(--muted); }
+  .store-btn-big { font-size: 16px; font-weight: 700; }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 48px 5%;
+    border-top: 1px solid var(--border);
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 20px;
+  }
+  .footer-logo {
+    font-size: 16px; font-weight: 700;
+    background: linear-gradient(135deg, var(--blue), #a5d6ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { color: var(--muted); font-size: 13px; text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--text); }
+  .footer-copy { color: var(--muted); font-size: 13px; }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    max-width: 1200px; margin: 0 auto;
+    height: 1px; background: var(--border);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    nav { padding: 0 4%; }
+    .nav-links { display: none; }
+    .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+    .hero { padding: 100px 4% 60px; min-height: auto; }
+    .phone-wrap { order: -1; }
+    .phone-frame { width: 240px; }
+    .longevity-grid { grid-template-columns: 1fr; }
+    .bento-grid { grid-template-columns: 1fr 1fr; }
+    .bento-card.span-5, .bento-card.span-4, .bento-card.span-3,
+    .bento-card.span-6, .bento-card.span-7, .bento-card.span-8 { grid-column: span 2; }
+    .reviews-grid { grid-template-columns: 1fr; }
+    .hero-stats { gap: 20px; flex-wrap: wrap; }
+    section { padding: 60px 4%; }
+  }
+
+  /* ── SCROLL ANIMATION ── */
+  .fade-up {
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+  .stagger-1 { transition-delay: 0.1s; }
+  .stagger-2 { transition-delay: 0.2s; }
+  .stagger-3 { transition-delay: 0.3s; }
+  .stagger-4 { transition-delay: 0.4s; }
+
+  /* Nutrient pills */
+  .nutrient-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+  .nutrient-pill {
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px; border-radius: 20px;
+    background: rgba(88,166,255,0.08);
+    border: 1px solid rgba(88,166,255,0.15);
+    color: rgba(88,166,255,0.9);
+  }
+  .nutrient-pill.mint {
+    background: rgba(88,166,255,0.06);
+    border-color: rgba(88,166,255,0.12);
+    color: rgba(130,185,255,0.9);
+  }
+
+  /* AI Chat bubble */
+  .ai-bubble {
+    background: rgba(88,166,255,0.07);
+    border: 1px solid rgba(88,166,255,0.15);
+    border-radius: 12px; padding: 12px 14px;
+    margin-top: 16px;
+  }
+  .ai-bubble-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+  .ai-label { font-size: 10px; font-weight: 600; color: var(--blue); letter-spacing: 0.5px; text-transform: uppercase; }
+  .ai-bubble-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">NutriLens</div>
+  <ul class="nav-links">
+    <li><a href="#features">Özellikler</a></li>
+    <li><a href="#reviews">İncelemeler</a></li>
+  </ul>
+  <a href="#download" class="nav-cta">Download</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-orb blue"></div>
+  <div class="hero-bg-orb mint"></div>
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-eyebrow">
+        <span class="hero-eyebrow-dot"></span>
+        65+ Biomarkers Tracked
+      </div>
+      <h1 class="hero-title">
+        Daha <span class="accent-blue">Uzun</span>,<br>
+        Daha <span class="accent-mint">Sağlıklı</span><br>
+        Bir Yaşam
+      </h1>
+      <p class="hero-desc">
+        The only nutrition app that goes beyond calories. Track 65+ micro and macro nutrients, slow cellular aging, and receive AI-powered longevity strategies personalized to your biology.
+      </p>
+      <div class="hero-actions">
+        <a href="#download" class="btn-primary">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M15 12l-5 5-5-5M10 17V3"/>
+          </svg>
+          Download App
+        </a>
+        <a href="#features" class="btn-secondary">
+          Explore Features
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-number">65+</div>
+          <div class="hero-stat-label">Nutrients tracked</div>
+        </div>
+        <div>
+          <div class="hero-stat-number">91%</div>
+          <div class="hero-stat-label">Avg. micronutrient score</div>
+        </div>
+        <div>
+          <div class="hero-stat-number">16:8</div>
+          <div class="hero-stat-label">Fasting protocol</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHONE MOCKUP -->
+    <div class="phone-wrap">
+      <div class="phone-glow"></div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-screen-header">
+            <span class="phone-app-name" style="font-size: 16px; letter-spacing: 0;">LensEat</span>
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: #FFA100; border: 1px solid rgba(255, 161, 0, 0.4); border-radius: 16px; padding: 4px 12px; background: rgba(255, 161, 0, 0.05);">
+              <i class="fa-solid fa-fire"></i>
+              <span style="color: #E6EDF3;">9</span>
+            </div>
+          </div>
+
+          <!-- Main Status Card -->
+          <div style="background: var(--surface); border-radius: 20px; padding: 20px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.03);">
+            
+            <div class="phone-ring-wrap" style="padding-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="text-align: center;">
+                <div style="font-size: 16px; font-weight: 800; color: #E6EDF3;">1650</div>
+                <div style="font-size: 9px; color: #7EE787; font-weight: 600; letter-spacing: 0.5px; margin-top: 2px;">ALINAN</div>
+              </div>
+              <div class="phone-ring" style="width: 140px; height: 140px; position: relative;">
+                <svg viewBox="0 0 120 120" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg);">
+                  <!-- Outer Track -->
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#252A33" stroke-width="8"/>
+                  <!-- Inner Track -->
+                  <circle cx="60" cy="60" r="38" fill="none" stroke="#252A33" stroke-width="8"/>
+                  
+                  <!-- Outer Fill (Green) -->
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#20C965" stroke-width="8"
+                    stroke-dasharray="314" stroke-dashoffset="120" stroke-linecap="round"/>
+                  
+                  <!-- Inner Fill (Orange) -->
+                  <circle cx="60" cy="60" r="38" fill="none" stroke="#FFA100" stroke-width="8"
+                    stroke-dasharray="238" stroke-dashoffset="100" stroke-linecap="round"/>
+                </svg>
+                <div class="phone-ring-label" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5;">
+                  <div class="phone-ring-kcal" style="font-size: 24px; font-weight: 800; color: #FFFFFF; line-height: 1;">2,039</div>
+                  <div class="phone-ring-sub" style="font-size: 9px; color: #8B949E; font-weight: 600; letter-spacing: 0.5px; margin-top: 4px;">KALAN KCAL</div>
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 16px; font-weight: 800; color: #E6EDF3;">1643</div>
+                <div style="font-size: 9px; color: #FFA100; font-weight: 600; letter-spacing: 0.5px; margin-top: 2px;">YAKILAN</div>
+              </div>
+            </div>
+
+            <!-- Macro bars -->
+            <div class="phone-macros" style="gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                  <span style="color:#E6EDF3;font-size:9px;font-weight:600;letter-spacing:1px;">PROTEİN</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:600;">280g <span style="color:#7EE787;font-size:9px;">/ 112g</span></span>
+                </div>
+                <div class="phone-macro-bar-wrap" style="height:6px;background:rgba(126,231,135,0.15);"><div class="phone-macro-bar" style="width:100%;background:#7EE787;"></div></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                  <span style="color:#E6EDF3;font-size:9px;font-weight:600;letter-spacing:1px;">KARBONHİDRAT</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:600;">256g <span style="color:#58A6FF;font-size:9px;">/ 272g</span></span>
+                </div>
+                <div class="phone-macro-bar-wrap" style="height:6px;background:rgba(88,166,255,0.15);"><div class="phone-macro-bar" style="width:94%;background:#58A6FF;"></div></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                  <span style="color:#E6EDF3;font-size:9px;font-weight:600;letter-spacing:1px;">YAĞ</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:600;">259g <span style="color:#FFA100;font-size:9px;">/ 57g</span></span>
+                </div>
+                <div class="phone-macro-bar-wrap" style="height:6px;background:rgba(255,161,0,0.15);"><div class="phone-macro-bar" style="width:100%;background:#FFA100;"></div></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                  <span style="color:#E6EDF3;font-size:9px;font-weight:600;letter-spacing:1px;">LİF</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:600;">26g <span style="color:#B388FF;font-size:9px;">/ 38g</span></span>
+                </div>
+                <div class="phone-macro-bar-wrap" style="height:6px;background:rgba(179,136,255,0.15);"><div class="phone-macro-bar" style="width:68%;background:#B388FF;"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Combined Micronutrients and Minerals panel -->
+          <!-- Combined Micronutrients and Minerals panel -->
+          <div style="background: var(--surface); border-radius: 20px; padding: 16px; border: 1px solid rgba(255,255,255,0.03);">
+            <div style="font-size: 13px; font-weight: 700; color: #E6EDF3; margin-bottom: 12px;">Mikro Besinler</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end; margin-bottom: 20px;">
+              <div style="font-size: 28px; font-weight: 800; line-height: 1;">91<span style="font-size: 16px;">%</span></div>
+              <div style="background: rgba(126,231,135,0.1); color: #7EE787; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700;">Kusursuz</div>
+            </div>
+
+            <div style="font-size: 9px; font-weight: 700; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px;">MİNERALLER</div>
+            <div class="phone-micro-grid" style="gap: 12px;">
+              <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <span style="font-size:8px;color:var(--muted);font-weight:600;">DEMİR</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:700;">37.5mg</span>
+                </div>
+                <div style="height:4px;background:rgba(0,190,190,0.2);border-radius:2px;"><div style="width:80%;height:100%;background:#00d0d0;border-radius:2px;"></div></div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <span style="font-size:8px;color:var(--muted);font-weight:600;">KALSİYUM</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:700;">1785mg</span>
+                </div>
+                <div style="height:4px;background:rgba(0,190,190,0.2);border-radius:2px;"><div style="width:90%;height:100%;background:#00d0d0;border-radius:2px;"></div></div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <span style="font-size:8px;color:var(--muted);font-weight:600;">POTASYUM</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:700;">4471mg</span>
+                </div>
+                <div style="height:4px;background:rgba(0,190,190,0.2);border-radius:2px;"><div style="width:100%;height:100%;background:#00d0d0;border-radius:2px;"></div></div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <span style="font-size:8px;color:var(--muted);font-weight:600;">MAGNEZYUM</span>
+                  <span style="font-size:10px;color:var(--text);font-weight:700;">404mg</span>
+                </div>
+                <div style="height:4px;background:rgba(0,190,190,0.2);border-radius:2px;"><div style="width:85%;height:100%;background:#00d0d0;border-radius:2px;"></div></div>
+              </div>
+            </div>
+            <div style="text-align: center; margin-top: 16px;">
+              <span style="font-size: 11px; color: var(--blue); font-weight: 600;">Tüm besin değerlerini gör ➔</span>
+            </div>
+          </div>
+
+          <!-- Bottom nav floating -->
+          <div style="position:absolute;bottom:14px;left:14px;right:86px;background:#1B2028;border-radius:24px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.02);box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
+              <i class="fa-solid fa-table-cells-large" style="font-size:22px;"></i>
+            </div>
+            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
+              <i class="fa-solid fa-stopwatch" style="font-size:22px;"></i>
+            </div>
+            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
+              <i class="fa-regular fa-lightbulb" style="font-size:22px;"></i>
+            </div>
+            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#58A6FF;width:40px;">
+              <i class="fa-solid fa-user" style="font-size:22px;"></i>
+            </div>
+          </div>
+
+          <!-- FAB -->
+          <div style="position:absolute;bottom:14px;right:14px;width:60px;height:60px;background:#FFFFFF;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0D1117;font-size:28px;font-weight:400;box-shadow:0 0 30px rgba(255,255,255,0.2);cursor:pointer;z-index:20;">
+            +
+          </div>
+
+        </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LONGEVITY SECTION -->
+<section class="longevity-section" id="longevity">
+  <div class="section-inner">
+    <div class="fade-up">
+      <span class="section-eyebrow">Longevity Bilimi</span>
+      <h2 class="section-title">Hücresel yaşlanmayla savaşan<br>beslenme</h2>
+      <p class="section-desc">Her öğün bir fırsattır. NutriLens, alımınızı telomer sağlığından mitokondriyal fonksiyona kadar en son longevity araştırmalarıyla eşleştirir.</p>
+    </div>
+
+    <div class="longevity-grid">
+      <div class="longevity-list">
+        <div class="longevity-item fade-up stagger-1">
+          <div class="longevity-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/>
+              <path d="M12 8v4l3 3"/>
+            </svg>
+          </div>
+          <div>
+            <div class="longevity-item-title">Sirkadiyen Ritim Optimizasyonu</div>
+            <div class="longevity-item-desc">Time your meals to your biological clock. NutriLens syncs your eating window with your sleep-wake cycle to maximize metabolic efficiency.</div>
+          </div>
+        </div>
+
+        <div class="longevity-item fade-up stagger-2">
+          <div class="longevity-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="12" cy="12" rx="10" ry="4"/>
+              <path d="M2 12c0 4 4.5 7 10 7s10-3 10-7"/>
+              <path d="M2 12c0-4 4.5-7 10-7s10 3 10 7"/>
+            </svg>
+          </div>
+          <div>
+            <div class="longevity-item-title">Autophagy & Cellular Renewal</div>
+            <div class="longevity-item-desc">Track fasting windows that trigger autophagy — your body's natural cellular cleaning process linked to reduced disease risk and extended healthspan.</div>
+          </div>
+        </div>
+
+        <div class="longevity-item fade-up stagger-3">
+          <div class="longevity-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+            </svg>
+          </div>
+          <div>
+            <div class="longevity-item-title">Anti-Inflammatory Scoring</div>
+            <div class="longevity-item-desc">Every meal receives an inflammation score based on its omega-6:omega-3 ratio, antioxidant density, and glycemic impact. Chronic inflammation is the root of aging.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="longevity-visual fade-up stagger-2">
+        <div class="longevity-visual-title">Biological Age vs. Chronological Age</div>
+        <svg class="aging-chart" viewBox="0 0 300 140">
+          <!-- grid -->
+          <line x1="40" y1="10" x2="40" y2="120" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <line x1="40" y1="120" x2="295" y2="120" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <line x1="40" y1="50" x2="295" y2="50" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="40" y1="80" x2="295" y2="80" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,4"/>
+          <!-- labels -->
+          <text x="8" y="125" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">20</text>
+          <text x="8" y="84" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">30</text>
+          <text x="8" y="54" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">40</text>
+          <text x="8" y="24" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">50</text>
+          <!-- chronological line (gray) -->
+          <polyline points="60,115 110,98 160,81 210,64 260,47 295,35"
+            fill="none" stroke="rgba(139,148,158,0.3)" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <!-- biological line (blue) -->
+          <polyline points="60,115 110,105 160,96 210,86 260,78 295,70"
+            fill="none" stroke="#58A6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- glow -->
+          <polyline points="60,115 110,105 160,96 210,86 260,78 295,70"
+            fill="none" stroke="rgba(88,166,255,0.2)" stroke-width="8" stroke-linecap="round"/>
+          <!-- dots -->
+          <circle cx="295" cy="70" r="4" fill="#58A6FF"/>
+          <circle cx="295" cy="35" r="3" fill="rgba(139,148,158,0.4)"/>
+          <!-- legend -->
+          <rect x="60" y="10" width="8" height="2" fill="rgba(139,148,158,0.4)" rx="1"/>
+          <text x="72" y="14" fill="rgba(139,148,158,0.7)" font-size="8" font-family="Inter">Chronological</text>
+          <rect x="140" y="10" width="8" height="2" fill="#58A6FF" rx="1"/>
+          <text x="152" y="14" fill="rgba(88,166,255,0.9)" font-size="8" font-family="Inter">Biological (with NutriLens)</text>
+        </svg>
+
+        <div class="biomarkers">
+          <div class="biomarker-row">
+            <span class="biomarker-name">Inflammation</span>
+            <div class="biomarker-bar-track"><div class="biomarker-bar-fill" style="width:88%;"></div></div>
+            <span class="biomarker-val">88%</span>
+          </div>
+          <div class="biomarker-row">
+            <span class="biomarker-name">Telomere</span>
+            <div class="biomarker-bar-track"><div class="biomarker-bar-fill" style="width:74%;"></div></div>
+            <span class="biomarker-val">74%</span>
+          </div>
+          <div class="biomarker-row">
+            <span class="biomarker-name">Gut Health</span>
+            <div class="biomarker-bar-track"><div class="biomarker-bar-fill" style="width:91%;"></div></div>
+            <span class="biomarker-val">91%</span>
+          </div>
+          <div class="biomarker-row">
+            <span class="biomarker-name">Mitochondria</span>
+            <div class="biomarker-bar-track"><div class="biomarker-bar-fill" style="width:82%;"></div></div>
+            <span class="biomarker-val">82%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES BENTO -->
+<section id="features">
+  <div class="section-inner">
+    <div class="fade-up">
+      <span class="section-eyebrow">Özellikler</span>
+      <h2 class="section-title">Everything your body needs<br>to know</h2>
+    </div>
+
+    <div class="bento-grid">
+
+      <!-- CARD 1: 65+ Nutrients — BIG -->
+      <div class="bento-card span-5 featured fade-up">
+        <span class="bento-tag blue">Core Feature</span>
+        <div class="bento-big-number">65+</div>
+        <div class="bento-title">Micro & Macro Nutrient Tracking</div>
+        <div class="bento-desc">From vitamin D₃ to selenium — every essential nutrient tracked with clinical-grade precision against personalized daily targets.</div>
+        <div class="nutrient-pills">
+          <span class="nutrient-pill">Vitamin A</span>
+          <span class="nutrient-pill">Omega-3</span>
+          <span class="nutrient-pill">Iron</span>
+          <span class="nutrient-pill">Zinc</span>
+          <span class="nutrient-pill">Selenium</span>
+          <span class="nutrient-pill mint">Coenzyme Q10</span>
+          <span class="nutrient-pill mint">Glutathione</span>
+        </div>
+      </div>
+
+      <!-- CARD 2: AI Coach -->
+      <div class="bento-card span-4 mint-hover fade-up stagger-1">
+        <div class="bento-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4l3 3"/>
+            <path d="M8 2.9A10 10 0 0120 16"/>
+          </svg>
+        </div>
+        <div class="bento-title">AI Nutrition Coach</div>
+        <div class="bento-desc">Ask anything about your diet. Get personalized advice based on your actual nutrient data, goals, and health history.</div>
+        <div class="ai-bubble">
+          <div class="ai-bubble-header"><div class="ai-dot"></div><span class="ai-label">NutriLens AI</span></div>
+          <div class="ai-bubble-text">Your omega-3 intake is 40% below target. I recommend adding salmon twice this week to optimize your cellular membrane health.</div>
+        </div>
+      </div>
+
+      <!-- CARD 3: Calorie -->
+      <div class="bento-card span-3 fade-up stagger-2">
+        <div class="bento-icon orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+            <path d="M8.5 8.5s1.5 2 3.5 2 3.5-2 3.5-2"/>
+            <path d="M9 15a5 5 0 006 0"/>
+          </svg>
+        </div>
+        <div class="bento-title">Dynamic Calorie Tracking</div>
+        <div class="bento-desc">Consumed vs. burned — real-time calorie balance synced with your activity data.</div>
+        <div class="mini-chart">
+          <div class="mini-chart-bars">
+            <div class="mini-bar" style="height:30%;"></div>
+            <div class="mini-bar" style="height:55%;"></div>
+            <div class="mini-bar active" style="height:100%;"></div>
+            <div class="mini-bar" style="height:20%;"></div>
+            <div class="mini-bar" style="height:40%;"></div>
+            <div class="mini-bar" style="height:60%;"></div>
+            <div class="mini-bar" style="height:35%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 4: GI Health -->
+      <div class="bento-card span-4 featured-mint fade-up stagger-1">
+        <div class="bento-icon mint">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/>
+            <path d="M7 12s1-3 5-3 5 3 5 3-1 3-5 3-5-3-5-3z"/>
+          </svg>
+        </div>
+        <span class="bento-tag mint">Bağırsak Bilimi</span>
+        <div class="bento-title">Gastrointestinal Motilite Takibi</div>
+        <div class="bento-desc">Bağırsak düzenini, geçiş süresini ve diyet ilişkilerini kaydedin ve analiz edin. Bağırsak mikrobiyomunuzu bozan veya destekleyen yiyecekleri klinik hassasiyetle belirleyin.</div>
+      </div>
+
+      <!-- CARD 5: Sleep -->
+      <div class="bento-card span-4 fade-up stagger-2">
+        <div class="bento-icon purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </div>
+        <div class="bento-title">Uyku Puanı ve Sirkadiyen Analizi</div>
+        <div class="bento-desc">Gecelik takip edilen 1–5 arası uyku kalitesi puanınız. Beslenme seçimlerinizin derin uyku ve toparlanmayı nasıl doğrudan etkilediğini görün.</div>
+        <div class="mini-chart">
+          <div class="mini-chart-bars">
+            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
+            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
+            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
+            <div class="mini-bar" style="height:50%;background:rgba(163,113,247,0.4);"></div>
+            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
+            <div class="mini-bar" style="height:100%;background:#a371f7;"></div>
+            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 6: Hydration -->
+      <div class="bento-card span-4 fade-up">
+        <div class="bento-icon teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>
+          </svg>
+        </div>
+        <div class="bento-title">Akıllı Su Takibi</div>
+        <div class="bento-desc">Kişiselleştirilmiş günlük su hedefleri (varsayılan 2450 ml). Tek dokunuşla alımı takip edin — hatırlatıcılar aktivite seviyenize ve iklime uyum sağlar.</div>
+      </div>
+
+      <!-- CARD 7: Recipes -->
+      <div class="bento-card span-4 fade-up stagger-1">
+        <div class="bento-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 2l1 8s2 1 8 1 8-1 8-1l1-8"/>
+            <path d="M12 11v10M8 21h8"/>
+          </svg>
+        </div>
+        <div class="bento-title">Kişiselleştirilmiş Tarifler</div>
+        <div class="bento-desc">Belirli besin eksikliklerinizi doldurmak için derlenmiş günlük tarifler. Enerji için muzlu smoothie kaseleri, mikro besin eksiklikleri için avokadolu tost.</div>
+      </div>
+
+      <!-- CARD 8: Fasting -->
+      <div class="bento-card span-4 fade-up stagger-2">
+        <div class="bento-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="bento-title">Aralıklı Oruç Zamanlayıcısı</div>
+        <div class="bento-desc">12:12, 16:8, 18:6 veya özel. Gerçek zamanlı dairesel bir zamanlayıcı, oruç pencerenizi, başlangıcınızı ve öngörülen otofaji başlangıcını gösterir.</div>
+      </div>
+
+      <!-- CARD 9: Charts -->
+      <div class="bento-card span-4 fade-up">
+        <div class="bento-icon orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <div class="bento-title">Gelişmiş Raporlar ve Grafikler</div>
+        <div class="bento-desc">Kaloriler, kilo eğilimleri, besin kalıpları ve uyku kalitesi için 7 günlük, aylık ve yıllık görünümler — hepsi tek bir yerde.</div>
+      </div>
+
+      <!-- CARD 10: Mood -->
+      <div class="bento-card span-4 fade-up stagger-1">
+        <div class="bento-icon pink">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </div>
+        <div class="bento-title">Ruh Hali ve Psikoloji Takibi</div>
+        <div class="bento-desc">Duygusal durumunuzu günde 4 kez (sabah, öğle, akşam, gece) kaydedin. Ruh hali dalgalanmalarınızın arkasındaki beslenme kalıplarını ortaya çıkarın.</div>
+      </div>
+
+      <!-- CARD 11: Social -->
+      <div class="bento-card span-4 fade-up stagger-2">
+        <div class="bento-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+        </div>
+        <div class="bento-title">Arkadaşlık Sistemi</div>
+        <div class="bento-desc">İlerlemeyi paylaşın, serileri karşılaştırın ve birbirinizi motive edin. Gerçek beslenme verileri etrafında oluşturulmuş, gizliliğe önem veren bir topluluk.</div>
+      </div>
+
+      <!-- CARD 12: Scan -->
+      <div class="bento-card span-4 fade-up">
+        <div class="bento-icon mint">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5"/>
+            <path d="M7 7h2v2H7zM15 7h2v2h-2zM7 15h2v2H7zM11 11h2v2h-2z"/>
+          </svg>
+        </div>
+        <div class="bento-title">Öğün Kaydetmenin 5 Yolu</div>
+        <div class="bento-desc">Barkod tarama, fotoğraf tanıma, ses girişi, manuel giriş veya kaydedilmiş favoriler — bir öğün eklemek 5 saniyeden kısa sürer.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="social-section" id="reviews">
+  <div class="section-inner">
+    <div class="fade-up" style="text-align:center;">
+      <span class="section-eyebrow">İncelemeler</span>
+      <h2 class="section-title">Sağlığını ciddiye alan<br>kişiler tarafından seviliyor</h2>
+    </div>
+    <div class="reviews-grid">
+      <div class="review-card fade-up stagger-1">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"Her beslenme uygulamasını denedim. NutriLens, gerçekten önemli olanı takip eden tek uygulama. Mikro besin puanım üç haftada %62'den %94'e çıktı."</p>
+        <div class="review-author">
+          <div class="review-avatar">AM</div>
+          <div>
+            <div class="review-name">Ayşe M.</div>
+            <div class="review-sub">Spor beslenme uzmanı</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card fade-up stagger-2">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"GI izleme özelliği hayatımı değiştirdi. Sonunda şişkinliğimi yüksek FODMAP'li yiyeceklerle ilişkilendirdim — 5 yıl boyunca hiçbir doktorun bana söyleyemediği bir şey."</p>
+        <div class="review-author">
+          <div class="review-avatar">KS</div>
+          <div>
+            <div class="review-name">Kerem S.</div>
+            <div class="review-sub">Yazılım mühendisi, İzmir</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card fade-up stagger-3">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"Longevity puanları ve sirkadiyen analizi, cebimde kişisel bir doktor varmış gibi hissettiriyor. Yapay zeka koçu gerçekten akıllı."</p>
+        <div class="review-author">
+          <div class="review-avatar">LT</div>
+          <div>
+            <div class="review-name">Leyla T.</div>
+            <div class="review-sub">Biohacker ve araştırmacı</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="download">
+  <div class="section-inner">
+    <div class="cta-inner fade-up">
+      <h2 class="cta-title">Longevity için<br><span style="background:linear-gradient(135deg,var(--blue),#a5d6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">bugün yemeye başlayın</span></h2>
+      <p class="cta-desc">İndirmesi ücretsiz. 65+ besin. Sıfır tahmin.</p>
+      <div class="store-buttons">
+        <a href="#" class="store-btn">
+          <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <div class="store-btn-text">
+            <div class="store-btn-small">İndirin</div>
+            <div class="store-btn-big">App Store</div>
+          </div>
+        </a>
+        <a href="#" class="store-btn">
+          <svg viewBox="0 0 24 24"><path d="M3.18 23.76c.37.2.8.2 1.19 0l11-6.36-2.37-2.37-9.82 8.73zM.5 2.22C.18 2.6 0 3.13 0 3.8v16.4c0 .67.18 1.2.5 1.58l.08.08L9.44 12v-.2L.58 2.14.5 2.22zm19.84 8.41L17.7 8.97l-2.42 2.42 2.42 2.42 2.64-1.57c.75-.44.75-1.17 0-1.61zM4.37.24L15.37 6.6l-2.37 2.37L3.18.24C3.57.04 4 .04 4.37.24z"/></svg>
+          <div class="store-btn-text">
+            <div class="store-btn-small">Edinin</div>
+            <div class="store-btn-big">Google Play</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">NutriLens</div>
+    <div class="footer-links">
+      <a href="#">Gizlilik</a>
+      <a href="#">Şartlar</a>
+      <a href="#">Destek</a>
+    </div>
+    <div class="footer-copy">© 2026 NutriLens. Tüm hakları saklıdır.</div>
+  </div>
+</footer>
+
+<script>
+  // Scroll-triggered fade-up animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

@@ -36,7 +36,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
     bool onboardingDone = false;
@@ -68,31 +67,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/icon/icon.webp',
-              width: 120,
-              height: 120,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'LensEat',
-              style: TextStyle(
-                color: const Color(0xFF58A6FF),
-                fontSize: 14,
-                letterSpacing: 3,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1117),
+      body: SizedBox.shrink(),
     );
   }
 }

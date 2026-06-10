@@ -2207,64 +2207,68 @@ class _NutrientLandscapeCard extends StatefulWidget {
     final n = nutrition;
     final n65 = nutrition65;
 
-    double s(double? c, double g) =>
-        g <= 0 ? 100 : ((c ?? 0) / g).clamp(0.0, 1.0) * 100;
-    double si(double? c, double l) =>
-        l <= 0 ? 0 : ((c ?? 0) / l).clamp(0.0, 1.0) * 100;
+    double s(double? c, double? c65, double g) {
+      final val = (c != null && c > 0) ? c : (c65 ?? 0.0);
+      return g <= 0 ? 100 : (val / g).clamp(0.0, 1.0) * 100;
+    }
+    double si(double? c, double? c65, double l) {
+      final val = (c != null && c > 0) ? c : (c65 ?? 0.0);
+      return l <= 0 ? 0 : (val / l).clamp(0.0, 1.0) * 100;
+    }
     double avg(List<double> list) =>
         list.isEmpty ? 50 : list.reduce((a, b) => a + b) / list.length;
 
     // 1. Vitaminler (%30)
     final vitScore = avg([
-      s(n.vitaminC, 90.0),
-      s(n.vitaminD, profile.vitaminDGoal),
-      s(n.vitaminB12, profile.vitaminB12Goal),
-      s(n.vitaminA, 900.0),
-      s(n.folate, 400.0),
-      s(n.vitaminE, 15.0),
-      s(n.vitaminK, 120.0),
-      s(n.thiamine, 1.2),
-      s(n.riboflavin, 1.3),
-      s(n.niacin, 16.0),
-      s(n.vitaminB6, 1.7),
-      s(n.pantothenic, 5.0),
-      s(n.biotin, 30.0),
-      s(n.choline, 550.0),
+      s(n.vitaminC, n65?.vitC, 90.0),
+      s(n.vitaminD, n65?.vitD_mcg, profile.vitaminDGoal),
+      s(n.vitaminB12, n65?.vitB12, profile.vitaminB12Goal),
+      s(n.vitaminA, n65?.vitA_RAE, 900.0),
+      s(n.folate, n65?.folate, 400.0),
+      s(n.vitaminE, n65?.vitE, 15.0),
+      s(n.vitaminK, n65?.vitK, 120.0),
+      s(n.thiamine, n65?.thiamine, 1.2),
+      s(n.riboflavin, n65?.riboflavin, 1.3),
+      s(n.niacin, n65?.niacin, 16.0),
+      s(n.vitaminB6, n65?.vitB6, 1.7),
+      s(n.pantothenic, n65?.pantothenic, 5.0),
+      s(n.biotin, n65?.biotin, 30.0),
+      s(n.choline, n65?.choline, 550.0),
     ]);
 
     // 2. Mineraller (%30)
     final minScore = avg([
-      s(n.iron, profile.ironGoal),
-      s(n.calcium, profile.calciumGoal),
-      s(n.magnesium, profile.magnesiumGoal),
-      s(n.zinc, profile.zincGoal),
-      s(n.potassium, profile.potassiumGoal),
-      si(n.sodium, profile.sodiumLimit),
-      s(n.selenium, profile.seleniumGoal),
-      s(n.copper, 0.9),
-      s(n.manganese, 2.3),
-      s(n.phosphorus, 700.0),
-      s(n65?.iodine, 150.0),
-      s(n65?.molybdenum, 45.0),
-      s(n65?.chromium, 35.0),
+      s(n.iron, n65?.iron, profile.ironGoal),
+      s(n.calcium, n65?.calcium, profile.calciumGoal),
+      s(n.magnesium, n65?.magnesium, profile.magnesiumGoal),
+      s(n.zinc, n65?.zinc, profile.zincGoal),
+      s(n.potassium, n65?.potassium, profile.potassiumGoal),
+      si(n.sodium, n65?.sodium, profile.sodiumLimit),
+      s(n.selenium, n65?.selenium, profile.seleniumGoal),
+      s(n.copper, n65?.copper, 0.9),
+      s(n.manganese, n65?.manganese, 2.3),
+      s(n.phosphorus, n65?.phosphorus, 700.0),
+      s(null, n65?.iodine, 150.0),
+      s(null, n65?.molybdenum, 45.0),
+      s(null, n65?.chromium, 35.0),
     ]);
 
     // 3. Sağlıklı Yağlar & Amino Asitler (%25)
     final essentialScore = avg([
-      s(n.omega3, 1.6),
-      s(n.omega6, 17.0),
-      s(n.tryptophan, 0.28),
-      s(n.leucine, 2.73),
-      s(n.lysine, 2.1),
-      s(n.valine, 1.82),
+      s(n.omega3, n65?.omega3, 1.6),
+      s(n.omega6, n65?.omega6, 17.0),
+      s(n.tryptophan, n65?.tryptophan, 0.28),
+      s(n.leucine, n65?.leucine, 2.73),
+      s(n.lysine, n65?.lysine, 2.1),
+      s(n.valine, n65?.valine, 1.82),
     ]);
 
     // 4. Antioksidanlar & Karotenoidler (%15)
     final antioxidantScore = avg([
-      s(n65?.betaCarot, 3000.0), // ~3000mcg est.
-      s(n65?.lycopene, 10000.0),    // ~10mg est.
-      s(n65?.luteinZea, 6000.0),
-      s(n65?.betaCrypt, 200.0),
+      s(null, n65?.betaCarot, 3000.0), // ~3000mcg est.
+      s(null, n65?.lycopene, 10000.0),    // ~10mg est.
+      s(null, n65?.luteinZea, 6000.0),
+      s(null, n65?.betaCrypt, 200.0),
     ]);
 
     return (vitScore * 0.30 +
@@ -2493,28 +2497,28 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
       _LandscapeItem('Omega-3', n.omega3 ?? n65?.omega3 ?? 0, 1.6, 'g', fattyAcidColor, showAsPercentage: showPct),
       _LandscapeItem('Omega-6', n.omega6 ?? n65?.omega6 ?? 0, 17.0, 'g', fattyAcidColor, showAsPercentage: showPct),
       _LandscapeItem('Doymuş Yağ', n.saturatedFat > 0 ? n.saturatedFat : (n65?.satFat ?? 0), 20.0, 'g', fattyAcidColor, showAsPercentage: showPct),
-      _LandscapeItem('Tekli Doymamış', n.monoFat ?? n65?.monoFat ?? 0, 0, 'g', fattyAcidColor, showAsPercentage: showPct),
-      _LandscapeItem('Çoklu Doymamış', n.polyFat ?? n65?.polyFat ?? 0, 0, 'g', fattyAcidColor, showAsPercentage: showPct),
-      _LandscapeItem('ALA', n.ala ?? n65?.ala ?? 0, 0, 'g', fattyAcidColor, showAsPercentage: showPct),
-      _LandscapeItem('EPA', n.epa ?? n65?.epa ?? 0, 0, 'g', fattyAcidColor, showAsPercentage: showPct),
-      _LandscapeItem('DHA', n.dha ?? n65?.dha ?? 0, 0, 'g', fattyAcidColor, showAsPercentage: showPct),
+      _LandscapeItem('Tekli Doymamış', n.monoFat ?? n65?.monoFat ?? 0, 25.0, 'g', fattyAcidColor, showAsPercentage: showPct),
+      _LandscapeItem('Çoklu Doymamış', n.polyFat ?? n65?.polyFat ?? 0, 15.0, 'g', fattyAcidColor, showAsPercentage: showPct),
+      _LandscapeItem('ALA', n.ala ?? n65?.ala ?? 0, 1.6, 'g', fattyAcidColor, showAsPercentage: showPct),
+      _LandscapeItem('EPA', n.epa ?? n65?.epa ?? 0, 0.25, 'g', fattyAcidColor, showAsPercentage: showPct),
+      _LandscapeItem('DHA', n.dha ?? n65?.dha ?? 0, 0.25, 'g', fattyAcidColor, showAsPercentage: showPct),
       _LandscapeItem('Kolesterol', n.cholesterol ?? n65?.cholesterol ?? 0, 300.0, 'mg', fattyAcidColor, showAsPercentage: showPct),
     ];
 
     // Amino asitler grubu
     const aminoColor = Color(0xFFD2A8FF); // purple
     final aminoAcids = <_LandscapeItem>[
-      _LandscapeItem('Lösin', n.leucine ?? n65?.leucine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Lizin', n.lysine ?? n65?.lysine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('İzolösin', n.isoleucine ?? n65?.isoleucine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Valin', n.valine ?? n65?.valine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Treonin', n.threonine ?? n65?.threonine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Metionin', n.methionine ?? n65?.methionine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Fenilalanin', n.phenylalanine ?? n65?.phenylalanine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Triptofan', n.tryptophan ?? n65?.tryptophan ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Histidin', n.histidine ?? n65?.histidine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Sistein', n65?.cystine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
-      _LandscapeItem('Tirozin', n65?.tyrosine ?? 0, 0, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Lösin', n.leucine ?? n65?.leucine ?? 0, 2.73, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Lizin', n.lysine ?? n65?.lysine ?? 0, 2.10, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('İzolösin', n.isoleucine ?? n65?.isoleucine ?? 0, 1.40, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Valin', n.valine ?? n65?.valine ?? 0, 1.82, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Treonin', n.threonine ?? n65?.threonine ?? 0, 1.05, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Metionin', n.methionine ?? n65?.methionine ?? 0, 1.04, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Fenilalanin', n.phenylalanine ?? n65?.phenylalanine ?? 0, 2.31, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Triptofan', n.tryptophan ?? n65?.tryptophan ?? 0, 0.28, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Histidin', n.histidine ?? n65?.histidine ?? 0, 0.98, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Sistein', n65?.cystine ?? 0, 0.28, 'g', aminoColor, showAsPercentage: showPct),
+      _LandscapeItem('Tirozin', n65?.tyrosine ?? 0, 0.87, 'g', aminoColor, showAsPercentage: showPct),
     ];
 
     final hasData = vitamins.isNotEmpty || minerals.isNotEmpty || fattyAcids.isNotEmpty;

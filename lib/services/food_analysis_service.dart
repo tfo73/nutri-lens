@@ -98,7 +98,7 @@ class FoodAnalysisService {
 
   // ── Aşama 1: Hızlı kimlik tespiti (Haiku, küçük yanıt) ──────────────────
 
-  Future<_FoodIdentification> _identifyFood(
+  Future<Map<String, dynamic>> _analyzeImageFast(
       String base64Image, String? hint) async {
     final json = await _callClaude(
       messages: [
@@ -115,147 +115,34 @@ class FoodAnalysisService {
             },
             {
               'type': 'text',
-              'text':
-                  'Sen "Nutrition5k" veri seti standartlarında (referans nesne, yoğunluk) uzman bir besin analistisin. Görseldeki tabağı sanal olarak içindeki farklı bileşenlere (segmentlere) ayır. Tabağın veya referans bir nesnenin (çatal/kaşık) boyutunu baz alarak her bileşenin kapladığı hacmi ve gerçek ağırlığını gram cinsinden tahmin et. Ardından tüm bileşenlerin adlarını ve pişirme yöntemlerini birleştirip tek bir ana "yemek_adi" oluştur. Porsiyonu, bu bileşenlerin toplam ağırlığı olarak ver.\n\n'
-                  '--- IN-CONTEXT EĞİTİM VERİLERİ (NUTRITION5K KALİBRASYONU) ---\n'
-                  'Örnek 1: (Tabakta 1 parça somon, 1 avuç kuşkonmaz) -> Segmentasyon: %60 Somon (150g), %40 Kuşkonmaz (80g) -> porsiyon_gram: 230\n'
-                  'Örnek 2: (Orta boy kase mercimek çorbası) -> Segmentasyon: %100 Mercimek Çorbası -> porsiyon_gram: 250\n'
-                  'Örnek 3: (Karışık kahvaltı tabağı) -> Segmentasyon: 1 Haşlanmış Yumurta (50g), 2 dilim peynir (60g), 5 zeytin (15g) -> porsiyon_gram: 125\n'
-                  '-------------------------------------------------------------\n\n'
-                  '${hint != null ? ' Kullanıcı notu: "$hint"' : ''}\n\n'
-                  'SADECE JSON döndür:\n{"yemek_adi":"string","yemek_tipi":"corba|ana_yemek|salata|tatli|icecek|kahvalti|atistirmalik","pisirme":"cig|hashlama|izgara|kizartma|firin|diger","porsiyon_gram":number,"guven_skoru":number}\n\nporsiyon_gram: bileşenlerin toplam ağırlığı.',
-            },
-          ],
-        },
-      ],
-      maxTokens: 160,
-      model: 'claude-haiku-4-5-20251001',
-    );
-    return _FoodIdentification(
-      foodName: (json['yemek_adi'] as String?) ?? 'Bilinmeyen',
-      yemekTipi: (json['yemek_tipi'] as String?) ?? 'ana_yemek',
-      confidenceScore: (json['guven_skoru'] as num?)?.toInt() ?? 70,
-      cookingMethod: (json['pisirme'] as String?) ?? 'diger',
-      portionGram: (json['porsiyon_gram'] as num?)?.toDouble() ?? 0,
-    );
-  }
-
-  // ── Aşama 2: Tam besin analizi (sadece USDA/OFF bulunamazsa) ─────────────
-
-  Future<NutritionData65> _analyzeNutrients(
-      String base64Image, String foodName, String? hint) async {
-    final json = await _callClaude(
-      messages: [
-        {
-          'role': 'user',
-          'content': [
-            {
-              'type': 'image',
-              'source': {
-                'type': 'base64',
-                'media_type': 'image/jpeg',
-                'data': base64Image,
-              },
-            },
-            {
-              'type': 'text',
               'text': '''
-Sen bir USDA, Open Food Facts ve Nutrition5k uzmanısın. "$foodName" yemeği için 100g başına besin değerlerini verirken yüksek hassasiyetli segmentasyon yöntemini kullan.
-Bu yemeği oluşturan tüm alt bileşenleri zihninde parçalarına ayır. Her bir bileşenin USDA'daki makro/mikro besin karşılıklarını bul ve tabağın içindeki kendi oranlarına göre ağırlıklı ortalamayla birleştir.
+You are an expert food analyst proficient in "Nutrition5k" and "USDA" data standards. Segment the plate in the image into its distinct components.
+1. Calculate the portion size based on the plate or a reference object (fork/spoon).
+2. Select an EXACT USDA standard entry for the main components (e.g., USDA 170456 Cooked Salmon) and calculate by weight while keeping micronutrient ratios constant.
+3. Always round segmentation ratios to the nearest 10% for stability.
 
---- IN-CONTEXT EĞİTİM VERİLERİ (NUTRITION5K HASSASİYET KALİBRASYONU) ---
-Kural 1 (Pişirme Kaybı): Et/Tavuk/Balık ürünleri piştiklerinde su kaybeder, protein/yağ oranları (100g için) çiğ haline göre ~%25 artar.
-Kural 2 (Su Çekme): Pilav/Makarna haşlandığında su çeker, karbonhidrat oranları (100g için) çiğ haline göre düşer (örn: pişmiş beyaz pirinç ~28g carb).
-Kural 3 (Yağ Emilimi): Kızartma işlemi 100g'da ekstra 5-10g yağ emilimi yaratır. Değerlere ekle.
-Kural 4 (Soslar): Zeytinyağlı/Soslu sebzelerde lif yüksektir, ancak sos kaynaklı ekstra yağ/kalori vardır.
-Kural 5 (Mikro Besin Sabitleme - ÇOK ÖNEMLİ): Mikro besin (vitamin/mineral) değerlerini asla rastgele üretme. Tabağın ana bileşenleri için KESİN bir USDA standart tablosu (örn: USDA 170456 Cooked Salmon) seç ve o tablonun mikro besin oranlarını sabit tutarak ağırlıkla çarp. 
-Kural 6 (Oran Yuvarlama): Stabilite için segmentasyon oranlarını her zaman en yakın %10'luk veya %25'lik dilimlere yuvarla (örn: %50 et, %50 pilav). Ufak farklılıklarda mikro değerleri değiştirme. Aynı yemek tipi her zaman aynı sabit mikro değer profiline sahip olmalıdır.
-------------------------------------------------------------------------
-${hint != null ? '\nKullanıcı notu: "$hint"\n' : ''}
-Görseldeki pişirme yöntemini (kızartmanın yağ oranını veya haşlamanın su oranını etkilemesi gibi) mutlaka dikkate al ve değerlere yansıt.
+--- IN-CONTEXT TRAINING DATA (CALIBRATION) ---
+Rule 1: Meats shrink when cooked; macros/micros per 100g increase.
+Rule 2: Grains absorb water when cooked; macros/micros per 100g decrease.
+Rule 3: Frying increases fat absorption. Reflect this in the values.
+------------------------------------------------
+${hint != null ? '\nUser note: "$hint"\n' : ''}
+Calculate all values per 100g. Provide the portion size in grams for the entire image.
 
-SADECE JSON döndür, başka hiçbir şey yazma:
-{"protein":number,"karbonhidrat":number,"yag":number,"lif":number,"seker":number,"doymus_yag":number,"tekli_doymus_yag":number,"coklu_doymus_yag":number,"trans_yag":number,"kolesterol_mg":number,"su":number,"kalsiyum_mg":number,"demir_mg":number,"magnezyum_mg":number,"fosfor_mg":number,"potasyum_mg":number,"sodyum_mg":number,"cinko_mg":number,"bakir_mg":number,"manganez_mg":number,"selenyum_mcg":number,"iyot_mcg":number,"krom_mcg":number,"molibden_mcg":number,"c_vitamini_mg":number,"d_vitamini_mcg":number,"e_vitamini_mg":number,"k1_vitamini_mcg":number,"a_vitamini_mcg":number,"beta_karoten_mcg":number,"likopen_mcg":number,"lutein_zea_mcg":number,"b1_tiamin_mg":number,"b2_riboflavin_mg":number,"b3_niasin_mg":number,"b5_pantotenik_mg":number,"b6_mg":number,"folat_mcg":number,"b12_mcg":number,"kolin_mg":number,"biotin_mcg":number,"omega3_g":number,"omega6_g":number,"epa_g":number,"dha_g":number,"ala_g":number,"linoleik_g":number,"losin_g":number,"lizin_g":number,"valin_g":number,"izolosin_g":number,"treonin_g":number,"metionin_g":number,"fenilalanin_g":number,"triptofan_g":number,"histidin_g":number,"sistin_g":number,"tirozin_g":number}
+Return ONLY JSON, nothing else:
+{"yemek_adi":"string","yemek_tipi":"soup|main_dish|salad|dessert|drink|breakfast|snack","pisirme":"raw|boiled|grilled|fried|baked|other","porsiyon_gram":number,"guven_skoru":number,"protein":number,"karbonhidrat":number,"yag":number,"lif":number,"seker":number,"doymus_yag":number,"tekli_doymus_yag":number,"coklu_doymus_yag":number,"trans_yag":number,"kolesterol_mg":number,"su":number,"kalsiyum_mg":number,"demir_mg":number,"magnezyum_mg":number,"fosfor_mg":number,"potasyum_mg":number,"sodyum_mg":number,"cinko_mg":number,"bakir_mg":number,"manganez_mg":number,"selenyum_mcg":number,"iyot_mcg":number,"krom_mcg":number,"molibden_mcg":number,"c_vitamini_mg":number,"d_vitamini_mcg":number,"e_vitamini_mg":number,"k1_vitamini_mcg":number,"a_vitamini_mcg":number,"beta_karoten_mcg":number,"likopen_mcg":number,"lutein_zea_mcg":number,"b1_tiamin_mg":number,"b2_riboflavin_mg":number,"b3_niasin_mg":number,"b5_pantotenik_mg":number,"b6_mg":number,"folat_mcg":number,"b12_mcg":number,"kolin_mg":number,"biotin_mcg":number,"omega3_g":number,"omega6_g":number,"epa_g":number,"dha_g":number,"ala_g":number,"linoleik_g":number,"losin_g":number,"lizin_g":number,"valin_g":number,"izolosin_g":number,"treonin_g":number,"metionin_g":number,"fenilalanin_g":number,"triptofan_g":number,"histidin_g":number,"sistin_g":number,"tirozin_g":number}
 
-Kurallar: Bilmiyorsan 0 yaz. protein+karbonhidrat+yag ≤ 100. Amino asit toplamı ≤ protein.''',
+Rules: If unknown, write 0. protein+carbs+fat ≤ 100. Sum of amino acids ≤ protein.'''
             },
           ],
         },
       ],
-      maxTokens: 900,
+      maxTokens: 1000,
       model: 'claude-haiku-4-5-20251001',
     );
-
-    double g(String k) => (json[k] as num?)?.toDouble() ?? 0.0;
-
-    final protein = g('protein');
-    final carb = g('karbonhidrat');
-    final fat = g('yag');
-    final energy = protein * 4.0 + carb * 4.0 + fat * 9.0 + g('lif') * 2.0;
-
-    return NutritionData65(
-      energy: (energy / 5).round() * 5.0,
-      protein: protein,
-      fat: fat,
-      carb: carb,
-      fiber: g('lif'),
-      sugar: g('seker'),
-      satFat: g('doymus_yag'),
-      monoFat: g('tekli_doymus_yag'),
-      polyFat: g('coklu_doymus_yag'),
-      transFat: g('trans_yag'),
-      cholesterol: g('kolesterol_mg'),
-      water: g('su'),
-      calcium: g('kalsiyum_mg'),
-      iron: g('demir_mg'),
-      magnesium: g('magnezyum_mg'),
-      phosphorus: g('fosfor_mg'),
-      potassium: g('potasyum_mg'),
-      sodium: g('sodyum_mg'),
-      zinc: g('cinko_mg'),
-      copper: g('bakir_mg'),
-      manganese: g('manganez_mg'),
-      selenium: g('selenyum_mcg'),
-      iodine: g('iyot_mcg'),
-      chromium: g('krom_mcg'),
-      molybdenum: g('molibden_mcg'),
-      vitC: g('c_vitamini_mg'),
-      vitD_mcg: g('d_vitamini_mcg'),
-      vitE: g('e_vitamini_mg'),
-      vitK: g('k1_vitamini_mcg'),
-      vitA_RAE: g('a_vitamini_mcg'),
-      betaCarot: g('beta_karoten_mcg'),
-      lycopene: g('likopen_mcg'),
-      luteinZea: g('lutein_zea_mcg'),
-      thiamine: g('b1_tiamin_mg'),
-      riboflavin: g('b2_riboflavin_mg'),
-      niacin: g('b3_niasin_mg'),
-      pantothenic: g('b5_pantotenik_mg'),
-      vitB6: g('b6_mg'),
-      folate: g('folat_mcg'),
-      vitB12: g('b12_mcg'),
-      choline: g('kolin_mg'),
-      biotin: g('biotin_mcg'),
-      omega3: g('omega3_g'),
-      omega6: g('omega6_g'),
-      epa: g('epa_g'),
-      dha: g('dha_g'),
-      ala: g('ala_g'),
-      linoleic: g('linoleik_g'),
-      leucine: g('losin_g'),
-      lysine: g('lizin_g'),
-      valine: g('valin_g'),
-      isoleucine: g('izolosin_g'),
-      threonine: g('treonin_g'),
-      methionine: g('metionin_g'),
-      phenylalanine: g('fenilalanin_g'),
-      tryptophan: g('triptofan_g'),
-      histidine: g('histidin_g'),
-      cystine: g('sistin_g'),
-      tyrosine: g('tirozin_g'),
-      dataSource: 'Claude',
-    );
+    return json;
   }
+
 
   // ── Kullanıcı Geçmişi ──────────────────────────────────────────────────────
 
@@ -373,19 +260,19 @@ Kurallar: Bilmiyorsan 0 yaz. protein+karbonhidrat+yag ≤ 100. Amino asit toplam
             {
               'type': 'text',
               'text': '''
-Sen "Nutrition5k" ve "USDA" veri standartlarına hakim uzman bir beslenme koçusun. Kullanıcının tarif ettiği yemeği sanal olarak alt bileşenlerine ayırarak yüksek hassasiyetle analiz et: "$description"
-Her bir malzemenin ortalama porsiyon ağırlığını hesapla ve bu malzemelerin USDA'daki makro/mikro besin karşılıklarını birleştir.
+You are an expert nutrition coach with deep knowledge of "Nutrition5k" and "USDA" data standards. Virtually segment the dish described by the user and analyze it with high precision: "$description"
+Calculate the average portion weight for each ingredient and merge their corresponding USDA macro/micronutrient profiles.
 
---- IN-CONTEXT EĞİTİM VERİLERİ (KALİBRASYON) ---
-Kural 1: Etler piştikçe hacim küçülür, 100g başına makro değerleri artar.
-Kural 2: Tahıllar piştikçe su çeker, 100g başına makro değerleri düşer.
-Kural 3: Mikro besinler için rastgele değer üretme. USDA standart profillerini (örn: Cooked Chicken Breast) zihninde referans olarak kilitle ve mikro besin oranlarını sabit tut. Oranları %10'luk dilimlere yuvarla ki stabilite artsın.
+--- IN-CONTEXT CALIBRATION RULES ---
+Rule 1: As meat cooks, it shrinks in volume, increasing its macros per 100g.
+Rule 2: As grains cook, they absorb water, decreasing their macros per 100g.
+Rule 3: Do not generate random values for micronutrients. Lock onto standard USDA profiles (e.g., Cooked Chicken Breast) as a reference and keep micronutrient ratios constant. Round ratios to the nearest 10% blocks for stability.
 ------------------------------------------------
 
-SADECE JSON döndür, başka hiçbir şey yazma. Tüm değerler 100g başına olmalı:
+RETURN ONLY JSON, nothing else. All values must be per 100g:
 {
   "yemek_adi": "string",
-  "yemek_tipi": "corba|ana_yemek|salata|tatli|icecek|kahvalti|atistirmalik",
+  "yemek_tipi": "soup|main_dish|salad|dessert|drink|breakfast|snack",
   "porsiyon_gram": number,
   "guven_skoru": number,
   "guven_nedeni": "string",
@@ -513,73 +400,90 @@ Kurallar: 100g başına değerleri ver. protein+karbonhidrat+yag ≤ 100. porsiy
       }
     }
 
-    // Aşama 1: Görüntüyü hazırla + kimlik tespiti (pişirme + porsiyon dahil)
+    // Aşama 1: Görüntüyü hazırla
     final base64Image = await _preprocessToBase64(image);
-    final id = await _identifyFood(base64Image, hint);
-    // Porsiyon: kullanıcı verdiyse üst gelir, yoksa Claude'un görsel tahmini,
-    // o da yoksa tipe göre sabit varsayılan
-    final portionGrams =
-        gramsHint ?? (id.portionGram > 0 ? id.portionGram : _defaultPortion(id.yemekTipi));
-    final enQuery = _toEnglishWithCooking(id.foodName, id.cookingMethod);
 
-    // Aşama 2a: USDA önbelleği önce — cache hit'te gereksiz ağ çağrısı yapma
-    final usdaFromCache = await _cache.get(id.foodName);
-    if (usdaFromCache != null) {
-      final stubN65 = NutritionData65(
-        energy: 0, protein: 0, fat: 0, carb: 0, dataSource: 'Claude',
-      );
-      return _mergeResults(
-        id: id,
-        claudeN65: stubN65,
-        usdaDetail: usdaFromCache,
-        portionGrams: portionGrams,
-        usdaSource: 'USDA_CACHE',
-      );
-    }
+    // Aşama 2: Tek bir API çağrısı ile kimlik ve 65 besin değerini al (Haiku)
+    final json = await _analyzeImageFast(base64Image, hint);
 
-    // Aşama 2b: Cache miss → OFF + USDA API paralel
-    final futures = await Future.wait([
-      _off.searchByName(id.foodName),
-      _usda.lookupFood(enQuery),
-    ]);
-    final offList = futures[0] as List<OFFProduct>;
-    final usdaFromApi = futures[1] as UsdaFoodDetail?;
+    final foodName = (json['yemek_adi'] as String?) ?? 'Bilinmeyen';
+    final yemekTipi = (json['yemek_tipi'] as String?) ?? 'ana_yemek';
+    final aiPortion = (json['porsiyon_gram'] as num?)?.toDouble() ?? 0;
+    final confidence = (json['guven_skoru'] as num?)?.toInt() ?? 85;
 
-    if (usdaFromApi != null) {
-      unawaited(_cache.save(id.foodName, usdaFromApi));
-    }
+    final portionGrams = gramsHint ?? (aiPortion > 0 ? aiPortion : _defaultPortion(yemekTipi));
 
-    final usdaDetail = usdaFromApi;
-    final offProduct = offList.isNotEmpty ? offList.first : null;
+    // Aşama 3: Geçmişi paralel kontrol et
+    final history = await _checkUserHistory(foodName);
 
-    // Aşama 3: USDA veya OFF bulundu → pişirme yöntemi ayarlı birleştirme
-    if (usdaDetail != null || offProduct != null) {
-      final stubN65 = NutritionData65(
-        energy: 0, protein: 0, fat: 0, carb: 0, dataSource: 'Claude',
-      );
-      return _mergeResults(
-        id: id,
-        claudeN65: stubN65,
-        usdaDetail: usdaDetail,
-        offProduct: offProduct,
-        portionGrams: portionGrams,
-        usdaSource: 'USDA_API',
-      );
-    }
+    double g(String k) => (json[k] as num?)?.toDouble() ?? 0.0;
 
-    // Aşama 4: USDA/OFF yok → 3 işlemi paralel çalıştır
-    final phase4 = await Future.wait([
-      _analyzeNutrients(base64Image, id.foodName, hint),
-      EdamamNutritionService.instance.analyze(id.foodName),
-      _checkUserHistory(id.foodName),
-    ]);
-    final n65 = phase4[0] as NutritionData65;
-    final edamamN65 = phase4[1] as NutritionData65?;
-    final history = phase4[2] as NutritionData?;
+    final baseN65 = NutritionData65(
+      energy: calculateCalories(
+        proteinG: g('protein'),
+        carbsG: g('karbonhidrat'),
+        fatG: g('yag'),
+      ),
+      protein: g('protein'),
+      fat: g('yag'),
+      carb: g('karbonhidrat'),
+      fiber: g('lif'),
+      sugar: g('seker'),
+      satFat: g('doymus_yag'),
+      monoFat: g('tekli_doymus_yag'),
+      polyFat: g('coklu_doymus_yag'),
+      transFat: g('trans_yag'),
+      cholesterol: g('kolesterol_mg'),
+      water: g('su'),
+      calcium: g('kalsiyum_mg'),
+      iron: g('demir_mg'),
+      magnesium: g('magnezyum_mg'),
+      phosphorus: g('fosfor_mg'),
+      potassium: g('potasyum_mg'),
+      sodium: g('sodyum_mg'),
+      zinc: g('cinko_mg'),
+      copper: g('bakir_mg'),
+      manganese: g('manganez_mg'),
+      selenium: g('selenyum_mcg'),
+      iodine: g('iyot_mcg'),
+      chromium: g('krom_mcg'),
+      vitC: g('c_vitamini_mg'),
+      vitD_mcg: g('d_vitamini_mcg'),
+      vitE: g('e_vitamini_mg'),
+      vitK: g('k1_vitamini_mcg'),
+      vitA_RAE: g('a_vitamini_mcg'),
+      betaCarot: g('beta_karoten_mcg'),
+      lycopene: g('likopen_mcg'),
+      luteinZea: g('lutein_zea_mcg'),
+      thiamine: g('b1_tiamin_mg'),
+      riboflavin: g('b2_riboflavin_mg'),
+      niacin: g('b3_niasin_mg'),
+      pantothenic: g('b5_pantotenik_mg'),
+      vitB6: g('b6_mg'),
+      folate: g('folat_mcg'),
+      vitB12: g('b12_mcg'),
+      choline: g('kolin_mg'),
+      biotin: g('biotin_mcg'),
+      omega3: g('omega3_g'),
+      omega6: g('omega6_g'),
+      ala: g('ala_g'),
+      epa: g('epa_g'),
+      dha: g('dha_g'),
+      linoleic: g('linoleik_g'),
+      leucine: g('losin_g'),
+      lysine: g('lizin_g'),
+      valine: g('valin_g'),
+      isoleucine: g('izolosin_g'),
+      threonine: g('treonin_g'),
+      methionine: g('metionin_g'),
+      phenylalanine: g('fenilalanin_g'),
+      tryptophan: g('triptofan_g'),
+      histidine: g('histidin_g'),
+      cystine: g('sistin_g'),
+      tyrosine: g('tirozin_g'),
+      dataSource: 'Claude',
+    );
 
-    final NutritionData65 baseN65 = edamamN65 != null
-        ? EdamamNutritionService.merge(n65, edamamN65)
-        : n65;
     final NutritionData65 finalN65;
     final bool fromHistory;
     if (history != null) {
@@ -643,7 +547,7 @@ Kurallar: 100g başına değerleri ver. protein+karbonhidrat+yag ≤ 100. porsiy
         histidine: baseN65.histidine,
         cystine: baseN65.cystine,
         tyrosine: baseN65.tyrosine,
-        dataSource: edamamN65 != null ? 'Geçmiş+Claude+Edamam' : 'Geçmiş+Claude',
+        dataSource: 'Geçmiş+Claude',
       );
       fromHistory = true;
     } else {
@@ -659,16 +563,17 @@ Kurallar: 100g başına değerleri ver. protein+karbonhidrat+yag ≤ 100. porsiy
     );
 
     return FoodAnalysisResult(
-      foodName: id.foodName,
+      foodName: foodName,
       portionGrams: portionGrams,
       nutritionPer100g: nd100,
       nutrition65per100g: finalN65,
       sources: fromHistory ? const ['Geçmiş', 'Claude'] : const ['Claude'],
-      confidenceScore: fromHistory ? 92 : id.confidenceScore,
+      confidenceScore: fromHistory ? 92 : confidence,
       alternativeMin: portionCalories * 0.9,
       alternativeMax: portionCalories * 1.1,
     );
   }
+
 
   // ── Ağırlıklı Kaynak Birleştirme ──────────────────────────────────────────
 
