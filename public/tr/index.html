@@ -566,6 +566,7 @@
     .hero { padding: 100px 4% 60px; min-height: auto; }
     .phone-wrap { order: -1; }
     .phone-frame { width: 240px; }
+    .phone-frame.secondary { display: none; }
     .longevity-grid { grid-template-columns: 1fr; }
     .bento-grid { grid-template-columns: 1fr 1fr; }
     .bento-card.span-5, .bento-card.span-4, .bento-card.span-3,
@@ -613,6 +614,66 @@
   .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
   .ai-label { font-size: 10px; font-weight: 600; color: var(--blue); letter-spacing: 0.5px; text-transform: uppercase; }
   .ai-bubble-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── DUAL PHONE MOCKUP ── */
+  .phone-wrap {
+    position: relative;
+    perspective: 1200px;
+    transform-style: preserve-3d;
+  }
+  .phone-frame.primary {
+    z-index: 10 !important;
+    transform: translateZ(50px);
+  }
+  .phone-frame.secondary {
+    position: absolute;
+    right: -140px;
+    top: -60px;
+    z-index: 1;
+    transform: scale(0.85) rotateY(-12deg) translateZ(-100px);
+    opacity: 1;
+    filter: none;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 40px rgba(88,166,255,0.05);
+  }
+  .phone-frame.secondary:hover {
+    transform: scale(0.9) rotateY(-6deg) translateY(-10px) translateZ(-50px);
+    opacity: 1;
+    filter: none;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.9), 0 0 60px rgba(88,166,255,0.15);
+  }
+
+  /* Nutrient List Styles */
+  .nutri-list { display: flex; flex-direction: column; gap: 24px; padding-bottom: 30px; }
+  .nutri-category { display: flex; flex-direction: column; gap: 12px; }
+  .nutri-cat-title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--muted);
+    text-transform: uppercase; padding-left: 8px;
+    border-left: 3px solid; margin-bottom: 4px;
+    display: flex; align-items: center; height: 14px;
+  }
+  .nutri-row { display: flex; flex-direction: column; gap: 6px; }
+  .nutri-row-header { display: flex; justify-content: space-between; align-items: flex-end; }
+  .nutri-name { font-size: 11px; font-weight: 600; color: #8B949E; }
+  .nutri-val-wrap { display: flex; align-items: center; gap: 8px; }
+  .nutri-val { font-size: 11px; font-weight: 700; color: var(--text); }
+  .nutri-pct {
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+  }
+  .nutri-bar-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .nutri-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* Theme colors */
+  .theme-orange .nutri-cat-title { border-color: #FFA100; color: #FFA100; }
+  .theme-orange .nutri-bar-fill { background: #FFA100; }
+  .theme-purple .nutri-cat-title { border-color: #B388FF; color: #B388FF; }
+  .theme-purple .nutri-bar-fill { background: #B388FF; }
+  .theme-green .nutri-cat-title { border-color: #7EE787; color: #7EE787; }
+  .theme-green .nutri-bar-fill { background: #7EE787; }
+  .theme-blue .nutri-cat-title { border-color: #58A6FF; color: #58A6FF; }
+  .theme-blue .nutri-bar-fill { background: #58A6FF; }
+
 </style>
 </head>
 <body>
@@ -678,7 +739,7 @@
     <!-- PHONE MOCKUP -->
     <div class="phone-wrap">
       <div class="phone-glow"></div>
-      <div class="phone-frame">
+      <div class="phone-frame primary">
         <div class="phone-notch"></div>
         <div class="phone-screen">
           <div class="phone-screen-header">
@@ -823,9 +884,88 @@
           </div>
 
         </div>
+      </div>
+      <div class="phone-frame secondary">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" style="overflow-y: auto; padding-top: 50px;">
+          
+          <!-- BURGER CARD -->
+          <div style="background: var(--surface); border-radius: 20px; padding: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.03);">
+            <div style="background: #fff; border-radius: 12px; padding: 0; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; height: 160px; overflow: hidden;">
+              <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80" alt="Cheeseburger" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div>
+                <div style="font-size: 15px; font-weight: 800; color: #E6EDF3; margin-bottom: 2px;">Sesame Seed Cheeseburger</div>
+                <div style="font-size: 11px; color: var(--muted);">Porsiyon: <span style="color: #E6EDF3; font-weight: 600;">215 g</span></div>
+              </div>
+              <div style="background: rgba(126,231,135,0.1); color: #7EE787; border: 1px solid rgba(126,231,135,0.2); padding: 4px 8px; border-radius: 12px; font-size: 9px; font-weight: 700; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                <div style="width: 6px; height: 6px; background: #7EE787; border-radius: 50%;"></div>
+                Doğruluk %98
+              </div>
+            </div>
 
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; align-items: baseline; gap: 6px;">
+                <span style="font-size: 28px; font-weight: 800; color: var(--blue); line-height: 1;">613</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--blue);">kcal</span>
+              </div>
+              <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">~549 - 671 kcal aralığı</div>
+            </div>
+
+            <!-- 4 Macro Pills -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+              <div style="background: rgba(126,231,135,0.06); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; border: 1px solid rgba(126,231,135,0.1);">
+                <div style="font-size: 11px; font-weight: 800; color: #7EE787;">32.9 <span style="font-size: 8px; font-weight: 600;">g</span></div>
+                <div style="font-size: 8px; color: var(--muted); margin-top: 2px;">Protein</div>
+              </div>
+              <div style="background: rgba(88,166,255,0.06); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; border: 1px solid rgba(88,166,255,0.1);">
+                <div style="font-size: 11px; font-weight: 800; color: #58A6FF;">61.1 <span style="font-size: 8px; font-weight: 600;">g</span></div>
+                <div style="font-size: 8px; color: var(--muted); margin-top: 2px;">Karbonhidrat</div>
+              </div>
+              <div style="background: rgba(255,161,0,0.06); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; border: 1px solid rgba(255,161,0,0.1);">
+                <div style="font-size: 11px; font-weight: 800; color: #FFA100;">26.0 <span style="font-size: 8px; font-weight: 600;">g</span></div>
+                <div style="font-size: 8px; color: var(--muted); margin-top: 2px;">Yağ</div>
+              </div>
+              <div style="background: rgba(179,136,255,0.06); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; border: 1px solid rgba(179,136,255,0.1);">
+                <div style="font-size: 11px; font-weight: 800; color: #B388FF;">3.9 <span style="font-size: 8px; font-weight: 600;">g</span></div>
+                <div style="font-size: 8px; color: var(--muted); margin-top: 2px;">Lif</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="nutri-list">
+            
+            <div class="nutri-category theme-orange">
+              <div class="nutri-cat-title">VİTAMİNLER</div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin C</span><div class="nutri-val-wrap"><span class="nutri-val">9.0 mg</span><span class="nutri-pct">%10</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 10%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin A</span><div class="nutri-val-wrap"><span class="nutri-val">90.3 mcg</span><span class="nutri-pct">%10</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 10%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin K</span><div class="nutri-val-wrap"><span class="nutri-val">38.7 mcg</span><span class="nutri-pct">%32</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 32%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">B3 (Niasin)</span><div class="nutri-val-wrap"><span class="nutri-val">8.8 mg</span><span class="nutri-pct">%55</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 55%;"></div></div></div>
+            </div>
+
+            <div class="nutri-category theme-green">
+              <div class="nutri-cat-title">YAĞ & KOLESTEROL</div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Doymuş Yağ</span><div class="nutri-val-wrap"><span class="nutri-val">11.2 g</span><span class="nutri-pct">%56</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 56%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Tekli Doymamış</span><div class="nutri-val-wrap"><span class="nutri-val">8.8 g</span><span class="nutri-pct">%29</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 29%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Çoklu Doymamış</span><div class="nutri-val-wrap"><span class="nutri-val">3.9 g</span><span class="nutri-pct">%19</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 19%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Kolesterol</span><div class="nutri-val-wrap"><span class="nutri-val">90 mg</span><span class="nutri-pct">%30</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 30%;"></div></div></div>
+            </div>
+
+            <div class="nutri-category theme-purple">
+              <div class="nutri-cat-title">AMİNO ASİTLER</div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Lösin</span><div class="nutri-val-wrap"><span class="nutri-val">2.5 g</span><span class="nutri-pct">%92</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 92%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Lizin</span><div class="nutri-val-wrap"><span class="nutri-val">2.8 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Valine</span><div class="nutri-val-wrap"><span class="nutri-val">2.0 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">İzolösin</span><div class="nutri-val-wrap"><span class="nutri-val">1.8 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Treonin</span><div class="nutri-val-wrap"><span class="nutri-val">1.5 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
+            </div>
+
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 </section>
