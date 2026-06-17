@@ -93,10 +93,11 @@ class DietaryPreferences {
   static const mediterranean = 'Akdeniz Diyeti';
   static const paleo = 'Paleo';
   static const keto = 'Ketojenik';
+  static const carnivore = 'Karnivor';
 
   static const all = [
     vegan, vegetarian, halal, glutenFree, lactoseFree,
-    kosher, lowCarb, mediterranean, paleo, keto,
+    kosher, lowCarb, mediterranean, paleo, keto, carnivore,
   ];
 }
 
@@ -287,6 +288,17 @@ class UserProfile {
 
   double get proteinGoal {
     if (weight <= 0) return 150;
+    final isCarnivore = dietaryPreferences.contains('Karnivor') || dietaryPreferences.contains('Carnivore');
+    if (isCarnivore) {
+      const factors = {
+        ActivityLevel.sedentary: 1.8,
+        ActivityLevel.light: 2.0,
+        ActivityLevel.moderate: 2.2,
+        ActivityLevel.active: 2.4,
+        ActivityLevel.veryActive: 2.6,
+      };
+      return weight * (factors[activityLevel] ?? 2.2);
+    }
     const factors = {
       ActivityLevel.sedentary: 0.8,
       ActivityLevel.light: 1.2,
@@ -296,8 +308,21 @@ class UserProfile {
     };
     return weight * (factors[activityLevel] ?? 1.6);
   }
-  double get fatGoal => calorieGoal * 0.25 / 9;
+
+  double get fatGoal {
+    final isCarnivore = dietaryPreferences.contains('Karnivor') || dietaryPreferences.contains('Carnivore');
+    if (isCarnivore) {
+      final fatCal = (calorieGoal - (proteinGoal * 4)).clamp(0.0, double.infinity);
+      return fatCal / 9;
+    }
+    return calorieGoal * 0.25 / 9;
+  }
+
   double get carbGoal {
+    final isCarnivore = dietaryPreferences.contains('Karnivor') || dietaryPreferences.contains('Carnivore');
+    if (isCarnivore) {
+      return 0.0;
+    }
     final proteinCalories = proteinGoal * 4;
     final fatCalories = fatGoal * 9;
     return ((calorieGoal - proteinCalories - fatCalories) / 4)
@@ -354,6 +379,8 @@ class UserProfile {
   } // mg (üst limit)
 
   double get fiberGoal {
+    final isCarnivore = dietaryPreferences.contains('Karnivor') || dietaryPreferences.contains('Carnivore');
+    if (isCarnivore) return 0.0;
     if (healthConditions.contains('SIBO')) return 0.0;
     return gender == Gender.male ? 38.0 : 25.0;
   } // g

@@ -317,7 +317,7 @@ const _db = <_Tarif>[
     ad: 'Somon Izgara', aciklama: 'Omega-3 bombası akşam yemeği', kalori: 520, protein: 38.0, karb: 0.0, yag: 35.0, lif: 2.0,
     demir: 1.2, magnezyum: 45, kalsiyum: 40, vitaminA: 100, vitaminD: 25.0, vitaminB12: 4.8, vitaminB6: 0.9, zinc: 1.0, potasyum: 480, omega3: 3.5, dakika: 30,
     etiketler: ['OMEGA-3', 'YÜKSEK PROTEİN'], ogunler: ['aksam'],
-    diyetler: ['glutensiz'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
+    diyetler: ['glutensiz', 'karnivor'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
     gorselUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['1 dilim somon', 'Kuşkonmaz', 'Limon', 'Biberiye'],
     adimlar: ['Somonu baharatlayın.', 'Fırın tepsisine somon ve kuşkonmazları dizin.', '200 derecede 20 dakika pişirin.'],
@@ -326,7 +326,7 @@ const _db = <_Tarif>[
     ad: 'Biftek ve Kuşkonmaz', aciklama: 'Mükemmel pişirilmiş biftek', kalori: 480, protein: 45.0, karb: 0.0, yag: 28.0, lif: 3.0,
     demir: 6.5, magnezyum: 40, kalsiyum: 25, vitaminC: 5, vitaminB12: 3.5, vitaminB6: 0.7, zinc: 8.0, potasyum: 560, dakika: 25,
     etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KARBONHİDRAT'], ogunler: ['aksam'],
-    diyetler: ['keto', 'glutensiz'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
+    diyetler: ['keto', 'glutensiz', 'karnivor'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
     gorselUrl: 'https://images.unsplash.com/photo-1546241072-48010ad28c2c?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['200g biftek', 'Kuşkonmaz', 'Tereyağı', 'Sarımsak'],
     adimlar: ['Tavayı iyice ısıtın.', 'Bifteği her iki taraflı 4-5 dakika pişirin.', 'Son dakikada tereyağı ve sarımsak ekleyip soslayın.'],
@@ -362,7 +362,7 @@ const _db = <_Tarif>[
     ad: 'Balık Tava', aciklama: 'Çıtır zeytinyağlı balık', kalori: 390, protein: 34.0, karb: 5.0, yag: 22.0, lif: 1.5,
     demir: 1.5, magnezyum: 50, kalsiyum: 40, vitaminD: 12.0, vitaminB12: 3.0, vitaminB6: 0.5, zinc: 1.5, potasyum: 450, omega3: 2.0, dakika: 20,
     etiketler: ['OMEGA-3', 'PROTEİN'], ogunler: ['aksam'],
-    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'omega3', 'vitaminD'], renk: Color(0xFF1976D2),
+    diyetler: ['glutensiz', 'karnivor'], zenginOldugu: ['protein', 'omega3', 'vitaminD'], renk: Color(0xFF1976D2),
     gorselUrl: 'https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['Levrek ya da çipura', 'Limon', 'Zeytinyağı', 'Taze otlar'],
     adimlar: ['Balığı yıkayıp kurulayın.', 'Zeytinyağı ve limonla marine edin.', 'Tavada ya da fırında pişirin.'],
@@ -380,7 +380,7 @@ const _db = <_Tarif>[
     ad: 'Fırın Tavuk Baget', aciklama: 'Baharatlı çıtır tavuk baget', kalori: 440, protein: 40.0, karb: 4.0, yag: 24.0, lif: 1.0,
     demir: 2.0, magnezyum: 35, kalsiyum: 30, vitaminB6: 0.8, vitaminB12: 0.7, zinc: 3.5, potasyum: 440, dakika: 40,
     etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KARBONHİDRAT'], ogunler: ['aksam'],
-    diyetler: ['glutensiz', 'keto'], zenginOldugu: ['protein', 'zinc'], renk: Color(0xFFF57F17),
+    diyetler: ['glutensiz', 'keto', 'karnivor'], zenginOldugu: ['protein', 'zinc'], renk: Color(0xFFF57F17),
     gorselUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['Tavuk baget', 'Sarımsak tozu', 'Pul biber', 'Zeytinyağı', 'Limon'],
     adimlar: ['Tavukları baharatlarla ovun.', 'Üzerine zeytinyağı ve limon sıkın.', '200°C fırında 35 dakika pişirin.'],
@@ -500,7 +500,7 @@ const _db = <_Tarif>[
     ad: 'Sarımsaklı Karides', aciklama: 'Tereyağlı çıtır karides kavurma', kalori: 290, protein: 28.0, karb: 4.0, yag: 16.0, lif: 0.5,
     demir: 2.5, magnezyum: 40, kalsiyum: 80, vitaminD: 4.0, vitaminB12: 1.8, vitaminB6: 0.3, zinc: 2.0, potasyum: 350, omega3: 0.6, dakika: 15,
     etiketler: ['YÜKSEK PROTEİN', 'OMEGA-3'], ogunler: ['ogle', 'aksam'],
-    diyetler: ['glutensiz', 'keto'], zenginOldugu: ['protein', 'vitaminD', 'zinc'], renk: Color(0xFFFF7043),
+    diyetler: ['glutensiz', 'keto', 'karnivor'], zenginOldugu: ['protein', 'vitaminD', 'zinc'], renk: Color(0xFFFF7043),
     gorselUrl: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['300g karides', '3 diş sarımsak', 'Tereyağı', 'Limon', 'Maydanoz'],
     adimlar: ['Sarımsağı tereyağında kavurun.', 'Karidesler pembeye dönünce limon sıkın.', 'Maydanoz ekleyip servis yapın.'],
@@ -519,7 +519,7 @@ const _db = <_Tarif>[
     ad: 'Levrek Buğulama', aciklama: 'Sebzeli buharda pişirilmiş levrek', kalori: 340, protein: 36.0, karb: 6.0, yag: 16.0, lif: 2.0,
     demir: 1.8, magnezyum: 55, kalsiyum: 60, vitaminD: 18.0, vitaminB12: 3.5, vitaminB6: 0.7, zinc: 1.5, potasyum: 550, omega3: 2.8, dakika: 30,
     etiketler: ['OMEGA-3', 'DÜŞÜK KALORİ'], ogunler: ['aksam'],
-    diyetler: ['glutensiz'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
+    diyetler: ['glutensiz', 'karnivor'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
     gorselUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['1 levrek (400g)', 'Zeytinyağı', 'Limon', 'Havuç', 'Kereviz', 'Defne yaprağı'],
     adimlar: ['Levreği ve sebzeleri tencereye dizin.', 'Limon suyu ve zeytinyağı ekleyin.', 'Kapağı kapalı 20 dakika buharda pişirin.'],
@@ -528,7 +528,7 @@ const _db = <_Tarif>[
     ad: 'Dana Güveci', aciklama: 'Yavaş pişirilmiş sebzeli dana eti', kalori: 460, protein: 38.0, karb: 22.0, yag: 22.0, lif: 5.0,
     demir: 6.0, magnezyum: 45, kalsiyum: 40, vitaminA: 400, vitaminB12: 2.5, vitaminB6: 0.6, zinc: 7.0, potasyum: 680, dakika: 90,
     etiketler: ['YÜKSEK PROTEİN', 'GELENEKSEL'], ogunler: ['aksam'],
-    diyetler: ['glutensiz'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
+    diyetler: ['glutensiz', 'karnivor'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
     gorselUrl: 'https://images.unsplash.com/photo-1551881192-002c429f5a03?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['400g dana kuşbaşı', 'Patates', 'Havuç', 'Biber', 'Domates', 'Soğan', 'Zeytinyağı'],
     adimlar: ['Eti zeytinyağında sote edin.', 'Sebzeleri ekleyip kavurun.', 'Sıcak su koyup 75 dakika kısık ateşte pişirin.'],
@@ -709,6 +709,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
       }
       if (healthConditions.contains('Yumurta Alerjisi') && r.malzemeler.any((m) => m.toLowerCase().contains('yumurta'))) return false;
       if (healthConditions.contains('Deniz Ürünleri Alerjisi') && r.ad.toLowerCase().contains('somon')) return false;
+      if (dietaryPrefs.contains('Karnivor') || dietaryPrefs.contains('Carnivore')) {
+        if (!r.diyetler.contains('karnivor')) return false;
+      }
       return true;
     }).toList();
 

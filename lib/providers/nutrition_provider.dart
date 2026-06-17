@@ -598,4 +598,22 @@ class NutritionProvider extends ChangeNotifier {
     logs.sort((a, b) => a.date.compareTo(b.date));
     return logs;
   }
+
+  void reset() {
+    _historyLogs.clear();
+    _savedMeals.clear();
+    _profileId = '';
+    final todayKey = _dateKey(DateTime.now());
+    _todayLog = DailyLog(
+      id: todayKey,
+      date: DateTime.now(),
+      entries: [],
+      waterIntakeMl: 0,
+    );
+    _lastResult = null;
+    _lastAnalyzedImage = null;
+    _lastMealType = null;
+    _showResultOnHome = false;
+    notifyListeners();
+  }
 }

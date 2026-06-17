@@ -246,7 +246,7 @@ enum _StepId {
   // Section 1 – Karşılama
   welcome, login, accountNotFound, longevity, comparison, comparisonTable, recipeFeature,
   // Section 2 – Tanışma
-  name, primaryGoals, goalConfirm, howHeard,
+  name, healthGoals, goalConfirm, howHeard,
   // Section 3 – Kişiselleştirme 1
   age, height, weight, gender, goal,
   targetWeight, weeklyChange,
@@ -260,7 +260,7 @@ enum _StepId {
   waterHabit, eatingOut, energyTime, emotionalEating,
   sleepSchedule, progressIndicator, exerciseFreq, notifications, healthConnect,
   // Section 6 – Özelleştirilmiş Program
-  diseases, foodSensitivities, supplements, mainChallenge, healthGoals,
+  diseases, foodSensitivities, supplements, mainChallenge, primaryGoals,
   // Section 7 – İşleniyor + Hesaplama + Paywall
   processing, planReady, rateUs, paywall, signUp, calculatedValues,
   // Section 8 – Tamamlandı
@@ -287,6 +287,7 @@ enum _RowState { check, cross, dash }
 enum OnboardingMode {
   fresh,      // İlk kurulum: tüm adımlar
   newProfile, // Profil ekranından: hesap + isim'den başlar
+  linkAccount, // Ayarlar ekranından: sadece hesap oluşturmadan başlar
 }
 
 // =============================================================================
@@ -431,6 +432,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         // newProfile modunda kayıtlı ilerlemeyi yükleme, login adımından başla
         setState(() => _current = _StepId.login);
         _pageCtrl.jumpToPage(_StepId.values.indexOf(_StepId.login));
+      } else if (widget.mode == OnboardingMode.linkAccount) {
+        _loadAnswersForLinkAccount();
       } else {
         _loadProgress();
       }
@@ -609,6 +612,37 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
+  Future<void> _loadAnswersForLinkAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('onboarding_answers');
+    if (raw != null) {
+      try {
+        final loaded = OnboardingData.fromJson(
+            jsonDecode(raw) as Map<String, dynamic>);
+        setState(() {
+          _data = loaded;
+          _current = _StepId.signUp;
+        });
+        _firstNameCtrl.text = _data.firstName;
+      } catch (_) {}
+    } else {
+      setState(() {
+        _current = _StepId.signUp;
+      });
+    }
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      setState(() {
+        _data.onboardingId = currentUser.uid;
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _pageCtrl.jumpToPage(_StepId.values.indexOf(_StepId.signUp));
+      }
+    });
+  }
+
   Future<void> _clearProgress() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('onboarding_step');
@@ -655,6 +689,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // ── Active steps ──────────────────────────────────────────────────────────
 
   bool _shouldShowStep(_StepId step) {
+    if (widget.mode == OnboardingMode.linkAccount) {
+      return step == _StepId.signUp || step == _StepId.completion;
+    }
     if (widget.mode == OnboardingMode.newProfile) {
       const skipped = {
         _StepId.welcome,   // Selamlama
@@ -677,6 +714,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case _StepId.accountNotFound:
       case _StepId.recipeFeature:
       case _StepId.comparison:
+      case _StepId.motivation:
+      case _StepId.exerciseFreq:
+      case _StepId.primaryGoals:
         return false;
       default:
         return true;
@@ -700,7 +740,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case _StepId.recipeFeature:
         return _Section.s1Welcome;
       case _StepId.name:
-      case _StepId.primaryGoals:
+      case _StepId.healthGoals:
       case _StepId.goalConfirm:
       case _StepId.howHeard:
         return _Section.s2Meeting;
@@ -738,7 +778,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case _StepId.foodSensitivities:
       case _StepId.supplements:
       case _StepId.mainChallenge:
-      case _StepId.healthGoals:
+      case _StepId.primaryGoals:
         return _Section.s6Program;
       case _StepId.processing:
       case _StepId.planReady:
@@ -905,7 +945,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() {
       if (_completedSteps <= idx) _completedSteps = idx + 1;
     });
-    if (_current == _StepId.primaryGoals) {
+    if (_current == _StepId.healthGoals) {
       _navigateTo(steps[idx + 1]);
       return;
     }
@@ -1038,7 +1078,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       // Onboarding sonu → profili kaydet, plan özetini göster
       await _saveProfile();
       if (!mounted) return;
-      _navigateTo(_StepId.completion);
+      if (widget.mode == OnboardingMode.linkAccount) {
+        _goHome();
+      } else {
+        _navigateTo(_StepId.completion);
+      }
     } else {
       // Login adımı → onboarding'e devam
       _navigateTo(_StepId.name);
@@ -1221,11 +1265,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  /// Profil zaten kaydedilmiş, sadece HomeScreen'e geçer.
   void _goHome() {
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (_) => false,
     );
   }
 
@@ -1318,6 +1362,35 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildSectionBar(ThemeData theme, Color primary, _Section section) {
+    if (widget.mode == OnboardingMode.linkAccount) {
+      final isDark = theme.brightness == Brightness.dark;
+      final showBack = _current != _StepId.completion;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (showBack)
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isDark ? _kCard : const Color(0xFFE8EDF2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.chevron_left, color: _tw, size: 20),
+                ),
+              ),
+            const Spacer(),
+          ],
+        ),
+      );
+    }
     final sections = _Section.values;
     final sectionIdx = sections.indexOf(section);
     final isDark = theme.brightness == Brightness.dark;
@@ -3022,7 +3095,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // ── S2: Goal confirm (shown as system Overlay, not a PageView page) ─────────
 
   Widget _stepGoalConfirm() {
-    final hasMultipleGoals = _data.primaryGoals.length > 1;
+    final hasMultipleGoals = _data.specificGoals.length > 1;
     return GestureDetector(
       onTap: _next,
       behavior: HitTestBehavior.opaque,
@@ -3051,8 +3124,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 padding: EdgeInsets.symmetric(horizontal: 40),
                 child: Text(
                   hasMultipleGoals
-                      ? _t('Merak etme, bu hedeflerine ulaşman için yanındayız 💪', 'Don\'t worry, we are with you to reach these goals 💪')
-                      : _t('Merak etme, bu hedefine ulaşman için yanındayız 💪', 'Don\'t worry, we are with you to reach this goal 💪'),
+                      ? _t('Merak etme, bu hedeflerine ulaşman için yanındayız', 'Don\'t worry, we are with you to reach these goals')
+                      : _t('Merak etme, bu hedefine ulaşman için yanındayız', 'Don\'t worry, we are with you to reach this goal'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20,
@@ -3242,7 +3315,26 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             metricLabel: 'cm',
             imperialLabel: 'ft/in',
             isMetric: _data.useMetricHeight,
-            onToggle: (v) => setState(() => _data.useMetricHeight = v),
+            onToggle: (v) {
+              final currentCm = _data.heightCm;
+              setState(() => _data.useMetricHeight = v);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (v) {
+                  // switched to metric (cm)
+                  final cmIdx = (currentCm.round() - 100).clamp(0, 150);
+                  _heightCmPicker.jumpToItem(_kPickerMul * 151 + cmIdx);
+                } else {
+                  // switched to imperial (ft/in)
+                  final totalIn = (currentCm / 2.54).round();
+                  final ft = totalIn ~/ 12;
+                  final inch = totalIn % 12;
+                  final ftIdx = (ft - 3).clamp(0, 4);
+                  final inchIdx = inch.clamp(0, 11);
+                  _heightFtPicker.jumpToItem(_kPickerMul * 5 + ftIdx);
+                  _heightInPicker.jumpToItem(_kPickerMul * 12 + inchIdx);
+                }
+              });
+            },
             primary: _kGreen,
             theme: theme,
           ),
@@ -3329,7 +3421,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
 
     return _shell(
-      title: _t('Şu an kaç kilorsun?', 'What is your current weight?'),
+      title: _t('Şu an kaç kilosun?', 'What is your current weight?'),
       subtitle: _t('Değerlerin yaklaşık olması sorun değil', 'Approximate values are fine'),
       child: Column(
         children: [
@@ -3459,7 +3551,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       (Goal.gain, '💪', _t('Kilo Almak', 'Gain Weight'), _t('Kas kütlesi artış odaklı', 'Muscle mass gain oriented')),
     ];
     return _shell(
-      title: _t('Ana kilo hedein nedir?', 'What is your main weight goal?'),
+      title: _t('Ana kilo hedefin nedir?', 'What is your main weight goal?'),
       subtitle: _t('İdeal kütle hedefini belirlemek, günlük kalori bütçeni ve hedefine ulaşma süreni doğrudan hesaplamamızı sağlar.', 'Setting your ideal mass target allows us to calculate your daily calorie budget and target timeframe directly.'),
       child: Column(
         children: goals.map((g) {
@@ -3497,7 +3589,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _stepTargetWeight() {
     return _shell(
       title: _t('Varış noktanı belirleyelim!', 'Let\'s set your destination!'),
-      subtitle: _t('Hızlı değil, kalıcı bir değişim için gerçekçi parametreler kullanmak başarının anahtarıdır. Sana en sağlıklı ve verimli hedef aralığını belirleyelim.', 'Using realistic parameters for permanent rather than rapid change is the key to success. Let\'s set the healthiest and most efficient range for you.'),
+      subtitle: _t('Hızlı değil, kalıcı bir değişim için gerçekçi hedefler kullanmak başarının anahtarıdır. Sana en sağlıklı ve verimli hedef aralığını belirleyelim.', 'Using realistic goals for permanent rather than rapid change is the key to success. Let\'s set the healthiest and most efficient range for you.'),
       child: _TargetWeightStep(
         initialWeight: _data.weightKg,
         useMetric: _data.useMetricWeight,
@@ -3547,6 +3639,30 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       return '${rateKg.toStringAsFixed(2)} kg';
     }
 
+    String healthNote() {
+      if (idx == 0) {
+        return _t(
+          'En sağlıklı ve en sürdürülebilir hız. Kas kütleni korumak ve kalıcı sonuçlar almak için bu hız önerilir.',
+          'Most healthy and sustainable rate. Recommended for preserving muscle mass and permanent results.',
+        );
+      } else if (idx == 1) {
+        return _t(
+          'Dengeli ve sağlıklı bir hız. Günlük yaşamı çok zorlamadan hedefine makul bir sürede ulaşmanı sağlar.',
+          'Balanced and healthy rate. Reaches your goal in a reasonable timeframe without excessive strain.',
+        );
+      } else if (idx == 2) {
+        return _t(
+          'Hızlı bir tempo. Sürdürülmesi biraz daha zordur, besin alımına ve makrolarına ekstra dikkat etmen gerekir.',
+          'Fast rate. Harder to sustain, requires extra attention to nutrient intake and macros.',
+        );
+      } else {
+        return _t(
+          'Çok hızlı bir tempo. Kas kaybı riskini artırır ve sürdürülmesi oldukça zordur. Genellikle tavsiye edilmez.',
+          'Very fast rate. Increases muscle loss risk and is highly difficult to sustain. Generally not recommended.',
+        );
+      }
+    }
+
     return _shell(
       title: _t('Hedefine ne kadar hızlı ulaşmak istiyorsun?', 'How fast do you want to reach your goal?'),
       subtitle: _t('Sürdürülebilirlik, en kısa değil en kalıcı yolu seçmektir.', 'Sustainability is choosing the most permanent path, not the shortest.'),
@@ -3562,10 +3678,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 children: [
                   TextSpan(
                     text: '$weeks',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
-                      color: _kGreen,
+                      color: colors[idx],
                     ),
                   ),
                   TextSpan(
@@ -3650,6 +3766,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ],
             );
           }),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors[idx].withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors[idx].withValues(alpha: 0.2), width: 1),
+            ),
+            child: Text(
+              healthNote(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white.withValues(alpha: 0.9) : _kTextSub,
+                height: 1.4,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -3696,8 +3831,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final isDark = theme.brightness == Brightness.dark;
     final plans = [
       ('🍽️', _t('Standart', 'Standard')),
-      ('🥗', _t('Düşük Karb', 'Low Carb')),
+      ('🥗', _t('Düşük Karbonhidrat', 'Low Carb')),
       ('🥑', _t('Ketojenik', 'Ketogenic')),
+      ('🍖', _t('Karnivor', 'Carnivore')),
       ('🐟', _t('Pesketeryan', 'Pescatarian')),
       ('💪', _t('Yüksek Protein Düşük Yağ', 'High Protein Low Fat')),
       ('🌱', _t('Vegan', 'Vegan')),
@@ -4166,9 +4302,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final opts = [
-      ('⏰', _t('2 Öğün', '2 Meals'), _t('Aralıklı oruç dostu', 'Intermittent fasting friendly')),
+      ('⏰', _t('1 Öğün', '1 Meal'), _t('Tek öğün beslenme (OMAD)', 'One meal a day (OMAD)')),
+      ('⏳', _t('2 Öğün', '2 Meals'), _t('Aralıklı oruç dostu', 'Intermittent fasting friendly')),
       ('🍽️', _t('3 Öğün', '3 Meals'), _t('Klasik beslenme düzeni', 'Classic eating pattern')),
-      ('🥗', _t('4+ Öğün', '4+ Meals'), _t('Atıştırmalık dahil', 'Snacks included')),
+      ('🥗', _t('4 Öğün', '4 Meals'), _t('Düzenli öğünler ve ara öğün', 'Regular meals and snacks')),
+      ('🍎', _t('5+ Öğün', '5+ Meals'), _t('Sık sık, küçük porsiyonlar', 'Frequent, small portions')),
     ];
     return _shell(
       title: _t('Günde kaç öğün yaparsın?', 'How many meals do you have a day?'),
@@ -4359,8 +4497,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final options = [
       ('⚖️', _t('Tartı', 'Scale')),
       ('👕', _t('Kıyafetler', 'Clothes')),
-      ('🪞', 'Ayna'),
-      ('⚡', 'Enerji seviyesi'),
+      ('🪞', _t('Ayna', 'Mirror')),
+      ('🩺', _t('Kan ve sağlık değerleri', 'Blood and health markers')),
+      ('🧠', _t('Zihinsel netlik ve odaklanma', 'Mental clarity and focus')),
+      ('🏃', _t('Antrenman performansı', 'Workout performance')),
+      ('😴', _t('Uyku kalitesi', 'Sleep quality')),
     ];
     return _shell(
       title: _t('Senin için ideal ilerleme göstergesi nedir?', 'What is the ideal progress indicator for you?'),
@@ -5119,6 +5260,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final options = [
       ('✨', _t('Uzun ömürlülük (Uzun Yaşam)', 'Longevity (Long Life)')),
       ('🧬', _t('Hücresel sağlık optimizasyonu', 'Cellular health optimization')),
+      ('🧠', _t('Odak ve zihinsel netlik', 'Focus and mental clarity')),
+      ('⚡', _t('Daha enerjik olma', 'Being more energetic')),
       ('🔄', 'Metabolik esneklik'),
       ('🌿', _t('Bağırsak sağlığı ve mikrobiyota', 'Gut health and microbiota')),
       ('💪', 'Kas kazanmak'),
@@ -5129,7 +5272,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ('✏️', _t('Diğer', 'Other')),
     ];
     return _shell(
-      title: _t('Uygulamayı kullanmandaki temel amacın?', 'What is your main purpose in using the app?'),
+      title: _t('Uygulamayı kullanmandaki temel amacın ne?', 'What is your main purpose in using the app?'),
       subtitle: _t('Neyi başarmak istediğin, sistemimizin sana nasıl rehberlik edeceğini belirler.', 'What you want to achieve determines how our system will guide you.'),
       child: _multiSelectWithOther(
         options: options,
@@ -5169,14 +5312,116 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final fiber = _data.fiberG.round();
     final startW = _data.weightKg.round();
     final targetW = _data.targetWeightKg.round();
+    final isMale = (_data.gender ?? Gender.male) == Gender.male;
+
+    final groups = [
+      (
+        _t('Kolesterol ve Makro Bileşenler', 'Cholesterol & Macro Components'),
+        const Color(0xFF8E8E93),
+        [
+          (_t('Kolesterol', 'Cholesterol'), '< 300mg'),
+          (_t('Doymuş Yağ', 'Saturated Fat'), '< ${(_data.calorieTarget * 0.1 / 9).round()}g'),
+          (_t('Şeker', 'Sugar'), '< ${(_data.calorieTarget * 0.1 / 4).round()}g'),
+          (_t('Tekli Doymamış Yağ', 'Monounsaturated Fat'), '${(_data.calorieTarget * 0.20 / 9).round()}g'),
+          (_t('Çoklu Doymamış Yağ', 'Polyunsaturated Fat'), '${(_data.calorieTarget * 0.10 / 9).round()}g'),
+          (_t('Trans Yağ', 'Trans Fat'), '< 2g'),
+        ]
+      ),
+      (
+        _t('Mineraller', 'Minerals'),
+        const Color(0xFF26D0CE),
+        [
+          (_t('Kalsiyum', 'Calcium'), '1000mg'),
+          (_t('Demir', 'Iron'), isMale ? '8mg' : '18mg'),
+          (_t('Magnezyum', 'Magnesium'), isMale ? '420mg' : '320mg'),
+          (_t('Fosfor', 'Phosphorus'), '700mg'),
+          (_t('Potasyum', 'Potassium'), isMale ? '3400mg' : '2600mg'),
+          (_t('Sodyum', 'Sodium'), '2300mg'),
+          (_t('Çinko', 'Zinc'), isMale ? '11mg' : '8mg'),
+          (_t('Bakır', 'Copper'), '900mcg'),
+          (_t('Manganez', 'Manganese'), isMale ? '2.3mg' : '1.8mg'),
+          (_t('Selenyum', 'Selenium'), '55mcg'),
+          (_t('İyot', 'Iodine'), '150mcg'),
+          (_t('Florür', 'Fluoride'), isMale ? '4mg' : '3mg'),
+          (_t('Krom', 'Chromium'), isMale ? '35mcg' : '25mcg'),
+          (_t('Molibden', 'Molybdenum'), '45mcg'),
+        ]
+      ),
+      (
+        _t('Vitaminler', 'Vitamins'),
+        const Color(0xFFFF9F0A),
+        [
+          (_t('A Vitamini', 'Vitamin A'), isMale ? '900mcg' : '700mcg'),
+          (_t('B1 (Tiamin)', 'Vitamin B1'), isMale ? '1.2mg' : '1.1mg'),
+          (_t('B2 (Riboflavin)', 'Vitamin B2'), isMale ? '1.3mg' : '1.1mg'),
+          (_t('B3 (Niasin)', 'Vitamin B3'), isMale ? '16mg' : '14mg'),
+          (_t('B5 (Pantotenik Asit)', 'Vitamin B5'), '5mg'),
+          (_t('B6 (Piridoksin)', 'Vitamin B6'), '1.3mg'),
+          (_t('B7 (Biotin)', 'Biotin'), '30mcg'),
+          (_t('B9 (Folat)', 'Folate'), '400mcg'),
+          (_t('B12 (Kobalamin)', 'Vitamin B12'), '2.4mcg'),
+          (_t('C Vitamini', 'Vitamin C'), isMale ? '90mg' : '75mg'),
+          (_t('D Vitamini', 'Vitamin D'), '20mcg'),
+          (_t('E Vitamini', 'Vitamin E'), '15mg'),
+          (_t('K Vitamini', 'Vitamin K'), isMale ? '120mcg' : '90mcg'),
+          (_t('K2 Vitamini', 'Vitamin K2'), '50mcg'),
+        ]
+      ),
+      (
+        _t('Karotenoidler', 'Carotenoids'),
+        const Color(0xFFFF6B00),
+        [
+          ('Beta-Karoten', '6000mcg'),
+          ('Alfa-Karoten', isMale ? '2900mcg' : '2400mcg'),
+          (_t('Likopen', 'Lycopene'), isMale ? '15mg' : '11mg'),
+          ('Lutein + Zeaksantin', '10000mcg'),
+        ]
+      ),
+      (
+        _t('Yağ Asitleri', 'Fatty Acids'),
+        const Color(0xFF0A84FF),
+        [
+          ('Omega-3', isMale ? '1.6g' : '1.1g'),
+          ('Omega-6', isMale ? '17g' : '12g'),
+          ('ALA (Alfa-Linolenik)', isMale ? '1.6g' : '1.1g'),
+          ('EPA', '0.25g'),
+          ('DHA', '0.25g'),
+          (_t('Linoleik Asit', 'Linoleic Acid'), isMale ? '17g' : '12g'),
+        ]
+      ),
+      (
+        _t('Amino Asitler', 'Amino Acids'),
+        const Color(0xFFBF5AF2),
+        [
+          (_t('Triptofan', 'Tryptophan'), isMale ? '280mg' : '220mg'),
+          (_t('Treonin', 'Threonine'), isMale ? '1050mg' : '820mg'),
+          (_t('İzolösin', 'Isoleucine'), isMale ? '1400mg' : '1100mg'),
+          (_t('Lösin', 'Leucine'), isMale ? '2730mg' : '2130mg'),
+          (_t('Lizin', 'Lysine'), isMale ? '2100mg' : '1650mg'),
+          (_t('Metiyonin', 'Methionine'), isMale ? '728mg' : '570mg'),
+          (_t('Fenilalanin', 'Phenylalanine'), isMale ? '1750mg' : '1370mg'),
+          (_t('Valin', 'Valine'), isMale ? '1820mg' : '1430mg'),
+          (_t('Histidin', 'Histidine'), isMale ? '700mg' : '548mg'),
+          (_t('Sistin', 'Cystine'), isMale ? '1500mg' : '1100mg'),
+          (_t('Tirozin', 'Tyrosine'), isMale ? '2800mg' : '2200mg'),
+        ]
+      ),
+      (
+        _t('Diğer Bileşenler', 'Other Components'),
+        const Color(0xFF8E8E93),
+        [
+          (_t('Kolin', 'Choline'), isMale ? '550mg' : '425mg'),
+          (_t('Betain', 'Betaine'), '1500mg'),
+        ]
+      ),
+    ];
 
     return _shell(
       title: _t('Planın Hazır!', 'Plan is Ready!'),
-      subtitle: RichText(
-        textAlign: TextAlign.center,
-        text: TextSpan(
+      subtitle: Text.rich(
+        TextSpan(
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 15,
             color: _kTextSub,
             height: 1.5,
           ),
@@ -5186,6 +5431,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             TextSpan(text: _t(' hazırlandı', ' has been prepared for you')),
           ],
         ),
+        textAlign: TextAlign.center,
       ),
       centered: true,
       verticalCenter: true,
@@ -5229,6 +5475,151 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? _kCard : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark ? _kBorder : const Color(0xFFE5E7EB),
+                width: 1.5,
+              ),
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text(
+                  _t('Daha Fazlası', 'Show More'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _tw,
+                  ),
+                ),
+                iconColor: _tw,
+                collapsedIconColor: _tw,
+                children: [
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: groups.map((group) {
+                      final categoryTitle = group.$1;
+                      final categoryColor = group.$2;
+                      final categoryItems = group.$3;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 2,
+                                color: categoryColor,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                categoryTitle.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: categoryColor,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  height: 0.5,
+                                  color: categoryColor.withValues(alpha: 0.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Column(
+                            children: List.generate((categoryItems.length / 2).ceil(), (index) {
+                              final leftIndex = index * 2;
+                              final rightIndex = leftIndex + 1;
+
+                              final leftItem = categoryItems[leftIndex];
+                              final rightItem = rightIndex < categoryItems.length ? categoryItems[rightIndex] : null;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              leftItem.$1,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Color(0xFF8B949E),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            leftItem.$2,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: _tw,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    Expanded(
+                                      child: rightItem != null
+                                          ? Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    rightItem.$1,
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Color(0xFF8B949E),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  rightItem.$2,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: _tw,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : const SizedBox(),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -5266,11 +5657,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return _shell(
       title: _t('İlerlemen kaybolmasın, hesap aç!', 'Don\'t lose your progress, create an account!'),
-      subtitle: RichText(
-        textAlign: TextAlign.center,
-        text: TextSpan(
+      subtitle: Text.rich(
+        TextSpan(
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 15,
             color: _kTextSub,
             height: 1.5,
           ),
@@ -5282,6 +5672,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             const TextSpan(text: '.'),
           ],
         ),
+        textAlign: TextAlign.center,
       ),
       centered: true,
       verticalCenter: true,
@@ -5380,23 +5771,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             onTap: _googleLoading ? null : _handleGoogleSignIn,
             loading: _googleLoading,
           ),
-          const SizedBox(height: 24),
-          // --- Skip Sign Up ---
-          GestureDetector(
-            onTap: _finishLoading ? null : _skipSignUp,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                _t('Hesap açmadan devam et', 'Continue without creating account'),
-                style: TextStyle(
-                  color: _kTextSub,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
+          if (widget.mode != OnboardingMode.linkAccount) ...[
+            const SizedBox(height: 24),
+            // --- Skip Sign Up ---
+            GestureDetector(
+              onTap: _finishLoading ? null : _skipSignUp,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  _t('Hesap açmadan devam et', 'Continue without creating account'),
+                  style: TextStyle(
+                    color: _kTextSub,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -5461,7 +5854,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       if (!mounted) return;
       setState(() => _signUpLoading = false);
       // Hesap oluşturuldu → özet sayfasını göster, oradan HomeScreen'e geç
-      _navigateTo(_StepId.completion);
+      if (widget.mode == OnboardingMode.linkAccount) {
+        _goHome();
+      } else {
+        _navigateTo(_StepId.completion);
+      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => _signUpLoading = false);
@@ -5767,13 +6164,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        title: Text(title, style: TextStyle(fontSize: 18, color: _tw, fontWeight: FontWeight.bold)),
+        title: Text(title, style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
         content: Text(content, style: const TextStyle(color: _kTextSub, height: 1.4)),
         actionsPadding: const EdgeInsets.only(right: 12, bottom: 8),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(_t('Anladım', 'I Understand'), style: TextStyle(color: _tw, fontWeight: FontWeight.bold)),
+            child: Text(_t('Anladım', 'I Understand'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -6003,23 +6400,31 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // ── Başlık (8x sayfası stili) ──────────────────
-                      Text(
-                        name.isNotEmpty
-                            ? 'Planın hazır,\n$name!'
-                            : 'Kişisel planın\nhazır!',
+                      RichText(
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          color: _tw,
-                          height: 1.1,
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: _tw,
+                            height: 1.1,
+                            fontFamily: Theme.of(context).textTheme.bodyLarge?.fontFamily,
+                          ),
+                          children: name.isNotEmpty
+                              ? [
+                                  const TextSpan(text: 'Planın hazır,\n'),
+                                  TextSpan(text: '$name!', style: const TextStyle(color: _kBlue)),
+                                ]
+                              : [
+                                  const TextSpan(text: 'Kişisel planın\nhazır!'),
+                                ],
                         ),
                       ),
                       const SizedBox(height: 14),
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
-                          style: TextStyle(fontSize: 15, color: _kTextSub, height: 1.6),
+                          style: TextStyle(fontSize: 17, color: _kTextSub, height: 1.6),
                           children: [
                             TextSpan(text: 'LensEat',
                                 style: TextStyle(color: _kBlue, fontWeight: FontWeight.w700)),
@@ -7276,12 +7681,20 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
               decoration: BoxDecoration(color: _tw, borderRadius: BorderRadius.circular(16)),
               child: Center(
                 child: _loading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: isDark ? Colors.black : Colors.white,
+                        ),
+                      )
                     : Text(
                         _t('Giriş Yap', 'Log In'),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.black : Colors.white,
+                        ),
                       ),
               ),
             ),

@@ -266,4 +266,10 @@ class WellnessProvider extends ChangeNotifier {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Map<String, WellnessLog> get allLogs => Map.unmodifiable(_logs);
+
+  void reset() {
+    _logs.clear();
+    _weightLogs.clear();
+    notifyListeners();
+  }
 }

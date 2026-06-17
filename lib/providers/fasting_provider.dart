@@ -196,4 +196,10 @@ class FastingProvider extends ChangeNotifier {
     final encoded = jsonEncode(_history.map((s) => s.toJson()).toList());
     await prefs.setString(_historyKey, encoded);
   }
+
+  void reset() {
+    _activeSession = null;
+    _history.clear();
+    notifyListeners();
+  }
 }

@@ -485,4 +485,29 @@ class AchievementProvider extends ChangeNotifier {
       );
     } catch (_) {}
   }
+
+  void reset() {
+    _progress = {
+      'waterStreak': 0,
+      'calorieStreak': 0,
+      'proteinStreak': 0,
+      'logStreak': 0,
+      'photoCount': 0,
+      'totalMeals': 0,
+      'allGoalsDays': 0,
+      'waterGoalDays': 0,
+      'carbStreak': 0,
+      'fatStreak': 0,
+      'fiberStreak': 0,
+      'totalFasts': 0,
+      'longFasts': 0,
+      'fastingStreak': 0,
+      'totalFastingHours': 0,
+      'lastFastingDate': 0,
+    };
+    _earned.clear();
+    _newlyEarned.clear();
+    _lastCheckDate = '';
+    notifyListeners();
+  }
 }

@@ -13,6 +13,9 @@ import '../providers/achievement_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/nutrition_provider.dart';
+import '../providers/wellness_provider.dart';
+import '../providers/fasting_provider.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/health_service.dart';
@@ -229,6 +232,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearLocalData() async {
+    context.read<ProfileProvider>().clearAll();
+    context.read<NutritionProvider>().reset();
+    context.read<WellnessProvider>().reset();
+    context.read<FastingProvider>().reset();
+    context.read<AchievementProvider>().reset();
     await DatabaseService.instance.clearAllData();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -271,7 +279,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Clear onboarding progress and local cache for everyone on logout
     // so the next entry starts from the beginning as requested.
-    context.read<ProfileProvider>().clearAll();
     await _clearLocalData();
     await FirebaseAuth.instance.signOut();
 
@@ -925,6 +932,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // ── Hesap ─────────────────────────────────────────────────
               _SectionLabel(label: 'Hesap'),
+              if (FirebaseAuth.instance.currentUser == null ||
+                  FirebaseAuth.instance.currentUser!.isAnonymous) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const OnboardingScreen(
+                            mode: OnboardingMode.linkAccount,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.link, color: Colors.white, size: 20),
+                    label: const Text('Hesap Bağla',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color(0xFF58A6FF),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
