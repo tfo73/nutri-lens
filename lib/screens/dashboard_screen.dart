@@ -39,6 +39,7 @@ class DashboardScreen extends StatefulWidget {
   final VoidCallback? onProfileSetupPressed;
   final VoidCallback? onCoachPressed;
   final VoidCallback? onFastingPressed;
+  final bool isCurrentTab;
 
   const DashboardScreen({
     super.key,
@@ -46,6 +47,7 @@ class DashboardScreen extends StatefulWidget {
     this.onProfileSetupPressed,
     this.onCoachPressed,
     this.onFastingPressed,
+    this.isCurrentTab = true,
   });
 
   @override
@@ -80,6 +82,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateTimer = Timer.periodic(const Duration(minutes: 30), (_) {
       _loadSteps();
     });
+  }
+
+  @override
+  void didUpdateWidget(DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isCurrentTab && !oldWidget.isCurrentTab) {
+      setState(() {
+        _selectedDate = DateTime.now();
+      });
+      _loadSteps();
+    }
   }
 
   Future<void> _loadDeviceInfo() async {

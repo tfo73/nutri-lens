@@ -40,25 +40,11 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isMenuOpen = false;
   late PageController _pageController;
-  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    _screens = [
-      _KeepAlivePage(child: DashboardScreen(
-        onMealAddPressed: (meal, mode) => _handleMenuAction(mode, meal: meal),
-        onProfileSetupPressed: () => _onTabSelected(3),
-        onFastingPressed: () => _onTabSelected(1),
-      )),
-      const _KeepAlivePage(child: FastingScreen()),
-      _KeepAlivePage(child: SuggestionsScreen(
-        onNavigateBack: () => _onTabSelected(1),
-        onNavigateForward: () => _onTabSelected(3),
-      )),
-      const _KeepAlivePage(child: ProfileScreen()),
-    ];
     _checkOnboarding();
   }
 
@@ -177,6 +163,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final divider = Theme.of(context).dividerColor;
     final safeAreaBottom = MediaQuery.of(context).padding.bottom;
 
+    final screens = [
+      _KeepAlivePage(child: DashboardScreen(
+        isCurrentTab: _selectedIndex == 0,
+        onMealAddPressed: (meal, mode) => _handleMenuAction(mode, meal: meal),
+        onProfileSetupPressed: () => _onTabSelected(3),
+        onFastingPressed: () => _onTabSelected(1),
+      )),
+      const _KeepAlivePage(child: FastingScreen()),
+      _KeepAlivePage(child: SuggestionsScreen(
+        onNavigateBack: () => _onTabSelected(1),
+        onNavigateForward: () => _onTabSelected(3),
+      )),
+      const _KeepAlivePage(child: ProfileScreen()),
+    ];
 
     // Listen for background analysis results
     if (!nutritionProvider.isAnalyzing && nutritionProvider.lastResult != null) {
@@ -208,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _selectedIndex = index;
               });
             },
-            children: _screens,
+            children: screens,
           ),
           // Backdrop for Menu
           Positioned.fill(
