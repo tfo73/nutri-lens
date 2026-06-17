@@ -6462,7 +6462,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             TextSpan(text: ' '),
                             TextSpan(text: _t(' sana özel hesaplanan', ' calculated specifically for you'),
                                 style: TextStyle(color: _tw, fontWeight: FontWeight.w600)),
-                            TextSpan(text: _t(' bu değerlerle\nhedefine ulaşmana yardımcı olacak.', ' will help you\nreach your goals with these values.')),
+                            TextSpan(text: _t(' bu değerlerle\nhedefine ulaşmana yardımcı olacak.', '\nwill help you reach your goals with these values.')),
                           ],
                         ),
                       ),
