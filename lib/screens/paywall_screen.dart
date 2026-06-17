@@ -19,6 +19,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
   int _selectedPlanIndex = 1; // Default to Yearly
   bool _isPurchasing = false;
 
+  bool get _isTr => Provider.of<LanguageProvider>(context).isTurkish;
+  String _t(String tr, String en) => _isTr ? tr : en;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -138,7 +141,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Biyolojik yaşınızı kontrol altına alın. 65 farklı besin değerini analiz ederek hücrelerinizi besleyin ve daha uzun, daha enerjik bir yaşamın kapılarını aralayın.',
+                        _t(
+                          'Biyolojik yaşınızı kontrol altına alın. 65 farklı besin değerini analiz ederek hücrelerinizi besleyin ve daha uzun, daha enerjik bir yaşamın kapılarını aralayın.',
+                          'Take control of your biological age. Analyze 65 different nutrients to feed your cells and unlock a longer, more energetic life.',
+                        ),
                         style: TextStyle(
                           fontSize: 18, // Increased size from 17
                           color: isDark ? Colors.white60 : Colors.black54,
@@ -150,50 +156,50 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       // Bento Feature List
                       _buildFeatureItem(
                         icon: Icons.analytics_rounded,
-                        title: '65+ Kritik Besin Analizi',
-                        desc: 'Sadece kalori değil; vitamin, mineral ve antioksidan dengenizi tam isabetle ölçün.',
+                        title: _t('65+ Kritik Besin Analizi', '65+ Critical Nutrient Analysis'),
+                        desc: _t('Sadece kalori değil; vitamin, mineral ve antioksidan dengenizi tam isabetle ölçün.', 'Measure not just calories, but your vitamin, mineral, and antioxidant balance with full precision.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
                         icon: Icons.camera_rounded,
-                        title: 'Sınırsız AI Tarama',
-                        desc: 'Fotoğraftan anında ve sınırsız kalori takibi.',
+                        title: _t('Sınırsız AI Tarama', 'Unlimited AI Scanning'),
+                        desc: _t('Fotoğraftan anında ve sınırsız kalori takibi.', 'Instant and unlimited calorie tracking from photos.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
                         icon: Icons.qr_code_scanner_rounded,
-                        title: 'Barkoddan Analiz',
-                        desc: 'Paketli gıdaların barkodunu tara, içeriğini anında öğren.',
+                        title: _t('Barkoddan Analiz', 'Barcode Analysis'),
+                        desc: _t('Paketli gıdaların barkodunu tara, içeriğini anında öğren.', 'Scan packaged food barcodes, instantly learn their contents.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
                         icon: Icons.mic_rounded,
-                        title: 'Anlatarak Analiz',
-                        desc: 'Yediklerini sesli veya yazılı anlat, AI senin için hesaplasın.',
+                        title: _t('Anlatarak Analiz', 'Voice & Text Analysis'),
+                        desc: _t('Yediklerini sesli veya yazılı anlat, AI senin için hesaplasın.', 'Describe what you eat with voice or text, let AI calculate it for you.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
                         icon: Icons.auto_graph_rounded,
-                        title: 'Uzun Yaşam',
-                        desc: 'Beslenme düzeninizin hücresel yaşlanma ve uzun ömür üzerindeki etkisini izleyin.',
+                        title: _t('Uzun Yaşam', 'Longevity'),
+                        desc: _t('Beslenme düzeninizin hücresel yaşlanma ve uzun ömür üzerindeki etkisini izleyin.', 'Monitor the impact of your nutrition on cellular aging and longevity.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
                         icon: Icons.spa_rounded,
-                        title: 'Eksikliklere Özel Tarifler',
-                        desc: 'Besin eksikliklerinizi gidermek için bilimsel temelli ve şef onaylı özel tarifler.',
+                        title: _t('Eksikliklere Özel Tarifler', 'Deficiency-Specific Recipes'),
+                        desc: _t('Besin eksikliklerinizi gidermek için bilimsel temelli ve şef onaylı özel tarifler.', 'Science-based and chef-approved special recipes to address your nutrient deficiencies.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       
                       const SizedBox(height: 40),
                       Text(
-                        'Bir Plan Seç',
+                        _t('Bir Plan Seç', 'Choose a Plan'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -205,21 +211,21 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       // Plans
                       _buildPlanCard(
                         index: 0,
-                        title: 'Haftalık',
-                        price: '₺199,99 / hafta',
-                        subtitle: 'Sağlıklı yaşama hızlı bir başlangıç',
+                        title: _t('Haftalık', 'Weekly'),
+                        price: _t('₺199,99 / hafta', '₺199.99 / week'),
+                        subtitle: _t('Sağlıklı yaşama hızlı bir başlangıç', 'A quick start to healthy living'),
                         selected: _selectedPlanIndex == 0,
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildPlanCard(
                         index: 1,
-                        title: 'Yıllık',
-                        price: '₺1.749,99 / yıl',
-                        oldPrice: '₺8.800', // Strikethrough price
-                        subtitle: 'Uzun yaşam için en kapsamlı analiz',
+                        title: _t('Yıllık', 'Yearly'),
+                        price: _t('₺1.749,99 / yıl', '₺1,749.99 / year'),
+                        oldPrice: _t('₺8.800', '₺8,800'), // Strikethrough price
+                        subtitle: _t('Uzun yaşam için en kapsamlı analiz', 'The most comprehensive analysis for longevity'),
                         selected: _selectedPlanIndex == 1,
-                        badge: 'EN POPÜLER',
+                        badge: _t('EN POPÜLER', 'MOST POPULAR'),
                         isBadgeTopCenter: true,
                         savingsBlue: appBlue, // Blue savings
                         appGreen: appBlue,
@@ -227,11 +233,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       ),
                       _buildPlanCard(
                         index: 2,
-                        title: 'Ömür Boyu',
-                        price: '₺4.999,99',
-                        subtitle: 'Ömür boyu sağlık ve gençlik yatırımı',
+                        title: _t('Ömür Boyu', 'Lifetime'),
+                        price: _t('₺4.999,99', '₺4,999.99'),
+                        subtitle: _t('Ömür boyu sağlık ve gençlik yatırımı', 'Lifetime investment in health and youth'),
                         selected: _selectedPlanIndex == 2,
-                        badge: 'SINIRLI SÜRELİĞİNE TEKLİF',
+                        badge: _t('SINIRLI SÜRELİĞİNE TEKLİF', 'LIMITED TIME OFFER'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
@@ -270,7 +276,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               // Revert premium if purchase failed
                               profileProvider.updatePremiumStatus(false);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Satın alma başarısız. Lütfen tekrar deneyin.')),
+                                SnackBar(content: Text(_t('Satın alma başarısız. Lütfen tekrar deneyin.', 'Purchase failed. Please try again.'))),
                               );
                             }
                           },
@@ -279,9 +285,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           ),
-                          child: const Text(
-                            'Devam Et',
-                            style: TextStyle(
+                          child: Text(
+                            _t('Devam Et', 'Continue'),
+                            style: const TextStyle(
                               color: Colors.black,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -294,7 +300,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildFooterLink('Satın Alımı Geri Yükle', onTap: () async {
+                          _buildFooterLink(_t('Satın Alımı Geri Yükle', 'Restore Purchase'), onTap: () async {
                             final restored = await PurchaseService.instance.restorePurchases();
                             if (!mounted) return;
                             if (restored) {
@@ -302,14 +308,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Geri yüklenecek satın alım bulunamadı.')),
+                                SnackBar(content: Text(_t('Geri yüklenecek satın alım bulunamadı.', 'No purchase found to restore.'))),
                               );
                             }
                           }),
                           _buildFooterDivider(),
-                          _buildFooterLink('Gizlilik'),
+                          _buildFooterLink(_t('Gizlilik', 'Privacy')),
                           _buildFooterDivider(),
-                          _buildFooterLink('Şartlar'),
+                          _buildFooterLink(_t('Şartlar', 'Terms')),
                         ],
                       ),
                       const SizedBox(height: 48),
@@ -442,7 +448,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            '%80 tasarruf',
+                            _t('%80 tasarruf', 'Save 80%'),
                             style: TextStyle(
                               fontSize: 18, // Large
                               fontWeight: FontWeight.w900,

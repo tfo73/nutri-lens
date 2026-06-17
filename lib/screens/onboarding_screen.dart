@@ -864,10 +864,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         return _data.progressIndicators.isNotEmpty;
       case _StepId.exerciseFreq:
         return _data.exerciseFreq != null;
+      case _StepId.diseases:
+        return !_data.diseases.contains(_t('Diğer', 'Other')) || _diseaseOtherCtrl.text.trim().isNotEmpty;
+      case _StepId.foodSensitivities:
+        return !_data.foodSensitivities.contains(_t('Diğer', 'Other')) || _foodSensOtherCtrl.text.trim().isNotEmpty;
+      case _StepId.supplements:
+        return !_data.supplements.contains(_t('Diğer', 'Other')) || _suppOtherCtrl.text.trim().isNotEmpty;
       case _StepId.mainChallenge:
-        return _data.challenges.isNotEmpty;
+        return _data.challenges.isNotEmpty &&
+            (!_data.challenges.contains(_t('Diğer', 'Other')) || _challOtherCtrl.text.trim().isNotEmpty);
       case _StepId.healthGoals:
-        return _data.specificGoals.isNotEmpty;
+        return _data.specificGoals.isNotEmpty &&
+            (!_data.specificGoals.contains(_t('Diğer', 'Other')) || _sgOtherCtrl.text.trim().isNotEmpty);
       default:
         return true;
     }
@@ -930,9 +938,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (!_isCurrentStepAnswered()) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen bir seçenek seç'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text(_t('Lütfen bir seçenek seçin veya alanı doldurun', 'Please choose an option or fill in the field')),
+          duration: const Duration(seconds: 1),
         ),
       );
       return;
@@ -1137,7 +1145,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     } else if (section == _Section.s3Personal1) {
       msg = _t('Verileriniz işleniyor; biyolojik modeliniz yapılandırılıyor... ⚙️', 'Processing your data; configuring your biological model... ⚙️');
     } else {
-      msg = 'Neredeyse bitti! 🎯';
+      msg = _t('Neredeyse bitti! 🎯', 'Almost done! 🎯');
     }
     setState(() {
       _showSectionComplete = true;
@@ -4083,7 +4091,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final opts = [
       ('💧', _t('Su içsem yarıyor', 'Gain weight easily')),
       ('😤', _t('Çok zorlanırım', 'Very difficult for me')),
-      ('✨', 'Kolay veririm'),
+      ('✨', _t('Kolay veririm', 'I lose weight easily')),
       ('🔄', _t('Kilom hiç değişmez', 'My weight never changes')),
     ];
     return _shell(
@@ -4178,12 +4186,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final opts = [
-      ('😴', "5'ten az saat"),
-      ('🌙', '5-7 saat'),
-      ('✨', '7-9 saat'),
-      ('💤', '9+ saat'),
+      ('😴', _t("5'ten az saat", "Less than 5 hours")),
+      ('🌙', _t('5-7 saat', '5-7 hours')),
+      ('✨', _t('7-9 saat', '7-9 hours')),
+      ('💤', _t('9+ saat', '9+ hours')),
     ];
-    final subtitles = ['Yetersiz uyku', 'Biraz az', _t('İdeal uyku süresi', 'Ideal sleep duration'), 'Fazla uyku'];
+    final subtitles = [
+      _t('Yetersiz uyku', 'Insufficient sleep'),
+      _t('Biraz az', 'Slightly short'),
+      _t('İdeal uyku süresi', 'Ideal sleep duration'),
+      _t('Fazla uyku', 'Excessive sleep'),
+    ];
     return _shell(
       title: _t('Günde kaç saat uyursun?', 'How many hours do you sleep a day?'),
       subtitle: _t('Uyku, metabolizmanın yeniden kalibre edildiği ve hormonlarının dengelendiği kritik bir süreçtir.', 'Sleep is a critical process where metabolism is recalibrated and hormones are balanced.'),
@@ -4335,10 +4348,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final opts = [
-      ('💧', "1L'den az", 'Yetersiz hidrasyon'),
-      ('🥤', '1-2L', _t('Ortalama tüketim', 'Average consumption')),
-      ('🌊', '2-3L', _t('İyi seviye', 'Good level')),
-      ('🏊', "3L'den fazla", _t('Mükemmel hidrasyon', 'Excellent hydration')),
+      ('💧', _t("1L'den az", "Less than 1L"), _t('Yetersiz hidrasyon', 'Insufficient hydration')),
+      ('🥤', _t('1-2L', '1-2L'), _t('Ortalama tüketim', 'Average consumption')),
+      ('🌊', _t('2-3L', '2-3L'), _t('İyi seviye', 'Good level')),
+      ('🏊', _t("3L'den fazla", "More than 3L"), _t('Mükemmel hidrasyon', 'Excellent hydration')),
     ];
     return _shell(
       title: _t('Günlük su tüketim alışkanlığın nasıl?', 'How are your daily water intake habits?'),
@@ -4367,7 +4380,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final opts = [
-      ('🍔', 'Her gün'),
+      ('🍔', _t('Her gün', 'Every day')),
       ('🍜', _t('Haftada birkaç', 'A few times a week')),
       ('🥗', _t('Sadece hafta sonu', 'Only weekends')),
       ('🏠', _t('Neredeyse hiç', 'Almost never')),
@@ -4399,7 +4412,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final opts = [
-      ('🌅', 'Sabah erken'),
+      ('🌅', _t('Sabah erken', 'Early morning')),
       ('☀️', _t('Öğle', 'Afternoon')),
       ('🌆', _t('Akşam üzeri', 'Evening')),
       ('🦉', _t('Gece kuşu', 'Night owl')),
@@ -4432,7 +4445,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final primary = theme.colorScheme.primary;
     final opts = [
       ('😰', _t('Evet, streste çok yerim', 'Yes, I eat a lot under stress')),
-      ('🤷', 'Pek etkilemez'),
+      ('🤷', _t('Pek etkilemez', "Doesn't affect much")),
       ('😶', _t('Hayır, iştahım kesilir', 'No, I lose my appetite')),
     ];
     return _shell(
@@ -4689,20 +4702,30 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       child: Text.rich(
                         TextSpan(
                           children: [
+                            if (!_isTr)
+                              TextSpan(
+                                text: 'To never forget ',
+                                style: TextStyle(color: isDark ? Colors.white70 : _kTextSub),
+                              ),
                             TextSpan(
-                              text: 'Kalori takibini ',
+                              text: _t('Kalori takibini ', 'calorie tracking, '),
                               style: TextStyle(color: _tw, fontWeight: FontWeight.w600),
                             ),
                             TextSpan(
-                              text: _t('unutmamak için bildirimleri açın. ', 'Turn on notifications to not forget. '),
+                              text: _t('unutmamak için bildirimleri açın. ', 'turn on notifications. '),
                               style: TextStyle(color: isDark ? Colors.white70 : _kTextSub),
                             ),
+                            if (!_isTr)
+                              TextSpan(
+                                text: 'The easiest way to build ',
+                                style: TextStyle(color: isDark ? Colors.white70 : _kTextSub),
+                              ),
                             TextSpan(
-                              text: _t('Sağlıklı alışkanlıklar ', 'The easiest way to create '),
+                              text: _t('Sağlıklı alışkanlıklar ', 'healthy habits '),
                               style: TextStyle(color: _tw, fontWeight: FontWeight.w600),
                             ),
                             TextSpan(
-                              text: _t('oluşturmanın ve hedeflerinize yaklaşmanın en kolay yolu!', 'healthy habits and get closer to your goals!'),
+                              text: _t('oluşturmanın ve hedeflerinize yaklaşmanın en kolay yolu!', 'and get closer to your goals!'),
                               style: TextStyle(color: isDark ? Colors.white70 : _kTextSub),
                             ),
                           ],
@@ -4938,14 +4961,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             color: _tw,
             height: 1.2,
           ),
-          children: [
-            const TextSpan(text: 'Binlerce insan '),
-            TextSpan(
-              text: 'LensEat',
-              style: TextStyle(color: _kBlue),
-            ),
-            TextSpan(text: _t('\'e güveniyor', ' trusts')),
-          ],
+          children: _isTr
+              ? [
+                  const TextSpan(text: 'Binlerce insan '),
+                  TextSpan(
+                    text: 'LensEat',
+                    style: TextStyle(color: _kBlue),
+                  ),
+                  const TextSpan(text: '\'e güveniyor'),
+                ]
+              : [
+                  const TextSpan(text: 'Thousands of people trust '),
+                  TextSpan(
+                    text: 'LensEat',
+                    style: TextStyle(color: _kBlue),
+                  ),
+                ],
         ),
       ),
       subtitle: null,
@@ -5119,17 +5150,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ('🩸', _t('Tip 1 Diyabet', 'Type 1 Diabetes')),
       ('💉', _t('Tip 2 Diyabet', 'Type 2 Diabetes')),
       ('📈', _t('İnsülin Direnci', 'Insulin Resistance')),
-      ('⚡', 'Reaktif Hipoglisemi'),
-      ('❤️', 'Hipertansiyon'),
+      ('⚡', _t('Reaktif Hipoglisemi', 'Reactive Hypoglycemia')),
+      ('❤️', _t('Hipertansiyon', 'Hypertension')),
       ('🫀', _t('Yüksek Kolesterol', 'High Cholesterol')),
       ('💔', _t('Kalp Yetmezliği', 'Heart Failure')),
       ('🌾', _t('Çölyak', 'Celiac Disease')),
       ('🫁', _t('IBS (İrritabl Bağırsak Sendromu)', 'IBS (Irritable Bowel Syndrome)')),
       ('🔥', _t('Gastrit / Reflü', 'Gastritis / Reflux')),
       ('🥛', _t('Laktoz İntoleransı', 'Lactose Intolerance')),
-      ('🦋', 'Hipotiroidi'),
-      ('⚡', 'Hipertiroidi'),
-      ('🔴', 'PCOS (Polikistik Over Sendromu)'),
+      ('🦋', _t('Hipotiroidi', 'Hypothyroidism')),
+      ('⚡', _t('Hipertiroidi', 'Hyperthyroidism')),
+      ('🔴', _t('PCOS (Polikistik Over Sendromu)', 'PCOS (Polycystic Ovary Syndrome)')),
       ('🫘', _t('Kronik Böbrek Yetmezliği', 'Chronic Kidney Failure')),
       ('🫀', _t('Yağlı Karaciğer', 'Fatty Liver')),
       ('✏️', _t('Diğer', 'Other')),
@@ -5194,14 +5225,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ('🪨', _t('Magnezyum', 'Magnesium')),
       ('🔩', _t('Demir', 'Iron')),
       ('🟠', _t('C Vitamini', 'Vitamin C')),
-      ('⚙️', _t(_t('Çinko', 'Zinc'), 'Zinc')),
-      ('🥤', 'Protein Tozu'),
-      ('💪', 'Kreatin'),
+      ('⚙️', _t('Çinko', 'Zinc')),
+      ('🥤', _t('Protein Tozu', 'Protein Powder')),
+      ('💪', _t('Kreatin', 'Creatine')),
       ('🔀', 'BCAA (Branched-Chain Amino Acids)'),
       ('⚡', 'Pre-Workout'),
       ('🐟', 'Omega-3'),
-      ('✨', 'Kolajen'),
-      ('🦠', 'Probiyotikler'),
+      ('✨', _t('Kolajen', 'Collagen')),
+      ('🦠', _t('Probiyotikler', 'Probiotics')),
       ('✏️', _t('Diğer', 'Other')),
     ];
     return _shell(
@@ -5226,10 +5257,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _stepMainChallenge() {
     final options = [
-      ('😩', 'Kalori takibi yorucu'),
+      ('😩', _t('Kalori takibi yorucu', 'Calorie tracking is tedious')),
       ('🔄', _t('İstikrarsızlık', 'Inconsistency')),
-      ('🍽️', 'Porsiyon bilgisi'),
-      ('📚', 'Besin bilgisi'),
+      ('🍽️', _t('Porsiyon bilgisi', 'Portion knowledge')),
+      ('📚', _t('Besin bilgisi', 'Nutritional knowledge')),
       ('🍔', _t('Sağlıksız alışkanlıklar', 'Unhealthy habits')),
       ('👥', _t('Destek eksikliği', 'Lack of support')),
       ('⏰', _t('Yoğun takvim', 'Busy schedule')),
@@ -5262,13 +5293,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ('🧬', _t('Hücresel sağlık optimizasyonu', 'Cellular health optimization')),
       ('🧠', _t('Odak ve zihinsel netlik', 'Focus and mental clarity')),
       ('⚡', _t('Daha enerjik olma', 'Being more energetic')),
-      ('🔄', 'Metabolik esneklik'),
+      ('🔄', _t('Metabolik esneklik', 'Metabolic flexibility')),
       ('🌿', _t('Bağırsak sağlığı ve mikrobiyota', 'Gut health and microbiota')),
-      ('💪', 'Kas kazanmak'),
+      ('💪', _t('Kas kazanmak', 'Gaining muscle')),
       ('🔥', _t('Yağ yakmak', 'Burning fat')),
-      ('⚖️', 'Hormonal denge'),
-      ('🍵', 'Anti-inflamatuar beslenme'),
-      ('🏃', 'Atletik performans'),
+      ('⚖️', _t('Hormonal denge', 'Hormonal balance')),
+      ('🍵', _t('Anti-inflamatuar beslenme', 'Anti-inflammatory nutrition')),
+      ('🏃', _t('Atletik performans', 'Athletic performance')),
       ('✏️', _t('Diğer', 'Other')),
     ];
     return _shell(
@@ -5454,7 +5485,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
             child: Column(
               children: [
-                _planRow('🔥', 'Kalori', '$calorie kcal'),
+                _planRow('🔥', _t('Kalori', 'Calories'), '$calorie kcal'),
                 const SizedBox(height: 16),
                 _planRow('🐟', _t('Protein', 'Protein'), '${protein}g'),
                 const SizedBox(height: 16),
@@ -5464,11 +5495,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 const SizedBox(height: 16),
                 _planRow('🥦', _t('Lif', 'Fiber'), '${fiber}g'),
                 const SizedBox(height: 16),
-                _planRow('💧', 'Su', '${(_data.waterMl / 1000).toStringAsFixed(1)}L'),
+                _planRow('💧', _t('Su', 'Water'), '${(_data.waterMl / 1000).toStringAsFixed(1)}L'),
                 const SizedBox(height: 20),
                 Divider(height: 1, color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE5E7EB)),
                 const SizedBox(height: 20),
-                _planRow('🎯', 'Hedef kilo',
+                _planRow('🎯', _t('Hedef kilo', 'Target weight'),
                   _data.weightGoal == Goal.maintain
                       ? '$startW kg'
                       : '$startW kg → $targetW kg'),
@@ -5685,7 +5716,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             enabled: !_signUpLoading,
             style: TextStyle(color: _tw),
             decoration: InputDecoration(
-              hintText: 'E-posta',
+              hintText: _t('E-posta', 'Email'),
               hintStyle: const TextStyle(color: _kTextSub),
               filled: true,
               fillColor: isDark ? _kCard : Colors.white,
@@ -5767,7 +5798,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           // --- Google Sign In ---
           _authButton(
             useGoogleIcon: true,
-            label: 'Google ile Devam Et',
+            label: _t('Google ile Devam Et', 'Continue with Google'),
             onTap: _googleLoading ? null : _handleGoogleSignIn,
             loading: _googleLoading,
           ),
@@ -5953,9 +5984,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final isMale = (_data.gender ?? Gender.male) == Gender.male;
 
     String bmiStatus = 'Normal';
-    if (bmi < 18.5) bmiStatus = 'Zayıf';
-    else if (bmi >= 25 && bmi < 30) bmiStatus = 'Kilolu';
-    else if (bmi >= 30) bmiStatus = 'Obez';
+    if (bmi < 18.5) bmiStatus = _t('Zayıf', 'Underweight');
+    else if (bmi >= 25 && bmi < 30) bmiStatus = _t('Kilolu', 'Overweight');
+    else if (bmi >= 30) bmiStatus = _t('Obez', 'Obese');
 
     return _shell(
       title: _t('Hesaplanan değerlerin', 'Your calculated values'),
@@ -5964,7 +5995,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         text: TextSpan(
           style: TextStyle(fontSize: 13, color: _kTextSub, height: 1.5),
           children: [
-            TextSpan(text: 'Verdiğin yanıtlara göre '),
+            TextSpan(text: _t('Verdiğin yanıtlara göre ', 'Based on your answers, ')),
             TextSpan(text: _t('kişiselleştirilmiş besin hedeflerin', 'your personalized nutrient goals'), style: TextStyle(color: _tw, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -6017,7 +6048,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               _metricCard(
                 _t('HEDEF SÜRE', 'TARGET DURATION'), 
                 '$targetWeeks', 
-                'hafta', 
+                _t('hafta', 'weeks'), 
                 const Color(0xFFF3E5F5), 
                 const Color(0xFF9C27B0),
                 onTap: () => _showMetricInfo(
@@ -6033,12 +6064,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _tw),
           ),
           const SizedBox(height: 20),
-          _macroRow('Kalori', '${_data.calorieTarget.round()} kcal', const Color(0xFFFF9800)),
+          _macroRow(_t('Kalori', 'Calories'), '${_data.calorieTarget.round()} kcal', const Color(0xFFFF9800)),
           _macroRow(_t('Protein', 'Protein'), '${_data.proteinG.round()}g', const Color(0xFFEA4335)),
           _macroRow(_t('Karbonhidrat', 'Carbohydrate'), '${_data.carbG.round()}g', const Color(0xFF4CAF50)),
           _macroRow(_t('Yağ', 'Fat'), '${_data.fatG.round()}g', const Color(0xFFFBBC05)),
           _macroRow(_t('Lif', 'Fiber'), '${_data.fiberG.round()}g', const Color(0xFF8B4513)),
-          _macroRow('Su', '${(_data.waterMl / 1000).toStringAsFixed(1)}L', const Color(0xFF4285F4)),
+          _macroRow(_t('Su', 'Water'), '${(_data.waterMl / 1000).toStringAsFixed(1)}L', const Color(0xFF4285F4)),
 
           const SizedBox(height: 8),
           Theme(
@@ -6046,7 +6077,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               title: Text(
-                'Daha fazla besin analizi',
+                _t('Daha fazla besin analizi', 'More nutrient analysis'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -6058,71 +6089,71 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               collapsedIconColor: _tw,
               children: [
                 const SizedBox(height: 12),
-                _microHeader('KOLESTEROL', const Color(0xFFFBBC05)),
-                _microRow('Kolesterol', '< 300mg'),
+                _microHeader(_t('KOLESTEROL', 'CHOLESTEROL'), const Color(0xFFFBBC05)),
+                _microRow(_t('Kolesterol', 'Cholesterol'), '< 300mg'),
                 _microRow(_t('Doymuş Yağ', 'Saturated Fat'), '< ${(_data.calorieTarget * 0.1 / 9).round()}g'),
                 _microRow(_t('Şeker', 'Sugar'), '< ${(_data.calorieTarget * 0.1 / 4).round()}g'),
 
                 const SizedBox(height: 16),
                 _microHeader(_t('MİNERALLER', 'MINERALS'), const Color(0xFF4285F4)),
-                _microRow('Kalsiyum', '1000mg'),
+                _microRow(_t('Kalsiyum', 'Calcium'), '1000mg'),
                 _microRow(_t('Demir', 'Iron'), isMale ? '8mg' : '18mg'),
                 _microRow(_t('Magnezyum', 'Magnesium'), isMale ? '420mg' : '320mg'),
-                _microRow('Fosfor', '700mg'),
-                _microRow('Potasyum', isMale ? '3400mg' : '2600mg'),
-                _microRow('Sodyum', '2300mg'),
-                _microRow(_t(_t('Çinko', 'Zinc'), 'Zinc'), isMale ? '11mg' : '8mg'),
+                _microRow(_t('Fosfor', 'Phosphorus'), '700mg'),
+                _microRow(_t('Potasyum', 'Potassium'), isMale ? '3400mg' : '2600mg'),
+                _microRow(_t('Sodyum', 'Sodium'), '2300mg'),
+                _microRow(_t('Çinko', 'Zinc'), isMale ? '11mg' : '8mg'),
                 _microRow(_t('Bakır', 'Copper'), '900mcg'),
-                _microRow('Manganez', isMale ? '2.3mg' : '1.8mg'),
-                _microRow('Selenyum', '55mcg'),
+                _microRow(_t('Manganez', 'Manganese'), isMale ? '2.3mg' : '1.8mg'),
+                _microRow(_t('Selenyum', 'Selenium'), '55mcg'),
                 _microRow(_t('İyot', 'Iodine'), '150mcg'),
 
                 const SizedBox(height: 16),
                 _microHeader(_t('VİTAMİNLER', 'VITAMINS'), const Color(0xFF34A853)),
-                _microRow('A Vitamini', isMale ? '900mcg' : '700mcg'),
-                _microRow('B1 (Tiamin)', isMale ? '1.2mg' : '1.1mg'),
-                _microRow('B2 (Riboflavin)', isMale ? '1.3mg' : '1.1mg'),
-                _microRow('B3 (Niasin)', isMale ? '16mg' : '14mg'),
-                _microRow('B5 (Pantotenik Asit)', '5mg'),
-                _microRow('B6 (Piridoksin)', '1.3mg'),
+                _microRow(_t('A Vitamini', 'Vitamin A'), isMale ? '900mcg' : '700mcg'),
+                _microRow(_t('B1 (Tiamin)', 'B1 (Thiamine)'), isMale ? '1.2mg' : '1.1mg'),
+                _microRow(_t('B2 (Riboflavin)', 'B2 (Riboflavin)'), isMale ? '1.3mg' : '1.1mg'),
+                _microRow(_t('B3 (Niasin)', 'B3 (Niacin)'), isMale ? '16mg' : '14mg'),
+                _microRow(_t('B5 (Pantotenik Asit)', 'B5 (Pantothenic Acid)'), '5mg'),
+                _microRow(_t('B6 (Piridoksin)', 'B6 (Pyridoxine)'), '1.3mg'),
                 _microRow('B7 (Biotin)', '30mcg'),
-                _microRow('B9 (Folat)', '400mcg'),
-                _microRow('B12 (Kobalamin)', '2.4mcg'),
+                _microRow(_t('B9 (Folat)', 'B9 (Folate)'), '400mcg'),
+                _microRow(_t('B12 (Kobalamin)', 'B12 (Cobalamin)'), '2.4mcg'),
                 _microRow(_t('C Vitamini', 'Vitamin C'), isMale ? '90mg' : '75mg'),
                 _microRow(_t('D Vitamini', 'Vitamin D'), '20mcg'),
-                _microRow('E Vitamini', '15mg'),
-                _microRow('K Vitamini', isMale ? '120mcg' : '90mcg'),
+                _microRow(_t('E Vitamini', 'Vitamin E'), '15mg'),
+                _microRow(_t('K Vitamini', 'Vitamin K'), isMale ? '120mcg' : '90mcg'),
 
                 const SizedBox(height: 16),
                 _microHeader(_t('KAROTENOİDLER', 'CAROTENOIDS'), const Color(0xFFFF5722)),
-                _microRow('Beta-Karoten', '6000mcg'),
-                _microRow('Alfa-Karoten', isMale ? '2900mcg' : '2400mcg'),
-                _microRow('Likopen', isMale ? '15mg' : '11mg'),
-                _microRow('Lutein + Zeaksantin', '10000mcg'),
+                _microRow(_t('Beta-Karoten', 'Beta-Carotene'), '6000mcg'),
+                _microRow(_t('Alfa-Karoten', 'Alpha-Carotene'), isMale ? '2900mcg' : '2400mcg'),
+                _microRow(_t('Likopen', 'Lycopene'), isMale ? '15mg' : '11mg'),
+                _microRow(_t('Lutein + Zeaksantin', 'Lutein + Zeaxanthin'), '10000mcg'),
 
                 const SizedBox(height: 16),
                 _microHeader(_t('YAĞ ASİTLERİ', 'FATTY ACIDS'), const Color(0xFFFF9800)),
                 _microRow('Omega-3', isMale ? '1.6g' : '1.1g'),
                 _microRow('Omega-6', isMale ? '17g' : '12g'),
-                _microRow('ALA (Alfa-Linolenik)', isMale ? '1.6g' : '1.1g'),
+                _microRow(_t('ALA (Alfa-Linolenik)', 'ALA (Alpha-Linolenic)'), isMale ? '1.6g' : '1.1g'),
                 _microRow('EPA', '0.25g'),
                 _microRow('DHA', '0.25g'),
 
                 const SizedBox(height: 16),
                 _microHeader(_t('AMİNO ASİTLER', 'AMINO ACIDS'), const Color(0xFFEA4335)),
-                _microRow('Triptofan', isMale ? '280mg' : '220mg'),
-                _microRow('Treonin', isMale ? '1050mg' : '820mg'),
+                _microRow(_t('Triptofan', 'Tryptophan'), isMale ? '280mg' : '220mg'),
+                _microRow(_t('Treonin', 'Threonine'), isMale ? '1050mg' : '820mg'),
                 _microRow(_t('İzolösin', 'Isoleucine'), isMale ? '1400mg' : '1100mg'),
                 _microRow(_t('Lösin', 'Leucine'), isMale ? '2730mg' : '2130mg'),
-                _microRow('Lizin', isMale ? '2100mg' : '1650mg'),
-                _microRow('Metiyonin', isMale ? '728mg' : '570mg'),
-                _microRow('Fenilalanin', isMale ? '1750mg' : '1370mg'),
-                _microRow('Valin', isMale ? '1820mg' : '1430mg'),
-                _microRow('Histidin', isMale ? '700mg' : '548mg'),
+                _microRow(_t('Lizin', 'Lysine'), isMale ? '2100mg' : '1650mg'),
+                _microRow(_t('Metiyonin', 'Methionine'), isMale ? '728mg' : '570mg'),
+                _microRow(_t('Fenilalanin', 'Phenylalanine'), isMale ? '1750mg' : '1370mg'),
+                _microRow(_t('Valin', 'Valine'), isMale ? '1820mg' : '1430mg'),
+                _microRow(_t('Histidin', 'Histidine'), isMale ? '700mg' : '548mg'),
 
                 const SizedBox(height: 16),
                 _microHeader(_t('DİĞER BİLEŞENLER', 'OTHER COMPONENTS'), const Color(0xFF9C27B0)),
-                _microRow('Kolin', isMale ? '550mg' : '425mg'),
+                _microRow(_t('Kolin', 'Choline'), isMale ? '550mg' : '425mg'),
               ],
             ),
           ),
@@ -6325,9 +6356,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ActivityLevel.veryActive: 15000,
     }[_data.activityLevel] ?? 10000;
 
-    String bmiStatus = bmi < 18.5 ? 'Zayıf'
+    String bmiStatus = bmi < 18.5 ? _t('Zayıf', 'Underweight')
         : bmi < 25 ? 'Normal'
-        : bmi < 30 ? 'Kilolu' : 'Obez';
+        : bmi < 30 ? _t('Kilolu', 'Overweight') : _t('Obez', 'Obese');
 
     // Metric card: coloured bg like the calculatedValues page
     Widget metricCard(String label, String value, String sub,
@@ -6412,11 +6443,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           ),
                           children: name.isNotEmpty
                               ? [
-                                  const TextSpan(text: 'Planın hazır,\n'),
+                                  TextSpan(text: _t('Planın hazır,\n', 'Your plan is ready,\n')),
                                   TextSpan(text: '$name!', style: const TextStyle(color: _kBlue)),
                                 ]
                               : [
-                                  const TextSpan(text: 'Kişisel planın\nhazır!'),
+                                  TextSpan(text: _t('Kişisel planın\nhazır!', 'Your personal plan\nis ready!')),
                                 ],
                         ),
                       ),
@@ -6429,9 +6460,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             TextSpan(text: 'LensEat',
                                 style: TextStyle(color: _kBlue, fontWeight: FontWeight.w700)),
                             TextSpan(text: ' '),
-                            TextSpan(text: _t('sana özel hesaplanan', 'calculated specifically for you'),
+                            TextSpan(text: _t(' sana özel hesaplanan', ' calculated specifically for you'),
                                 style: TextStyle(color: _tw, fontWeight: FontWeight.w600)),
-                            TextSpan(text: ' bu değerlerle\nhedefine ulaşmana yardımcı olacak.'),
+                            TextSpan(text: _t(' bu değerlerle\nhedefine ulaşmana yardımcı olacak.', ' will help you\nreach your goals with these values.')),
                           ],
                         ),
                       ),
@@ -6452,7 +6483,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           metricCard('BMR', '$bmr', _t('kcal/gün', 'kcal/day'),
                               const Color(0xFFE8F5E9), const Color(0xFF4CAF50),
                               onTap: () => _showMetricInfo(_t('BMR (Bazal Metabolizma Hızı)', 'BMR (Basal Metabolic Rate)'),
-                                  'Vücudunuzun hiçbir aktivite yapmadan, sadece hayati fonksiyonlarını sürdürmek için yaktığı enerji miktarıdır.')),
+                                  _t('Vücudunuzun hiçbir aktivite yapmadan, sadece hayati fonksiyonlarını sürdürmek için yaktığı enerji miktarıdır.', 'The amount of energy your body burns just to maintain vital functions without any activity.'))),
                           metricCard('TDEE', '$tdee', _t('kcal/gün', 'kcal/day'),
                               const Color(0xFFFFF3E0), const Color(0xFFFF9800),
                               onTap: () => _showMetricInfo(_t('TDEE (Günlük Enerji Harcaması)', 'TDEE (Total Daily Energy Expenditure)'),
@@ -6471,12 +6502,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       const SizedBox(height: 4),
                       Divider(color: isDark ? _kBorder : const Color(0xFFD0D7DE), height: 1),
                       const SizedBox(height: 4),
-                      nutriRow('Kalori', '$dailyCal kcal', const Color(0xFFFFA726)),
+                      nutriRow(_t('Kalori', 'Calories'), '$dailyCal kcal', const Color(0xFFFFA726)),
                       nutriRow(_t('Protein', 'Protein'), '${proteinG}g', const Color(0xFF7EE787)),
                       nutriRow(_t('Karbonhidrat', 'Carbohydrate'), '${carbG}g', const Color(0xFF58A6FF)),
                       nutriRow(_t('Yağ', 'Fat'), '${fatG}g', const Color(0xFFFFA726)),
                       nutriRow(_t('Lif', 'Fiber'), '${fiberG}g', const Color(0xFFBC8CF2)),
-                      nutriRow('Su', '${waterL.toStringAsFixed(1)}L', const Color(0xFF29B6F6)),
+                      nutriRow(_t('Su', 'Water'), '${waterL.toStringAsFixed(1)}L', const Color(0xFF29B6F6)),
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -7079,7 +7110,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   scrollPadding: const EdgeInsets.only(bottom: 65),
                                   style: TextStyle(color: _tw),
                                   decoration: InputDecoration(
-                                    hintText: 'Belirt...',
+                                    hintText: _t('Belirt...', 'Specify...'),
                                     hintStyle: const TextStyle(color: _kTextSub),
                                     filled: true,
                                     fillColor: isDark ? const Color(0xFF161B22) : Colors.white,
@@ -7277,7 +7308,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               textCapitalization: TextCapitalization.sentences,
                               style: TextStyle(color: _tw),
                               decoration: InputDecoration(
-                                hintText: 'Belirt...',
+                                hintText: _t('Belirt...', 'Specify...'),
                                 hintStyle: const TextStyle(color: _kTextSub),
                                 filled: true,
                                 fillColor: isDark ? const Color(0xFF161B22) : Colors.white,
@@ -7469,7 +7500,7 @@ class _TargetWeightStepState extends State<_TargetWeightStep> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Hedef: $display',
+          _t('Hedef: $display', 'Goal: $display'),
           style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -7517,7 +7548,7 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tamam', style: TextStyle(color: Color(0xFF58A6FF))),
+            child: Text(_t('Tamam', 'OK'), style: const TextStyle(color: Color(0xFF58A6FF))),
           ),
         ],
       ),
@@ -7529,7 +7560,7 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
     final pass = _passCtrl.text.trim();
 
     if (email.isEmpty || pass.isEmpty) {
-      _showDialog('Eksik Bilgi', _t('E-posta ve şifre boş bırakılamaz.', 'Email and password cannot be empty.'));
+      _showDialog(_t('Eksik Bilgi', 'Missing Info'), _t('E-posta ve şifre boş bırakılamaz.', 'Email and password cannot be empty.'));
       return;
     }
 
@@ -7563,7 +7594,7 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
       setState(() => _loading = false);
 
       if (e.code == 'user-not-found') {
-        _showDialog(_t('Hesap Bulunamadı', 'Account Not Found'), 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. Lütfen doğru hesabı giriniz.');
+        _showDialog(_t('Hesap Bulunamadı', 'Account Not Found'), _t('Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. Lütfen doğru hesabı giriniz.', 'An account with this email address was not found. Please enter the correct account.'));
         return;
       }
 
@@ -7576,12 +7607,12 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
           _showDialog(_t('Geçersiz E-posta', 'Invalid Email'), _t('Lütfen geçerli bir e-posta adresi giriniz.', 'Please enter a valid email address.'));
           break;
         default:
-          _showDialog('Hata', e.message ?? 'Beklenmeyen bir hata oluştu.');
+          _showDialog(_t('Hata', 'Error'), e.message ?? _t('Beklenmeyen bir hata oluştu.', 'An unexpected error occurred.'));
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      _showDialog('Hata', 'Beklenmeyen bir hata oluştu: $e');
+      _showDialog(_t('Hata', 'Error'), _t('Beklenmeyen bir hata oluştu: $e', 'An unexpected error occurred: $e'));
     }
   }
 
@@ -7621,7 +7652,7 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
             textInputAction: TextInputAction.next,
             style: TextStyle(color: _tw),
             decoration: InputDecoration(
-              labelText: 'E-posta',
+              labelText: _t('E-posta', 'Email'),
               labelStyle: const TextStyle(color: Color(0xFF8B949E)),
               prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF58A6FF)),
               filled: true,
@@ -7648,7 +7679,7 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
             onEditingComplete: _submit,
             style: TextStyle(color: _tw),
             decoration: InputDecoration(
-              labelText: 'Şifre',
+              labelText: _t('Şifre', 'Password'),
               labelStyle: const TextStyle(color: Color(0xFF8B949E)),
               prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF58A6FF)),
               filled: true,
@@ -8041,7 +8072,7 @@ class _AnalysisPageState extends State<_AnalysisPage> with TickerProviderStateMi
                   ),
                   Center(
                     child: Text(
-                      '%$percentage',
+                      _t('%$percentage', '$percentage%'),
                       style: TextStyle(
                         fontSize: 52,
                         fontWeight: FontWeight.w900,
@@ -8148,11 +8179,12 @@ class _LongevityChartState extends State<_LongevityChart>
 
   @override
   Widget build(BuildContext context) {
+    final isTr = Provider.of<LanguageProvider>(context).isTurkish;
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, child) {
         return CustomPaint(
-          painter: _LongevityPainter(_ctrl.value),
+          painter: _LongevityPainter(_ctrl.value, isTr),
           size: Size.infinite,
         );
       },
@@ -8162,7 +8194,8 @@ class _LongevityChartState extends State<_LongevityChart>
 
 class _LongevityPainter extends CustomPainter {
   final double progress;
-  _LongevityPainter(this.progress);
+  final bool isTr;
+  _LongevityPainter(this.progress, this.isTr);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -8253,10 +8286,10 @@ class _LongevityPainter extends CustomPainter {
     // 5. Labels
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    // "1. Ay"
-    _drawText(canvas, textPainter, "1. Ay", Offset(startX - 10, size.height - padding.bottom + 10), Colors.black);
-    // "6. Ay"
-    _drawText(canvas, textPainter, "6. Ay", Offset(endX - 20, size.height - padding.bottom + 10), Colors.black);
+    // "1. Ay" / "Month 1"
+    _drawText(canvas, textPainter, isTr ? "1. Ay" : "Month 1", Offset(startX - (isTr ? 10 : 15), size.height - padding.bottom + 10), Colors.black);
+    // "6. Ay" / "Month 6"
+    _drawText(canvas, textPainter, isTr ? "6. Ay" : "Month 6", Offset(endX - (isTr ? 20 : 35), size.height - padding.bottom + 10), Colors.black);
 
     // "LensEat" label above the blue line
     if (smoothProgress > 0.85) {
@@ -8271,13 +8304,13 @@ class _LongevityPainter extends CustomPainter {
       );
     }
 
-    // "Diğer Uygulamalar" label at the end of the black line
+    // "Diğer Uygulamalar" / "Other Apps" label at the end of the black line
     if (smoothProgress > 0.85) {
       _drawText(
         canvas, 
         textPainter, 
-        "Diğer Uygulamalar", 
-        Offset(endX - 85, baselineY + 8), 
+        isTr ? "Diğer Uygulamalar" : "Other Apps", 
+        Offset(endX - (isTr ? 85 : 65), baselineY + 8), 
         Colors.black38,
         fontSize: 11,
         bold: true
