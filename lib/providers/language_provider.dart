@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,14 +10,27 @@ class LanguageProvider extends ChangeNotifier {
   bool get isTurkish => _currentLocale.languageCode == 'tr';
 
   LanguageProvider() {
+    _initLocale();
+  }
+
+  void _initLocale() {
+    try {
+      final systemLocale = ui.PlatformDispatcher.instance.locale.languageCode;
+      final defaultLang = (systemLocale == 'tr') ? 'tr' : 'en';
+      _currentLocale = Locale(defaultLang);
+    } catch (_) {
+      _currentLocale = const Locale('tr');
+    }
     _load();
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString(_key) ?? 'tr';
-    _currentLocale = Locale(code);
-    notifyListeners();
+    final code = prefs.getString(_key);
+    if (code != null) {
+      _currentLocale = Locale(code);
+      notifyListeners();
+    }
   }
 
   Future<void> toggleLanguage() async {

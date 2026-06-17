@@ -3,26 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NutriLens — 65+ Nutrient Intelligence for Longevity</title>
+<title>LensEat — 65+ Nutrient Intelligence for Longevity</title>
+<link rel="icon" type="image/webp" href="/assets/icon/icon.webp?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #0D1117;
-    --surface: #161B22;
-    --surface2: #1C2128;
-    --text: #E6EDF3;
-    --muted: #8B949E;
-    --blue: #58A6FF;
-    --mint: #7EE787;
-    --border: rgba(230,237,243,0.08);
-    --border-hover: rgba(88,166,255,0.3);
-    --glow-blue: rgba(88,166,255,0.15);
-    --glow-mint: rgba(126,231,135,0.12);
+    --bg: #F0F2F5;
+    --surface: #FFFFFF;
+    --surface2: #E1E4E8;
+    --text: #1F2328;
+    --muted: #57606A;
+    --blue: #0969DA;
+    --mint: #1a7f37;
+    --border: rgba(31,35,40,0.12);
+    --border-hover: rgba(9,105,218,0.4);
+    --glow-blue: rgba(9,105,218,0.08);
+    --glow-mint: rgba(26,127,55,0.06);
   }
 
   html { scroll-behavior: smooth; }
@@ -38,23 +39,42 @@
   /* ── NAV ── */
   nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 5%;
     height: 64px;
-    background: rgba(13,17,23,0.8);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4%;
+    position: relative;
   }
 
   .nav-logo {
     font-size: 18px; font-weight: 700; letter-spacing: -0.5px;
-    background: linear-gradient(135deg, var(--blue), #a5d6ff);
+    background: linear-gradient(135deg, var(--blue), #54a3ff);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .nav-links { display: flex; gap: 32px; list-style: none; }
+  .nav-links {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
   .nav-links a {
     color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500;
     transition: color 0.2s;
@@ -62,20 +82,27 @@
   .nav-links a:hover { color: var(--text); }
 
   .nav-cta {
-    background: var(--blue); color: #0D1117;
+    background: var(--blue); color: #FFFFFF;
     border: none; border-radius: 20px;
     padding: 9px 20px; font-size: 14px; font-weight: 600;
     cursor: pointer; transition: all 0.2s; text-decoration: none;
   }
-  .nav-cta:hover { background: #79b8ff; transform: translateY(-1px); }
+  .nav-cta:hover { background: #0052a3; transform: translateY(-1px); }
 
   /* ── HERO ── */
   .hero {
-    min-height: 100vh;
-    display: flex; align-items: center;
-    padding: 120px 5% 80px;
     position: relative;
+    height: 400vh;
+  }
+  .hero-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
     overflow: hidden;
+    padding: 80px 5% 40px;
   }
 
   .hero-bg-orb {
@@ -83,12 +110,12 @@
   }
   .hero-bg-orb.blue {
     width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(88,166,255,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(9,105,218,0.12) 0%, transparent 70%);
     top: -100px; left: -100px;
   }
   .hero-bg-orb.mint {
     width: 500px; height: 500px;
-    background: radial-gradient(circle, rgba(88,166,255,0.07) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(9,105,218,0.07) 0%, transparent 70%);
     bottom: -50px; right: 10%;
   }
 
@@ -147,17 +174,17 @@
   .btn-primary {
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--blue);
-    color: #0D1117; border: none;
+    color: #FFFFFF; border: none;
     border-radius: 14px; padding: 16px 28px;
     font-size: 16px; font-weight: 700;
     cursor: pointer; text-decoration: none;
     transition: all 0.25s;
-    box-shadow: 0 0 40px rgba(88,166,255,0.3), 0 4px 20px rgba(88,166,255,0.2);
+    box-shadow: 0 4px 20px rgba(9,105,218,0.2), 0 10px 30px rgba(9,105,218,0.1);
   }
   .btn-primary:hover {
-    background: #79b8ff;
+    background: #0052a3;
     transform: translateY(-2px);
-    box-shadow: 0 0 60px rgba(88,166,255,0.4), 0 8px 30px rgba(88,166,255,0.3);
+    box-shadow: 0 6px 24px rgba(9,105,218,0.25), 0 12px 40px rgba(9,105,218,0.15);
   }
   .btn-primary svg { width: 20px; height: 20px; }
 
@@ -170,7 +197,7 @@
     cursor: pointer; text-decoration: none;
     transition: all 0.25s;
   }
-  .btn-secondary:hover { border-color: rgba(230,237,243,0.2); background: rgba(230,237,243,0.04); }
+  .btn-secondary:hover { border-color: var(--border-hover); background: var(--surface2); }
 
   .hero-stats {
     display: flex; gap: 32px; margin-top: 48px;
@@ -191,7 +218,7 @@
   .phone-glow {
     position: absolute;
     width: 420px; height: 420px;
-    background: radial-gradient(circle, rgba(88,166,255,0.18) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(9,105,218,0.15) 0%, transparent 65%);
     filter: blur(40px);
     pointer-events: none;
   }
@@ -208,7 +235,6 @@
       0 0 0 1px rgba(255,255,255,0.05),
       0 40px 80px rgba(0,0,0,0.5),
       0 0 60px rgba(88,166,255,0.1);
-    animation: float 6s ease-in-out infinite;
   }
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
@@ -231,10 +257,23 @@
     padding: 34px 14px 100px;
     background: #0D1117;
     height: 100%;
-    overflow: hidden;
+    overflow: hidden !important;
     scrollbar-width: none;
+    pointer-events: none;
+    user-select: none;
+    /* Revert variables inside phone screen to dark theme */
+    --bg: #0D1117;
+    --surface: #161B22;
+    --surface2: #1C2128;
+    --text: #E6EDF3;
+    --muted: #8B949E;
+    --blue: #58A6FF;
+    --mint: #7EE787;
+    --border: rgba(230,237,243,0.08);
   }
   .phone-screen::-webkit-scrollbar { display: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none !important; }
+  .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
 
   .phone-screen-header {
     padding: 10px 0 16px;
@@ -288,7 +327,7 @@
 
   /* ── SECTION COMMONS ── */
   section { padding: 100px 5%; }
-  .section-inner { max-width: 1200px; margin: 0 auto; }
+  .section-inner { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
 
   .section-eyebrow {
     display: inline-block;
@@ -308,7 +347,14 @@
   }
 
   /* ── LONGEVITY SECTION ── */
-  .longevity-section { background: linear-gradient(180deg, var(--bg) 0%, #0a0f16 100%); }
+  .longevity-section { background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%); padding: 0 !important; }
+  .longevity-scroll-track { height: 250vh; position: relative; }
+  .longevity-sticky-container {
+    position: sticky; top: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 80px 0; box-sizing: border-box;
+    overflow: hidden;
+  }
 
   .longevity-grid {
     display: grid; grid-template-columns: 1fr 1fr;
@@ -327,8 +373,8 @@
     transition: all 0.3s;
   }
   .longevity-item:hover {
-    border-color: rgba(88,166,255,0.25);
-    background: rgba(22,27,34,0.8);
+    border-color: var(--border-hover);
+    background: var(--surface2);
     transform: translateX(6px);
   }
 
@@ -355,7 +401,7 @@
     content: '';
     position: absolute; top: -60px; right: -60px;
     width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(88,166,255,0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(9,105,218,0.1) 0%, transparent 70%);
     border-radius: 50%;
   }
 
@@ -366,66 +412,86 @@
   .biomarkers { display: flex; flex-direction: column; gap: 10px; }
   .biomarker-row { display: flex; align-items: center; gap: 12px; }
   .biomarker-name { font-size: 12px; color: var(--muted); width: 80px; }
-  .biomarker-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-  .biomarker-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--blue), #a5d6ff); transition: width 1s ease; }
+  .biomarker-bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .biomarker-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--blue), #a5d6ff); }
   .biomarker-val { font-size: 12px; font-weight: 600; color: var(--blue); width: 40px; text-align: right; }
 
-  /* ── FEATURES BENTO ── */
-  .features-section {}
-
-  .bento-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: minmax(100px, auto);
-    gap: 16px;
-    margin-top: 60px;
+  /* ── FEATURES SHOWCASE ── */
+  .features-section {
+    position: relative;
   }
 
-  .bento-card {
+  .features-showcase-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 48px;
+    margin-top: 60px;
+    align-items: center;
+  }
+
+  .features-left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 28px;
-    position: relative; overflow: hidden;
+    cursor: pointer;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    cursor: default;
+    position: relative;
+    overflow: hidden;
   }
-  .bento-card:hover {
-    transform: translateY(-4px);
+
+  .feature-card:hover {
     border-color: var(--border-hover);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 30px var(--glow-blue);
-  }
-  .bento-card.mint-hover:hover {
-    border-color: rgba(88,166,255,0.3);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 30px var(--glow-blue);
+    transform: translateX(6px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.02);
   }
 
-  .bento-card.span-5 { grid-column: span 5; }
-  .bento-card.span-4 { grid-column: span 4; }
-  .bento-card.span-3 { grid-column: span 3; }
-  .bento-card.span-6 { grid-column: span 6; }
-  .bento-card.span-7 { grid-column: span 7; }
-  .bento-card.span-8 { grid-column: span 8; }
-
-  .bento-card.featured {
-    background: linear-gradient(135deg, rgba(88,166,255,0.08) 0%, rgba(22,27,34,1) 60%);
-    border-color: rgba(88,166,255,0.2);
+  .feature-card.active {
+    border-color: var(--blue);
+    background: var(--surface);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.04), 0 0 30px var(--glow-blue);
   }
-  .bento-card.featured-mint {
-    background: linear-gradient(135deg, rgba(88,166,255,0.06) 0%, rgba(22,27,34,1) 60%);
-    border-color: rgba(88,166,255,0.18);
+
+  .feature-card.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--blue);
+  }
+
+  .feature-icon-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card .bento-icon {
+    margin-bottom: 0;
+  }
+
+  .feature-card .bento-title {
+    margin-bottom: 0;
   }
 
   .bento-icon {
     width: 44px; height: 44px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 16px;
   }
   .bento-icon svg { width: 22px; height: 22px; }
   .bento-icon.blue { background: rgba(88,166,255,0.12); border: 1px solid rgba(88,166,255,0.2); }
   .bento-icon.blue svg { stroke: var(--blue); }
   .bento-icon.mint { background: rgba(126,231,135,0.08); border: 1px solid rgba(126,231,135,0.18); }
-  .bento-icon.mint svg { stroke: #7EE787; }
+  .bento-icon.mint svg { stroke: var(--mint); }
   .bento-icon.purple { background: rgba(163,113,247,0.1); border: 1px solid rgba(163,113,247,0.2); }
   .bento-icon.purple svg { stroke: #a371f7; }
   .bento-icon.orange { background: rgba(255,166,87,0.1); border: 1px solid rgba(255,166,87,0.2); }
@@ -435,15 +501,7 @@
   .bento-icon.teal { background: rgba(64,196,214,0.1); border: 1px solid rgba(64,196,214,0.2); }
   .bento-icon.teal svg { stroke: #40c4d6; }
 
-  .bento-tag {
-    display: inline-block; font-size: 10px; font-weight: 700;
-    letter-spacing: 0.8px; text-transform: uppercase;
-    padding: 4px 10px; border-radius: 6px; margin-bottom: 12px;
-  }
-  .bento-tag.blue { background: rgba(88,166,255,0.12); color: var(--blue); }
-  .bento-tag.mint { background: rgba(88,166,255,0.1); color: var(--blue); }
-
-  .bento-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .bento-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
   .bento-desc { font-size: 13px; color: var(--muted); line-height: 1.65; }
 
   .bento-big-number {
@@ -455,18 +513,106 @@
     margin-bottom: 8px;
   }
 
-  /* visual accent inside cards */
-  .mini-chart { margin-top: 16px; }
-  .mini-chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 50px; }
-  .mini-bar { flex: 1; border-radius: 3px 3px 0 0; background: rgba(88,166,255,0.2); transition: background 0.3s; }
-  .mini-bar.active { background: var(--blue); }
-  .mini-bar.mint { background: var(--mint); }
+  /* Features Scroll Track Layout */
+  .features-scroll-track {
+    position: relative;
+    height: 125vh; /* Reduced from 250vh for much faster scrolling */
+  }
+
+  .features-sticky-container {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .features-left-col-wrapper {
+    height: calc(100vh - 200px);
+    max-height: 780px;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  .features-left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .features-right-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+  }
+
+  .features-phone-sticky {
+    position: relative;
+    height: calc(100vh - 200px);
+    max-height: 780px;
+    aspect-ratio: 17 / 36;
+  }
+
+  .features-phone-sticky .phone-frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 44px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.05),
+      0 40px 80px rgba(0,0,0,0.5),
+      0 0 60px rgba(88,166,255,0.1);
+  }
+
+  .features-phone-sticky .phone-screen {
+    padding: 34px 14px 24px;
+    height: 100%;
+    overflow: hidden !important;
+  }
+
+  .features-phone-sticky .phone-screen-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: opacity 0.22s ease-in-out, transform 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  .features-phone-sticky .phone-screen-inner.switching {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+
+  .features-phone-sticky .phone-notch {
+    width: 110px;
+    height: 32px;
+    border-radius: 24px;
+    top: 10px;
+  }
 
   /* ── SOCIAL PROOF ── */
   .social-section {
-    background: rgba(22,27,34,0.5);
+    position: relative;
+    background: var(--surface2);
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .reviews-waves {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .reviews-wave-svg {
+    opacity: 0.35;
   }
 
   .reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px; }
@@ -476,18 +622,32 @@
     border: 1px solid var(--border);
     border-radius: 16px; padding: 24px;
     transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
   }
-  .review-card:hover { border-color: rgba(88,166,255,0.2); transform: translateY(-2px); }
+  .review-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
 
   .review-stars { display: flex; gap: 3px; margin-bottom: 12px; }
   .review-star { color: #fbbf24; font-size: 14px; }
   .review-text { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
-  .review-author { display: flex; align-items: center; gap: 10px; }
+  .review-author { display: flex; align-items: center; gap: 10px; margin-top: auto; }
   .review-avatar {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--blue), var(--mint));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; color: #0D1117;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(46, 213, 115, 0.2), rgba(255, 165, 2, 0.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--text);
+    overflow: hidden;
+  }
+  .review-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   .review-name { font-size: 13px; font-weight: 600; }
   .review-sub { font-size: 11px; color: var(--muted); }
@@ -501,7 +661,7 @@
     content: '';
     position: absolute; top: 0; left: 50%; transform: translateX(-50%);
     width: 800px; height: 400px;
-    background: radial-gradient(ellipse, rgba(88,166,255,0.08) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(9,105,218,0.08) 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -540,17 +700,55 @@
     max-width: 1200px; margin: 0 auto;
     display: flex; justify-content: space-between; align-items: center;
     flex-wrap: wrap; gap: 20px;
+    position: relative;
+    padding: 0 4%;
+  }
+  .footer-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
   .footer-logo {
     font-size: 16px; font-weight: 700;
-    background: linear-gradient(135deg, var(--blue), #a5d6ff);
+    background: linear-gradient(135deg, var(--blue), #54a3ff);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .footer-links { display: flex; gap: 24px; }
+  .footer-copy { color: var(--muted); font-size: 13px; }
+  .footer-links {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 24px;
+  }
   .footer-links a { color: var(--muted); font-size: 13px; text-decoration: none; transition: color 0.2s; }
   .footer-links a:hover { color: var(--text); }
-  .footer-copy { color: var(--muted); font-size: 13px; }
+  .footer-socials {
+    display: flex;
+    gap: 12px;
+  }
+  .footer-socials a {
+    color: var(--muted);
+    font-size: 16px;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .footer-socials a:hover {
+    color: var(--blue);
+    transform: translateY(-3px);
+    background: rgba(9, 105, 218, 0.08);
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 12px rgba(88, 166, 255, 0.15);
+  }
 
   /* ── DIVIDER ── */
   .section-divider {
@@ -560,20 +758,67 @@
 
   /* ── RESPONSIVE ── */
   @media (max-width: 768px) {
-    nav { padding: 0 4%; }
+    nav { padding: 0; }
+    .nav-inner { padding: 0 4%; }
     .nav-links { display: none; }
     .hero-inner { grid-template-columns: 1fr; gap: 40px; }
-    .hero { padding: 100px 4% 60px; min-height: auto; }
-    .phone-wrap { order: -1; }
-    .phone-frame { width: 240px; }
+    .hero { height: auto; min-height: auto; padding: 100px 4% 60px; }
+    .hero-sticky { position: relative; height: auto; padding: 0; overflow: visible; }
+    .phone-wrap { order: -1; width: 240px; height: 508px; }
+    .phone-frame { width: 240px; height: 508px; }
+    .phone-frame.primary { position: relative; left: 0; top: 0; transform: none; }
     .phone-frame.secondary { display: none; }
     .longevity-grid { grid-template-columns: 1fr; }
-    .bento-grid { grid-template-columns: 1fr 1fr; }
-    .bento-card.span-5, .bento-card.span-4, .bento-card.span-3,
-    .bento-card.span-6, .bento-card.span-7, .bento-card.span-8 { grid-column: span 2; }
+    .features-showcase-grid {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    .features-scroll-track {
+      height: auto !important;
+    }
+    .features-sticky-container {
+      position: static !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    .features-left-col-wrapper {
+      height: auto !important;
+      overflow: visible !important;
+    }
+    .features-left-col {
+      transform: none !important;
+    }
+    .features-right-col {
+      position: static;
+      height: auto;
+      margin-top: 24px;
+    }
+    .features-phone-sticky {
+      width: 240px;
+      height: 508px;
+      aspect-ratio: auto;
+      margin: 0 auto;
+    }
+    .feature-card:hover {
+      transform: none;
+    }
     .reviews-grid { grid-template-columns: 1fr; }
     .hero-stats { gap: 20px; flex-wrap: wrap; }
     section { padding: 60px 4%; }
+    .footer-inner {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+    }
+    .footer-left {
+      align-items: center;
+    }
+    .footer-links {
+      position: static;
+      transform: none;
+      justify-content: center;
+    }
   }
 
   /* ── SCROLL ANIMATION ── */
@@ -602,6 +847,12 @@
     border-color: rgba(88,166,255,0.12);
     color: rgba(130,185,255,0.9);
   }
+  .nutrient-pill.blue { background: rgba(88,166,255,0.1); border-color: rgba(88,166,255,0.2); color: #58A6FF; }
+  .nutrient-pill.green { background: rgba(126,231,135,0.1); border-color: rgba(126,231,135,0.2); color: #7EE787; }
+  .nutrient-pill.orange { background: rgba(255,161,0,0.1); border-color: rgba(255,161,0,0.2); color: #FFA100; }
+  .nutrient-pill.purple { background: rgba(179,136,255,0.1); border-color: rgba(179,136,255,0.2); color: #B388FF; }
+  .nutrient-pill.teal { background: rgba(0,208,208,0.1); border-color: rgba(0,208,208,0.2); color: #00d0d0; }
+  .nutrient-pill.grey { background: rgba(139,148,158,0.1); border-color: rgba(139,148,158,0.2); color: #8B949E; border-style: dashed; }
 
   /* AI Chat bubble */
   .ai-bubble {
@@ -618,41 +869,48 @@
   /* ── DUAL PHONE MOCKUP ── */
   .phone-wrap {
     position: relative;
+    width: 340px;
+    height: 720px;
+    margin: 0 auto;
     perspective: 1200px;
     transform-style: preserve-3d;
   }
   .phone-frame.primary {
-    z-index: 10 !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 10;
     transform: translateZ(50px);
+    transition: box-shadow 0.3s ease;
+  }
+  .phone-frame.primary:hover {
+    box-shadow: 0 30px 60px rgba(0,0,0,0.9), 0 0 60px rgba(88,166,255,0.15);
   }
   .phone-frame.secondary {
     position: absolute;
-    right: -140px;
-    top: -60px;
+    left: 140px;
+    top: -50px;
     z-index: 1;
-    transform: scale(0.85) rotateY(-12deg) translateZ(-100px);
+    transform: scale(1) rotateY(-12deg) translateZ(-100px);
     opacity: 1;
     filter: none;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: box-shadow 0.3s ease;
     box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 40px rgba(88,166,255,0.05);
   }
   .phone-frame.secondary:hover {
-    transform: scale(0.9) rotateY(-6deg) translateY(-10px) translateZ(-50px);
-    opacity: 1;
-    filter: none;
     box-shadow: 0 30px 60px rgba(0,0,0,0.9), 0 0 60px rgba(88,166,255,0.15);
   }
 
   /* Nutrient List Styles */
-  .nutri-list { display: flex; flex-direction: column; gap: 24px; padding-bottom: 30px; }
-  .nutri-category { display: flex; flex-direction: column; gap: 12px; }
+  .nutri-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px; }
+  .nutri-category { display: flex; flex-direction: column; gap: 6px; }
   .nutri-cat-title {
     font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--muted);
     text-transform: uppercase; padding-left: 8px;
     border-left: 3px solid; margin-bottom: 4px;
     display: flex; align-items: center; height: 14px;
   }
-  .nutri-row { display: flex; flex-direction: column; gap: 6px; }
+  .nutri-row { display: flex; flex-direction: column; gap: 4px; }
   .nutri-row-header { display: flex; justify-content: space-between; align-items: flex-end; }
   .nutri-name { font-size: 11px; font-weight: 600; color: #8B949E; }
   .nutri-val-wrap { display: flex; align-items: center; gap: 8px; }
@@ -680,24 +938,23 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo">NutriLens</div>
-  <ul class="nav-links">
-    <li><a href="#features">Features</a></li>
-    <li><a href="#reviews">Reviews</a></li>
-  </ul>
-  <a href="#download" class="nav-cta">Download</a>
+  <div class="nav-inner">
+    <div class="nav-logo">LensEat</div>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#reviews">Reviews</a></li>
+    </ul>
+    <a href="#download" class="nav-cta">Download</a>
+  </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-bg-orb blue"></div>
-  <div class="hero-bg-orb mint"></div>
-  <div class="hero-inner">
+  <div class="hero-sticky">
+    <div class="hero-bg-orb blue"></div>
+    <div class="hero-bg-orb mint"></div>
+    <div class="hero-inner">
     <div class="hero-content">
-      <div class="hero-eyebrow">
-        <span class="hero-eyebrow-dot"></span>
-        65+ Biomarkers Tracked
-      </div>
       <h1 class="hero-title">
         Eat for a<br>
         <span class="accent-blue">Longer</span>,<br>
@@ -726,12 +983,12 @@
           <div class="hero-stat-label">Nutrients tracked</div>
         </div>
         <div>
-          <div class="hero-stat-number">91%</div>
-          <div class="hero-stat-label">Avg. micronutrient score</div>
+          <div class="hero-stat-number">96%</div>
+          <div class="hero-stat-label">Accuracy rate</div>
         </div>
         <div>
-          <div class="hero-stat-number">16:8</div>
-          <div class="hero-stat-label">Fasting protocol</div>
+          <div class="hero-stat-number">~7s</div>
+          <div class="hero-stat-label">Meal logging time</div>
         </div>
       </div>
     </div>
@@ -864,7 +1121,7 @@
 
           <!-- Bottom nav floating -->
           <div style="position:absolute;bottom:14px;left:14px;right:86px;background:#1B2028;border-radius:24px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.02);box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
+            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#58A6FF;width:40px;">
               <i class="fa-solid fa-table-cells-large" style="font-size:22px;"></i>
             </div>
             <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
@@ -873,7 +1130,7 @@
             <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
               <i class="fa-regular fa-lightbulb" style="font-size:22px;"></i>
             </div>
-            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#58A6FF;width:40px;">
+            <div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8B949E;width:40px;">
               <i class="fa-solid fa-user" style="font-size:22px;"></i>
             </div>
           </div>
@@ -887,15 +1144,15 @@
       </div>
       <div class="phone-frame secondary">
         <div class="phone-notch"></div>
-        <div class="phone-screen" style="overflow-y: auto; padding-top: 50px;">
+        <div class="phone-screen" style="overflow: hidden; padding-top: 50px;">
           
           <!-- BURGER CARD -->
-          <div style="background: var(--surface); border-radius: 20px; padding: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.03);">
-            <div style="background: #fff; border-radius: 12px; padding: 0; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; height: 160px; overflow: hidden;">
+          <div style="background: var(--surface); border-radius: 20px; padding: 10px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.03);">
+            <div style="background: #fff; border-radius: 12px; padding: 0; margin-bottom: 8px; display: flex; justify-content: center; align-items: center; height: 145px; overflow: hidden;">
               <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80" alt="Cheeseburger" style="width: 100%; height: 100%; object-fit: cover;">
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
               <div>
                 <div style="font-size: 15px; font-weight: 800; color: #E6EDF3; margin-bottom: 2px;">Sesame Seed Cheeseburger</div>
                 <div style="font-size: 11px; color: var(--muted);">Portion: <span style="color: #E6EDF3; font-weight: 600;">215 g</span></div>
@@ -906,7 +1163,7 @@
               </div>
             </div>
 
-            <div style="margin-bottom: 16px;">
+            <div style="margin-bottom: 8px;">
               <div style="display: flex; align-items: baseline; gap: 6px;">
                 <span style="font-size: 28px; font-weight: 800; color: var(--blue); line-height: 1;">613</span>
                 <span style="font-size: 13px; font-weight: 700; color: var(--blue);">kcal</span>
@@ -939,27 +1196,22 @@
             
             <div class="nutri-category theme-orange">
               <div class="nutri-cat-title">VITAMINS</div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin C</span><div class="nutri-val-wrap"><span class="nutri-val">9.0 mg</span><span class="nutri-pct">%10</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 10%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin A</span><div class="nutri-val-wrap"><span class="nutri-val">90.3 mcg</span><span class="nutri-pct">%10</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 10%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin K</span><div class="nutri-val-wrap"><span class="nutri-val">38.7 mcg</span><span class="nutri-pct">%32</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 32%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">B3 (Niasin)</span><div class="nutri-val-wrap"><span class="nutri-val">8.8 mg</span><span class="nutri-pct">%55</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 55%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin A</span><div class="nutri-val-wrap"><span class="nutri-val">90.3 mcg</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 10%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Vitamin K</span><div class="nutri-val-wrap"><span class="nutri-val">38.7 mcg</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 32%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">B3 (Niacin)</span><div class="nutri-val-wrap"><span class="nutri-val">8.8 mg</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 55%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">B12 (Cobalamin)</span><div class="nutri-val-wrap"><span class="nutri-val">1.2 mcg</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 48%;"></div></div></div>
             </div>
 
             <div class="nutri-category theme-green">
               <div class="nutri-cat-title">FAT & CHOLESTEROL</div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Saturated Fat</span><div class="nutri-val-wrap"><span class="nutri-val">11.2 g</span><span class="nutri-pct">%56</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 56%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Monounsaturated</span><div class="nutri-val-wrap"><span class="nutri-val">8.8 g</span><span class="nutri-pct">%29</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 29%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Polyunsaturated</span><div class="nutri-val-wrap"><span class="nutri-val">3.9 g</span><span class="nutri-pct">%19</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 19%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Cholesterol</span><div class="nutri-val-wrap"><span class="nutri-val">90 mg</span><span class="nutri-pct">%30</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 30%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Saturated Fat</span><div class="nutri-val-wrap"><span class="nutri-val">11.2 g</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 56%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Monounsaturated Fat</span><div class="nutri-val-wrap"><span class="nutri-val">4.5 g</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 20%;"></div></div></div>
             </div>
 
             <div class="nutri-category theme-purple">
               <div class="nutri-cat-title">AMINO ACIDS</div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Leucine</span><div class="nutri-val-wrap"><span class="nutri-val">2.5 g</span><span class="nutri-pct">%92</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 92%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Lysine</span><div class="nutri-val-wrap"><span class="nutri-val">2.8 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Valine</span><div class="nutri-val-wrap"><span class="nutri-val">2.0 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Isoleucine</span><div class="nutri-val-wrap"><span class="nutri-val">1.8 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
-              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Threonine</span><div class="nutri-val-wrap"><span class="nutri-val">1.5 g</span><span class="nutri-pct">%100</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Leucine</span><div class="nutri-val-wrap"><span class="nutri-val">2.5 g</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 92%;"></div></div></div>
+              <div class="nutri-row"><div class="nutri-row-header"><span class="nutri-name">Lysine</span><div class="nutri-val-wrap"><span class="nutri-val">2.8 g</span></div></div><div class="nutri-bar-track"><div class="nutri-bar-fill" style="width: 100%;"></div></div></div>
             </div>
 
           </div>
@@ -968,16 +1220,19 @@
 
     </div>
   </div>
+</div>
 </section>
 
 <!-- LONGEVITY SECTION -->
 <section class="longevity-section" id="longevity">
-  <div class="section-inner">
-    <div class="fade-up">
-      <span class="section-eyebrow">Longevity Science</span>
-      <h2 class="section-title">Nutrition that fights<br>cellular aging</h2>
-      <p class="section-desc">Every meal is an opportunity. NutriLens maps your intake to the latest longevity research — from telomere health to mitochondrial function.</p>
-    </div>
+  <div class="longevity-scroll-track">
+    <div class="longevity-sticky-container">
+      <div class="section-inner">
+        <div class="fade-up">
+          <span class="section-eyebrow">Longevity Science</span>
+          <h2 class="section-title">Nutrition that fights<br>cellular aging</h2>
+          <p class="section-desc">Every meal is an opportunity. LensEat maps your intake to the latest longevity research — from telomere health to mitochondrial function.</p>
+        </div>
 
     <div class="longevity-grid">
       <div class="longevity-list">
@@ -990,7 +1245,7 @@
           </div>
           <div>
             <div class="longevity-item-title">Circadian Rhythm Optimization</div>
-            <div class="longevity-item-desc">Time your meals to your biological clock. NutriLens syncs your eating window with your sleep-wake cycle to maximize metabolic efficiency.</div>
+            <div class="longevity-item-desc">Time your meals to your biological clock. LensEat syncs your eating window with your sleep-wake cycle to maximize metabolic efficiency.</div>
           </div>
         </div>
 
@@ -1025,32 +1280,32 @@
         <div class="longevity-visual-title">Biological Age vs. Chronological Age</div>
         <svg class="aging-chart" viewBox="0 0 300 140">
           <!-- grid -->
-          <line x1="40" y1="10" x2="40" y2="120" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-          <line x1="40" y1="120" x2="295" y2="120" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-          <line x1="40" y1="50" x2="295" y2="50" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,4"/>
-          <line x1="40" y1="80" x2="295" y2="80" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="40" y1="10" x2="40" y2="120" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+          <line x1="40" y1="120" x2="295" y2="120" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+          <line x1="40" y1="50" x2="295" y2="50" stroke="rgba(0,0,0,0.05)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="40" y1="80" x2="295" y2="80" stroke="rgba(0,0,0,0.05)" stroke-width="1" stroke-dasharray="4,4"/>
           <!-- labels -->
-          <text x="8" y="125" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">20</text>
-          <text x="8" y="84" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">30</text>
-          <text x="8" y="54" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">40</text>
-          <text x="8" y="24" fill="rgba(139,148,158,0.8)" font-size="9" font-family="Inter">50</text>
+          <text x="8" y="125" fill="rgba(108,117,125,0.8)" font-size="9" font-family="Inter">20</text>
+          <text x="8" y="84" fill="rgba(108,117,125,0.8)" font-size="9" font-family="Inter">30</text>
+          <text x="8" y="54" fill="rgba(108,117,125,0.8)" font-size="9" font-family="Inter">40</text>
+          <text x="8" y="24" fill="rgba(108,117,125,0.8)" font-size="9" font-family="Inter">50</text>
           <!-- chronological line (gray) -->
           <polyline points="60,115 110,98 160,81 210,64 260,47 295,35"
-            fill="none" stroke="rgba(139,148,158,0.3)" stroke-width="1.5" stroke-dasharray="5,4"/>
+            fill="none" stroke="rgba(108,117,125,0.3)" stroke-width="1.5" stroke-dasharray="5,4"/>
           <!-- biological line (blue) -->
-          <polyline points="60,115 110,105 160,96 210,86 260,78 295,70"
-            fill="none" stroke="#58A6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M60 115 L110 105 L160 96 L210 86 L260 78 L295 70"
+            fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="bio-line"/>
           <!-- glow -->
-          <polyline points="60,115 110,105 160,96 210,86 260,78 295,70"
-            fill="none" stroke="rgba(88,166,255,0.2)" stroke-width="8" stroke-linecap="round"/>
+          <path d="M60 115 L110 105 L160 96 L210 86 L260 78 L295 70"
+            fill="none" stroke="rgba(9,105,218,0.2)" stroke-width="8" stroke-linecap="round" class="bio-glow"/>
           <!-- dots -->
-          <circle cx="295" cy="70" r="4" fill="#58A6FF"/>
-          <circle cx="295" cy="35" r="3" fill="rgba(139,148,158,0.4)"/>
+          <circle cx="60" cy="115" r="4" fill="var(--blue)" class="bio-dot"/>
+          <circle cx="295" cy="35" r="3" fill="rgba(108,117,125,0.4)"/>
           <!-- legend -->
-          <rect x="60" y="10" width="8" height="2" fill="rgba(139,148,158,0.4)" rx="1"/>
-          <text x="72" y="14" fill="rgba(139,148,158,0.7)" font-size="8" font-family="Inter">Chronological</text>
-          <rect x="140" y="10" width="8" height="2" fill="#58A6FF" rx="1"/>
-          <text x="152" y="14" fill="rgba(88,166,255,0.9)" font-size="8" font-family="Inter">Biological (with NutriLens)</text>
+          <rect x="60" y="10" width="8" height="2" fill="rgba(108,117,125,0.4)" rx="1"/>
+          <text x="72" y="14" fill="rgba(108,117,125,0.7)" font-size="8" font-family="Inter">Chronological</text>
+          <rect x="140" y="10" width="8" height="2" fill="var(--blue)" rx="1"/>
+          <text x="152" y="14" fill="rgba(9,105,218,0.9)" font-size="8" font-family="Inter">Biological (with LensEat)</text>
         </svg>
 
         <div class="biomarkers">
@@ -1077,203 +1332,180 @@
         </div>
       </div>
     </div>
+    </div>
+  </div>
   </div>
 </section>
 
-<!-- FEATURES BENTO -->
-<section id="features">
-  <div class="section-inner">
-    <div class="fade-up">
-      <span class="section-eyebrow">Features</span>
-      <h2 class="section-title">Everything your body needs<br>to know</h2>
-    </div>
-
-    <div class="bento-grid">
-
-      <!-- CARD 1: 65+ Nutrients — BIG -->
-      <div class="bento-card span-5 featured fade-up">
-        <span class="bento-tag blue">Core Feature</span>
-        <div class="bento-big-number">65+</div>
-        <div class="bento-title">Micro & Macro Nutrient Tracking</div>
-        <div class="bento-desc">From vitamin D₃ to selenium — every essential nutrient tracked with clinical-grade precision against personalized daily targets.</div>
-        <div class="nutrient-pills">
-          <span class="nutrient-pill">Vitamin A</span>
-          <span class="nutrient-pill">Omega-3</span>
-          <span class="nutrient-pill">Iron</span>
-          <span class="nutrient-pill">Zinc</span>
-          <span class="nutrient-pill">Selenium</span>
-          <span class="nutrient-pill mint">Coenzyme Q10</span>
-          <span class="nutrient-pill mint">Glutathione</span>
+<!-- FEATURES SECTION -->
+<section id="features" class="features-section">
+  <div class="features-scroll-track">
+    <div class="features-sticky-container">
+      <div class="section-inner">
+        <div class="fade-up">
+          <span class="section-eyebrow">Features</span>
+          <h2 class="section-title">Everything your body needs<br>to know</h2>
         </div>
-      </div>
 
-      <!-- CARD 2: AI Coach -->
-      <div class="bento-card span-4 mint-hover fade-up stagger-1">
-        <div class="bento-icon blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 8v4l3 3"/>
-            <path d="M8 2.9A10 10 0 0120 16"/>
-          </svg>
-        </div>
-        <div class="bento-title">AI Nutrition Coach</div>
-        <div class="bento-desc">Ask anything about your diet. Get personalized advice based on your actual nutrient data, goals, and health history.</div>
-        <div class="ai-bubble">
-          <div class="ai-bubble-header"><div class="ai-dot"></div><span class="ai-label">NutriLens AI</span></div>
-          <div class="ai-bubble-text">Your omega-3 intake is 40% below target. I recommend adding salmon twice this week to optimize your cellular membrane health.</div>
-        </div>
-      </div>
+        <div class="features-showcase-grid">
 
-      <!-- CARD 3: Calorie -->
-      <div class="bento-card span-3 fade-up stagger-2">
-        <div class="bento-icon orange">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
-            <path d="M8.5 8.5s1.5 2 3.5 2 3.5-2 3.5-2"/>
-            <path d="M9 15a5 5 0 006 0"/>
-          </svg>
-        </div>
-        <div class="bento-title">Dynamic Calorie Tracking</div>
-        <div class="bento-desc">Consumed vs. burned — real-time calorie balance synced with your activity data.</div>
-        <div class="mini-chart">
-          <div class="mini-chart-bars">
-            <div class="mini-bar" style="height:30%;"></div>
-            <div class="mini-bar" style="height:55%;"></div>
-            <div class="mini-bar active" style="height:100%;"></div>
-            <div class="mini-bar" style="height:20%;"></div>
-            <div class="mini-bar" style="height:40%;"></div>
-            <div class="mini-bar" style="height:60%;"></div>
-            <div class="mini-bar" style="height:35%;"></div>
+          <!-- Left Column: 6 Feature Cards in dynamic scroll wrapper -->
+          <div class="features-left-col-wrapper">
+            <div class="features-left-col">
+
+        <!-- CARD 1: Micro & Macro Nutrient Tracking -->
+        <div class="feature-card active fade-up" data-feature="nutrients" onclick="switchFeature('nutrients')">
+          <div class="feature-icon-title-wrap">
+            <div class="bento-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/>
+                <path d="M12 6v12M6 12h12"/>
+              </svg>
+            </div>
+            <h3 class="bento-title">Micro & Macro Nutrient Tracking</h3>
+          </div>
+          <p class="bento-desc">Track every essential nutrient with clinical-grade precision. Check real-time scores for vitamins, minerals, and amino acids.</p>
+          <div class="nutrient-pills">
+            <span class="nutrient-pill green">Protein</span>
+            <span class="nutrient-pill blue">Carbs</span>
+            <span class="nutrient-pill orange">Fat</span>
+            <span class="nutrient-pill purple">Fiber</span>
+            <span class="nutrient-pill blue">Vitamin A</span>
+            <span class="nutrient-pill blue">B12</span>
+            <span class="nutrient-pill teal">Iron</span>
+            <span class="nutrient-pill teal">Calcium</span>
+            <span class="nutrient-pill teal">Magnesium</span>
+            <span class="nutrient-pill orange">Omega-3</span>
+            <span class="nutrient-pill dots" style="background:transparent; border:none; padding: 2px 4px; color: var(--muted); font-weight:800;">...</span>
           </div>
         </div>
-      </div>
 
-      <!-- CARD 4: GI Health -->
-      <div class="bento-card span-4 featured-mint fade-up stagger-1">
-        <div class="bento-icon mint">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/>
-            <path d="M7 12s1-3 5-3 5 3 5 3-1 3-5 3-5-3-5-3z"/>
-          </svg>
-        </div>
-        <span class="bento-tag mint">Gut Science</span>
-        <div class="bento-title">Gastrointestinal Motility Tracking</div>
-        <div class="bento-desc">Log and analyze bowel patterns, transit time, and dietary correlations. Identify foods that disrupt or support your gut microbiome with clinical precision.</div>
-      </div>
+        <!-- CARD 2: Personalized AI Coach -->
+        <div class="feature-card fade-up" data-feature="ai-coach" onclick="switchFeature('ai-coach')">
+          <div class="feature-icon-title-wrap">
+            <div class="bento-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+                <path d="M20 3v4"/>
+                <path d="M22 5h-4"/>
+                <path d="M4 17v2"/>
+                <path d="M5 18H3"/>
+              </svg>
+            </div>
+            <h3 class="bento-title">Personalized AI Coach</h3>
+          </div>
+          <p class="bento-desc">Get tailored longevity strategies and nutrient corrections powered by advanced AI, acting as a personal nutritionist in your pocket.</p>
 
-      <!-- CARD 5: Sleep -->
-      <div class="bento-card span-4 fade-up stagger-2">
-        <div class="bento-icon purple">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-          </svg>
         </div>
-        <div class="bento-title">Sleep Score & Circadian Analysis</div>
-        <div class="bento-desc">Your sleep quality score 1–5, tracked nightly. See how your nutrition choices directly impact deep sleep and recovery.</div>
-        <div class="mini-chart">
-          <div class="mini-chart-bars">
-            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
-            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
-            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
-            <div class="mini-bar" style="height:50%;background:rgba(163,113,247,0.4);"></div>
-            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
-            <div class="mini-bar" style="height:100%;background:#a371f7;"></div>
-            <div class="mini-bar" style="height:20%;background:rgba(163,113,247,0.2);"></div>
+
+        <!-- CARD 3: Bristol Stool Scale Tracking -->
+        <div class="feature-card fade-up" data-feature="stool" onclick="switchFeature('stool')">
+          <div class="feature-icon-title-wrap">
+            <div class="bento-icon mint">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/>
+                <path d="M7 12s1-3 5-3 5 3 5 3-1 3-5 3-5-3-5-3z"/>
+              </svg>
+            </div>
+            <h3 class="bento-title">Bristol Stool Scale Tracking</h3>
+          </div>
+          <p class="bento-desc">Monitor your GI health using 7 scientific stool types. Correlate dietary intake with symptom tracking for a perfect microbiome.</p>
+        </div>
+
+        <!-- CARD 4: Daily Recipes & Meals -->
+        <div class="feature-card fade-up" data-feature="recipes" onclick="switchFeature('recipes')">
+          <div class="feature-icon-title-wrap">
+            <div class="bento-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2l1 8s2 1 8 1 8-1 8-1l1-8"/>
+                <path d="M12 11v10M8 21h8"/>
+              </svg>
+            </div>
+            <h3 class="bento-title">Daily Recipes & Meals</h3>
+          </div>
+          <p class="bento-desc">Enjoy chef-crafted, longevity-focused recipes customized to fill your specific nutrient gaps and organize your eating schedule.</p>
+        </div>
+
+        <!-- CARD 5: 4 Fasting Protocols -->
+        <div class="feature-card fade-up" data-feature="fasting" onclick="switchFeature('fasting')">
+          <div class="feature-icon-title-wrap">
+            <div class="bento-icon purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <h3 class="bento-title">4 Fasting Protocols</h3>
+          </div>
+          <p class="bento-desc">Adopt scientifically validated intermittent fasting methods (16:8, 18:6, circadian, and custom) with real-time autophagy tracking.</p>
+        </div>
+
+        <!-- CARD 6: Advanced Health Analytics & Health Sync -->
+        <div class="feature-card fade-up" data-feature="analytics" onclick="switchFeature('analytics')">
+          <div class="feature-icon-title-wrap">
+            <div class="bento-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="9" width="18" height="6" rx="2" ry="2" />
+                <rect x="9" y="3" width="6" height="18" rx="2" ry="2" />
+              </svg>
+            </div>
+            <h3 class="bento-title">Advanced Health Analytics & Health Sync</h3>
+          </div>
+          <p class="bento-desc">Sync with Apple Health & Google Fit. Deep-dive into monthly calorie history, weight tracking, and comprehensive PDF reports for your doctor.</p>
+          <div class="feature-mini-chart" style="margin-top: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; max-width: 340px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 600; color: var(--muted);">
+              <span>WEIGHT TREND</span>
+              <span style="color: var(--blue); font-weight: 700;">-2.4 kg this month</span>
+            </div>
+            <svg viewBox="0 0 300 80" style="width: 100%; height: 50px; overflow: visible;">
+              <path d="M 0 65 Q 60 55 120 35 T 240 20 T 300 15" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M 0 65 Q 60 55 120 35 T 240 20 T 300 15 L 300 80 L 0 80 Z" fill="url(#mini-chart-glow)" style="opacity: 0.15;"/>
+              <circle cx="300" cy="15" r="4" fill="var(--blue)"/>
+              <defs>
+                <linearGradient id="mini-chart-glow" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--blue)"/>
+                  <stop offset="100%" stop-color="transparent"/>
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </div>
-      </div>
 
-      <!-- CARD 6: Hydration -->
-      <div class="bento-card span-4 fade-up">
-        <div class="bento-icon teal">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>
-          </svg>
+            </div>
+          </div>
+
+          <!-- Right Column: Sticky Phone Mockup -->
+          <div class="features-right-col">
+            <div class="features-phone-sticky">
+              <div class="phone-glow"></div>
+              <div class="phone-frame">
+                <div class="phone-notch"></div>
+                <div class="phone-screen" id="features-phone-screen">
+                  <div class="phone-screen-inner"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <div class="bento-title">Smart Hydration Tracking</div>
-        <div class="bento-desc">Personalized daily water targets (2450 ml default). Track intake with one tap — reminders adapt to your activity level and climate.</div>
       </div>
-
-      <!-- CARD 7: Recipes -->
-      <div class="bento-card span-4 fade-up stagger-1">
-        <div class="bento-icon blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 2l1 8s2 1 8 1 8-1 8-1l1-8"/>
-            <path d="M12 11v10M8 21h8"/>
-          </svg>
-        </div>
-        <div class="bento-title">Personalized Recipes</div>
-        <div class="bento-desc">Daily recipes curated to fill your specific nutrient gaps. Banana smoothie bowls for energy, avocado toast for micronutrient deficiencies.</div>
-      </div>
-
-      <!-- CARD 8: Fasting -->
-      <div class="bento-card span-4 fade-up stagger-2">
-        <div class="bento-icon blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-        </div>
-        <div class="bento-title">Intermittent Fasting Timer</div>
-        <div class="bento-desc">12:12, 16:8, 18:6, or custom. A real-time circular timer shows your fasting window, start, and projected autophagy onset.</div>
-      </div>
-
-      <!-- CARD 9: Charts -->
-      <div class="bento-card span-4 fade-up">
-        <div class="bento-icon orange">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-        </div>
-        <div class="bento-title">Advanced Reports & Charts</div>
-        <div class="bento-desc">7-day, monthly, and yearly views for calories, weight trends, nutrient patterns, and sleep quality — all in one place.</div>
-      </div>
-
-      <!-- CARD 10: Mood -->
-      <div class="bento-card span-4 fade-up stagger-1">
-        <div class="bento-icon pink">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-            <line x1="9" y1="9" x2="9.01" y2="9"/>
-            <line x1="15" y1="9" x2="15.01" y2="9"/>
-          </svg>
-        </div>
-        <div class="bento-title">Mood & Psychology Tracking</div>
-        <div class="bento-desc">Log your emotional state 4× daily — morning, noon, evening, night. Uncover the nutritional patterns behind your mood swings.</div>
-      </div>
-
-      <!-- CARD 11: Social -->
-      <div class="bento-card span-4 fade-up stagger-2">
-        <div class="bento-icon blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-          </svg>
-        </div>
-        <div class="bento-title">Social & Friendship System</div>
-        <div class="bento-desc">Share progress, compare streaks, and motivate each other. A privacy-first community built around real nutrition data.</div>
-      </div>
-
-      <!-- CARD 12: Scan -->
-      <div class="bento-card span-4 fade-up">
-        <div class="bento-icon mint">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5"/>
-            <path d="M7 7h2v2H7zM15 7h2v2h-2zM7 15h2v2H7zM11 11h2v2h-2z"/>
-          </svg>
-        </div>
-        <div class="bento-title">5 Ways to Log a Meal</div>
-        <div class="bento-desc">Barcode scan, photo recognition, voice input, manual entry, or saved favorites — adding a meal takes under 5 seconds.</div>
-      </div>
-
     </div>
   </div>
 </section>
 
 <!-- SOCIAL PROOF -->
 <section class="social-section" id="reviews">
+  <div class="reviews-waves">
+    <svg class="reviews-wave-svg" viewBox="0 0 1440 320" style="position: absolute; bottom: 0; left: 0; width: 100%; height: auto;">
+      <path fill="none" stroke="rgba(9,105,218,0.15)" stroke-width="1.5" d="M0,160 C320,300 640,20 960,160 C1280,300 1400,200 1440,160"></path>
+      <path fill="none" stroke="rgba(9,105,218,0.10)" stroke-width="1" d="M0,120 C400,240 800,40 1200,180 C1300,210 1400,140 1440,120"></path>
+      <path fill="none" stroke="rgba(9,105,218,0.08)" stroke-width="1" d="M0,200 C300,100 600,300 900,150 C1200,50 1350,250 1440,200"></path>
+    </svg>
+    <svg class="reviews-wave-svg" viewBox="0 0 1440 320" style="position: absolute; top: 0; left: 0; width: 100%; height: auto; transform: scaleY(-1);">
+      <path fill="none" stroke="rgba(9,105,218,0.10)" stroke-width="1" d="M0,100 C360,200 720,50 1080,180 C1260,240 1380,120 1440,100"></path>
+      <path fill="none" stroke="rgba(9,105,218,0.06)" stroke-width="1.2" d="M0,180 C480,80 960,280 1440,180"></path>
+    </svg>
+  </div>
   <div class="section-inner">
     <div class="fade-up" style="text-align:center;">
       <span class="section-eyebrow">Reviews</span>
@@ -1282,35 +1514,32 @@
     <div class="reviews-grid">
       <div class="review-card fade-up stagger-1">
         <div class="review-stars">★★★★★</div>
-        <p class="review-text">"I've tried every nutrition app. NutriLens is the only one that actually tracks what matters. My micronutrient score went from 62% to 94% in three weeks."</p>
+        <p class="review-text">"I've tried every nutrition app. LensEat is the only one that actually tracks what matters. My micronutrient score went from 62% to 94% in three weeks."</p>
         <div class="review-author">
-          <div class="review-avatar">AM</div>
-          <div>
-            <div class="review-name">Ayşe M.</div>
-            <div class="review-sub">Sports nutritionist</div>
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Reviewer">
           </div>
+          <div class="review-name">Ayşe M.</div>
         </div>
       </div>
       <div class="review-card fade-up stagger-2">
         <div class="review-stars">★★★★★</div>
         <p class="review-text">"The GI tracking feature changed my life. I finally connected my bloating to high-FODMAP foods — something no doctor could tell me in 5 years."</p>
         <div class="review-author">
-          <div class="review-avatar">KS</div>
-          <div>
-            <div class="review-name">Kerem S.</div>
-            <div class="review-sub">Software engineer, İzmir</div>
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Reviewer">
           </div>
+          <div class="review-name">Kerem S.</div>
         </div>
       </div>
       <div class="review-card fade-up stagger-3">
         <div class="review-stars">★★★★★</div>
         <p class="review-text">"The longevity scores and circadian analysis make this feel like having a personal doctor in my pocket. The AI coach is genuinely smart."</p>
         <div class="review-author">
-          <div class="review-avatar">LT</div>
-          <div>
-            <div class="review-name">Leyla T.</div>
-            <div class="review-sub">Biohacker & researcher</div>
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Reviewer">
           </div>
+          <div class="review-name">Leyla T.</div>
         </div>
       </div>
     </div>
@@ -1322,7 +1551,7 @@
   <div class="section-inner">
     <div class="cta-inner fade-up">
       <h2 class="cta-title">Start eating for<br><span style="background:linear-gradient(135deg,var(--blue),#a5d6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">longevity today</span></h2>
-      <p class="cta-desc">Free to download. 65+ nutrients. Zero guesswork.</p>
+      <p class="cta-desc">Track 65+ micro & macro nutrients for a science-backed path to longevity.</p>
       <div class="store-buttons">
         <a href="#" class="store-btn">
           <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
@@ -1346,13 +1575,21 @@
 <!-- FOOTER -->
 <footer>
   <div class="footer-inner">
-    <div class="footer-logo">NutriLens</div>
+    <div class="footer-left">
+      <div class="footer-logo">LensEat</div>
+      <div class="footer-copy">© 2026 LensEat. All rights reserved.</div>
+    </div>
     <div class="footer-links">
       <a href="#">Privacy</a>
       <a href="#">Terms</a>
       <a href="#">Support</a>
     </div>
-    <div class="footer-copy">© 2026 NutriLens. All rights reserved.</div>
+    <div class="footer-socials">
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Twitter/X"><i class="fa-brands fa-x-twitter"></i></a>
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+    </div>
   </div>
 </footer>
 
@@ -1367,6 +1604,1014 @@
   }, { threshold: 0.12 });
 
   document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  // Phone scroll-swap interaction (desktop only)
+  function updatePhoneScrollSwap() {
+    if (window.innerWidth <= 768) {
+      // Reset styles on mobile
+      const p1 = document.querySelector('.phone-frame.primary');
+      const p2 = document.querySelector('.phone-frame.secondary');
+      if (p1) {
+        p1.style.left = '';
+        p1.style.top = '';
+        p1.style.transform = '';
+        p1.style.zIndex = '';
+      }
+      if (p2) {
+        p2.style.left = '';
+        p2.style.top = '';
+        p2.style.transform = '';
+        p2.style.zIndex = '';
+      }
+      return;
+    }
+
+    const hero = document.querySelector('.hero');
+    if (!hero) return;
+
+    const rect = hero.getBoundingClientRect();
+    const scrollTrackHeight = rect.height - window.innerHeight;
+    if (scrollTrackHeight <= 0) return;
+
+    // Calculate scroll progress (0 to 1) of the hero container
+    let progress = -rect.top / scrollTrackHeight;
+    progress = Math.max(0, Math.min(1, progress));
+
+    const phone1 = document.querySelector('.phone-frame.primary');
+    const phone2 = document.querySelector('.phone-frame.secondary');
+    if (!phone1 || !phone2) return;
+
+    // Circular tray rotation interpolation:
+    const angle = progress * Math.PI;
+    const cosVal = Math.cos(angle);
+    const sinVal = Math.sin(angle);
+
+    // Phone 1 (primary) starts front-left (left: 0), rotates to back-right (left: 140px)
+    // To prevent overlapping in the middle, we use sinVal to push them apart horizontally.
+    const p1Left = 70 - 70 * cosVal - 80 * sinVal;
+    const p1Top = -50 * progress;
+    const p1RotY = -12 * progress;
+    const p1TransZ = -25 + 75 * cosVal - 70 * sinVal;
+
+    // Phone 2 (secondary) starts back-right (left: 140px), rotates to front-left (left: 0)
+    const p2Left = 70 + 70 * cosVal + 80 * sinVal;
+    const p2Top = -50 + 50 * progress;
+    const p2RotY = -12 + 12 * progress;
+    const p2TransZ = -25 - 75 * cosVal + 70 * sinVal;
+
+    // Apply styles
+    phone1.style.left = `${p1Left}px`;
+    phone1.style.top = `${p1Top}px`;
+    phone1.style.transform = `scale(1) rotateY(${p1RotY}deg) translateZ(${p1TransZ}px)`;
+    phone1.style.zIndex = progress < 0.5 ? '10' : '1';
+
+    phone2.style.left = `${p2Left}px`;
+    phone2.style.top = `${p2Top}px`;
+    phone2.style.transform = `scale(1) rotateY(${p2RotY}deg) translateZ(${p2TransZ}px)`;
+    phone2.style.zIndex = progress < 0.5 ? '1' : '10';
+  }
+
+  window.addEventListener('scroll', updatePhoneScrollSwap);
+  window.addEventListener('resize', updatePhoneScrollSwap);
+  // Initial check
+  updatePhoneScrollSwap();
+
+  // Longevity Scroll Animation
+  function initLongevityScroll() {
+    const track = document.querySelector('.longevity-scroll-track');
+    const path = document.querySelector('.bio-line');
+    const glow = document.querySelector('.bio-glow');
+    const dot = document.querySelector('.bio-dot');
+    const barRows = document.querySelectorAll('.biomarker-row');
+    
+    if (!track || !path) return;
+    
+    const pathLen = path.getTotalLength();
+    path.style.strokeDasharray = pathLen;
+    path.style.strokeDashoffset = pathLen;
+    if (glow) {
+      glow.style.strokeDasharray = pathLen;
+      glow.style.strokeDashoffset = pathLen;
+    }
+    
+    let currentProgress = 0;
+    let targetProgress = 0;
+
+    const barData = Array.from(barRows).map(row => {
+      const fill = row.querySelector('.biomarker-bar-fill');
+      const valEl = row.querySelector('.biomarker-val');
+      const targetWidth = parseFloat(fill.style.width) || 0;
+      fill.style.width = '0%';
+      valEl.textContent = '0%';
+      return { fill, valEl, targetWidth };
+    });
+
+    function updateLongevityScroll() {
+      const rect = track.getBoundingClientRect();
+      const scrollDistance = rect.height - window.innerHeight;
+      if (scrollDistance <= 0) return;
+      
+      let progress = -rect.top / scrollDistance;
+      targetProgress = Math.max(0, Math.min(1, progress));
+    }
+    
+    function animate() {
+      currentProgress += (targetProgress - currentProgress) * 0.05;
+
+      // Bars animate from 0 to 0.6
+      const barProgress = Math.min(1, currentProgress / 0.6);
+      barData.forEach(data => {
+        const w = data.targetWidth * barProgress;
+        data.fill.style.width = w + '%';
+        data.valEl.textContent = Math.round(w) + '%';
+      });
+      
+      // Line animates from 0 to 0.7
+      const lineProgress = Math.min(1, currentProgress / 0.7);
+      const drawLen = pathLen * lineProgress;
+      path.style.strokeDashoffset = pathLen - drawLen;
+      if (glow) glow.style.strokeDashoffset = pathLen - drawLen;
+      
+      if (drawLen > 0) {
+        const point = path.getPointAtLength(drawLen);
+        dot.setAttribute('cx', point.x);
+        dot.setAttribute('cy', point.y);
+      } else {
+        const point = path.getPointAtLength(0);
+        dot.setAttribute('cx', point.x);
+        dot.setAttribute('cy', point.y);
+      }
+      requestAnimationFrame(animate);
+    }
+    
+    window.addEventListener('scroll', updateLongevityScroll);
+    updateLongevityScroll();
+    requestAnimationFrame(animate);
+
+    // Bento card mini-bars scroll animation
+    const bentoCards = document.querySelectorAll('.bento-card');
+    function updateBentoScroll() {
+      bentoCards.forEach(card => {
+        const miniBars = card.querySelectorAll('.mini-bar');
+        if (!miniBars.length) return;
+        
+        const rect = card.getBoundingClientRect();
+        let progress = (window.innerHeight - rect.top) / (window.innerHeight * 0.5);
+        progress = Math.max(0, Math.min(1, progress));
+        
+        miniBars.forEach(bar => {
+          const target = parseFloat(bar.getAttribute('data-target')) || 0;
+          bar.style.height = (progress * target) + '%';
+        });
+      });
+    }
+    window.addEventListener('scroll', updateBentoScroll);
+    updateBentoScroll();
+  }
+  initLongevityScroll();
+
+  // Features section interactive phone mockups
+  const featureScreens = {
+    'nutrients': `
+      <div class="phone-screen-header">
+        <span class="phone-app-name" style="font-size: 14px; letter-spacing: 0;">LensEat</span>
+        <div style="display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 11px; color: #FFA100; border: 1px solid rgba(255, 161, 0, 0.4); border-radius: 12px; padding: 2px 8px; background: rgba(255, 161, 0, 0.05);">
+          <i class="fa-solid fa-fire"></i>
+          <span style="color: #E6EDF3;">9</span>
+        </div>
+      </div>
+      
+      <div class="no-scrollbar" style="display: flex; flex-direction: column; gap: 12px; overflow-y: hidden; height: calc(100% - 36px);">
+        
+        <!-- Macros Widget (Image 1) -->
+        <div style="background: #161B22; border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 14px;">
+          <!-- Dual Circular Rings & Calorie Counters -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <!-- Left: Consumed -->
+            <div style="text-align: left; min-width: 65px;">
+              <div style="font-size: 20px; font-weight: 800; color: #FFFFFF; line-height: 1.1;">4498</div>
+              <div style="font-size: 9.5px; color: #10B981; font-weight: 700; letter-spacing: 0.3px; margin-top: 2px; text-transform: uppercase;">INTAKE</div>
+            </div>
+            
+            <!-- Center: Dual Ring SVG -->
+            <div style="position: relative; width: 110px; height: 110px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+              <svg viewBox="0 0 120 120" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                <!-- Background tracks -->
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#21262D" stroke-width="7" />
+                <circle cx="60" cy="60" r="38" fill="none" stroke="#21262D" stroke-width="7" />
+                <!-- Green outer progress ring (approx 75%) -->
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#10B981" stroke-width="7" 
+                        stroke-dasharray="314.16" stroke-dashoffset="78.5" stroke-linecap="round" />
+                <!-- Orange inner progress ring (approx 75%) -->
+                <circle cx="60" cy="60" r="38" fill="none" stroke="#FFA100" stroke-width="7" 
+                        stroke-dasharray="238.76" stroke-dashoffset="59.7" stroke-linecap="round" />
+              </svg>
+              
+              <!-- Center Text -->
+              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                <div style="font-size: 26px; font-weight: 800; color: #FFFFFF; line-height: 1;">0</div>
+                <div style="font-size: 7.5px; color: #8B949E; font-weight: 700; letter-spacing: 0.3px; margin-top: 3px; text-transform: uppercase; white-space: nowrap;">REMAINING KCAL</div>
+              </div>
+            </div>
+            
+            <!-- Right: Burned -->
+            <div style="text-align: right; min-width: 65px;">
+              <div style="font-size: 20px; font-weight: 800; color: #FFFFFF; line-height: 1.1;">1642</div>
+              <div style="font-size: 9.5px; color: #FFA100; font-weight: 700; letter-spacing: 0.3px; margin-top: 2px; text-transform: uppercase;">BURNED</div>
+            </div>
+          </div>
+          
+          <!-- Bottom: Protein Macro Bar -->
+          <div style="display: flex; flex-direction: column; gap: 5px; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+              <span style="font-size: 10px; font-weight: 700; color: #8B949E; text-transform: uppercase;">PROTEIN</span>
+              <div style="font-size: 11.5px; font-weight: 800; color: #FFFFFF;">
+                280g <span style="color: #10B981; font-weight: 700;">/ 112g</span>
+              </div>
+            </div>
+            <div style="height: 6px; background: #21262D; border-radius: 4px; overflow: hidden; width: 100%;">
+              <div style="width: 100%; height: 100%; background: #10B981; border-radius: 4px;"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Score & Detailed Sheet (Image 2) -->
+        <div style="background: #161B22; border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          
+          <!-- Score Header -->
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <!-- Circular Score Badge -->
+            <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                <circle cx="18" cy="18" r="15" fill="none" stroke="#21262D" stroke-width="3" />
+                <!-- Green score path (91%) -->
+                <circle cx="18" cy="18" r="15" fill="none" stroke="#10B981" stroke-width="3" 
+                        stroke-dasharray="94.24" stroke-dashoffset="8.5" stroke-linecap="round" />
+              </svg>
+              <div style="position: absolute; font-size: 11.5px; font-weight: 800; color: #FFFFFF;">91</div>
+            </div>
+            
+            <!-- Score Title -->
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 14px; font-weight: 800; color: #FFFFFF; line-height: 1.2;">Nutrition Score</span>
+            </div>
+          </div>
+          
+          <!-- Separator -->
+          <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 2px 0;"></div>
+          
+          <!-- Cholesterol -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Cholesterol</span>
+              <span style="color: #8B949E;">784.8 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #484F58; border-radius: 3px; width: 100%;"></div>
+          </div>
+          
+          <!-- Minerals Header -->
+          <div style="font-size: 9.5px; font-weight: 800; color: #8B949E; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 6px; margin-bottom: 2px;">MINERALS</div>
+          
+          <!-- Calcium -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Calcium</span>
+              <span style="color: #8B949E;">1784.6 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Iron -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Iron</span>
+              <span style="color: #8B949E;">37.5 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Magnesium -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Magnesium</span>
+              <span style="color: #8B949E;">404.4 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Phosphorus -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Phosphorus</span>
+              <span style="color: #8B949E;">2777.0 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Potassium -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Potassium</span>
+              <span style="color: #8B949E;">4470.6 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Sodium -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Sodium</span>
+              <span style="color: #8B949E;">6242.4 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Zinc -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Zinc</span>
+              <span style="color: #8B949E;">57.9 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Copper -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Copper</span>
+              <span style="color: #8B949E;">1.9 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Manganese -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Manganese</span>
+              <span style="color: #8B949E;">3.8 mg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Selenium -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Selenium</span>
+              <span style="color: #8B949E;">268.3 mcg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <!-- Iodine -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+              <span style="color: #FFFFFF;">Iodine</span>
+              <span style="color: #8B949E;">83.6 mcg</span>
+            </div>
+            <div style="height: 4.5px; background: #21262D; border-radius: 3px; width: 100%; overflow: hidden;">
+              <div style="width: 58%; height: 100%; background: #00D2C4; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    `,
+    'ai-coach': `
+      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 12px; font-size: 12.5px; font-weight: 600;">
+        <span style="color: #8B949E;">Daily Recipes</span>
+        <div style="position: relative; color: #58A6FF; font-weight: 700; padding-bottom: 8px;">
+          <span>AI Coach</span>
+          <div style="position: absolute; bottom: -9px; left: 0; right: 0; height: 2px; background: #58A6FF; border-radius: 2px;"></div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; justify-content:space-between; height: calc(100% - 32px); padding-bottom: 4px;">
+        <div class="no-scrollbar" style="display:flex; flex-direction:column; gap:12px; overflow-y:auto; padding-right: 2px;">
+          
+          <div style="display:flex; gap:8px; align-items:flex-start; justify-content:flex-end;">
+            <div style="background: #3B82F6; border-radius: 16px 16px 2px 16px; padding: 11px 13px; font-size: 12px; color: #FFFFFF; line-height: 1.4; max-width: 82%;">
+              I feel low on energy right now, what are your healthy food recommendations to keep me active?
+            </div>
+            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80" style="width:24px; height:24px; border-radius:50%; object-fit:cover; flex-shrink:0; border: 1px solid rgba(255,255,255,0.15);" alt="User">
+          </div>
+          
+          <div style="display:flex; gap:8px; align-items:flex-start;">
+            <div style="width:24px; height:24px; border-radius:50%; background:#3B82F6; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; flex-shrink:0;">
+              <i class="fa-solid fa-brain"></i>
+            </div>
+            <div style="background: #1C2128; border: 1px solid rgba(255,255,255,0.06); border-radius: 2px 16px 16px 16px; padding: 11px 13px; font-size: 12px; color: #E6EDF3; line-height: 1.4; max-width: 82%;">
+              Bora, you haven't eaten anything yet today and you are way below your target of 2044 kcal - so low energy is normal! Consume something containing protein and carbs right away: a handful of hazelnuts + 1 banana, or yogurt + granola could be good starts. Options to carry your energy until lunch: chicken breast + rice, fish + sweet potato, or egg + bread. Don't forget water, sometimes dehydration causes low energy!
+            </div>
+          </div>
+          
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+          <div class="no-scrollbar" style="display:flex; gap:6px; overflow-x:auto; padding:2px 0; width:100%; white-space:nowrap;">
+            <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #FCA5A5; padding: 5px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">
+              🚨 Stomach ache & nutrition link?
+            </div>
+            <div style="background: #1C2128; border: 1px solid rgba(255,255,255,0.08); color: #E6EDF3; padding: 5px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">
+              🥑 Healthy fats?
+            </div>
+            <div style="background: #1C2128; border: 1px solid rgba(255,255,255,0.08); color: #E6EDF3; padding: 5px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">
+              🏃 Workout...
+            </div>
+          </div>
+          
+          <div style="background: #161B22; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 5px 6px 5px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11.5px; color:#8B949E;">Ask your coach...</span>
+            <div style="width:24px; height:24px; border-radius:50%; background:#3B82F6; display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer;">
+              <i class="fa-solid fa-arrow-up" style="font-size:10.5px;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    'stool': `
+      <div class="phone-screen-header">
+        <span class="phone-app-name" style="font-size: 14px; letter-spacing: 0;">Gut Tracker</span>
+        <span class="phone-badge" style="background: rgba(126,231,135,0.15); color: #7EE787; border: 1px solid rgba(126,231,135,0.3); font-size: 8px; padding: 2px 6px;">Microbiome</span>
+      </div>
+      <div style="background: var(--surface); border-radius: 16px; padding: 12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.03); text-align: center;">
+        <div style="font-size: 9px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.3px;">Last Movement</div>
+        <div style="font-size: 16px; font-weight: 800; color: #E6EDF3; margin-bottom: 4px;">Type 4 (Ideal)</div>
+        <div style="background: rgba(126,231,135,0.1); color: #7EE787; padding: 2px 10px; border-radius: 12px; font-size: 8px; font-weight: 700; display: inline-block; margin-bottom: 10px;">
+          <i class="fa-solid fa-circle-check"></i> Healthy Digestion
+        </div>
+        
+        <div style="display:flex; justify-content:center; gap:6px; margin-bottom: 10px;">
+          <div style="width:26px; height:26px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:9.5px; color:var(--muted);">3</div>
+          <div style="width:30px; height:30px; border-radius:6px; background:rgba(126,231,135,0.15); border:1px solid #7EE787; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#7EE787;">4</div>
+          <div style="width:26px; height:26px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:9.5px; color:var(--muted);">5</div>
+        </div>
+        
+        <div style="font-size: 9.5px; color: #8B949E; line-height: 1.3;">
+          Type 4 stool indicates a perfectly functioning digestive tract with sufficient fiber and water intake.
+        </div>
+      </div>
+      
+      <div style="background: var(--surface); border-radius: 16px; padding: 10px; border: 1px solid rgba(255,255,255,0.03);">
+        <div style="font-size: 10px; font-weight: 700; color: #E6EDF3; margin-bottom: 6px;">Correlations</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; font-size:9px;">
+            <span style="color:#8B949E;">Fiber Intake</span>
+            <span style="color:#7EE787; font-weight:600;">38g (100%)</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:9px;">
+            <span style="color:#8B949E;">Hydration Level</span>
+            <span style="color:#7EE787; font-weight:600;">2.4L (Optimal)</span>
+          </div>
+        </div>
+      </div>
+    `,
+    'recipes': `
+      <div class="no-scrollbar" style="display: flex; flex-direction: column; gap: 14px; overflow-y: hidden; height: 100%;">
+        
+        <!-- Tab Navigation -->
+        <div style="display: flex; justify-content: space-around; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; font-size: 12.5px; font-weight: 600; flex-shrink: 0;">
+          <div style="position: relative; color: #58A6FF; font-weight: 700; padding-bottom: 8px;">
+            <span>Daily Recipes</span>
+            <div style="position: absolute; bottom: -9px; left: 0; right: 0; height: 2px; background: #58A6FF; border-radius: 2px;"></div>
+          </div>
+          <span style="color: #8B949E;">AI Coach</span>
+        </div>
+        
+        <!-- Metabolism Boosters Header -->
+        <div style="padding: 0 2px; flex-shrink: 0;">
+          <div style="font-size: 15px; font-weight: 800; color: #FFFFFF;">Metabolism Boosters</div>
+          <div style="font-size: 11px; color: #8B949E; margin-top: 2px;">Choices to peak your energy.</div>
+        </div>
+        
+        <!-- Pancake Carousel Card -->
+        <div style="display: flex; align-items: center; justify-content: space-between; position: relative; margin: 0 -14px; overflow: hidden; flex-shrink: 0; width: calc(100% + 28px);">
+          <!-- Left Arrow -->
+          <div style="width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF; color: #000000; display: flex; align-items: center; justify-content: center; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 7px; font-weight: bold; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); z-index: 10;">
+            <i class="fa-solid fa-chevron-left"></i>
+          </div>
+          
+          <!-- Left Dummy Card -->
+          <div style="width: 28px; height: 72px; background: #1E1B18; border-radius: 0 16px 16px 0; opacity: 0.35; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; display: flex; align-items: center; justify-content: flex-end;">
+            <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=80&q=80" style="width: 20px; height: 40px; border-radius: 4px; object-fit: cover; opacity: 0.5;" alt="">
+          </div>
+          
+          <!-- Central Active Card -->
+          <div style="position: relative; flex-grow: 1; margin: 0 6px; z-index: 1; min-width: 0;">
+            <div style="background: #1E1B18; border-radius: 16px; padding: 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid rgba(255,255,255,0.03); height: 72px;">
+              <div style="display: flex; flex-direction: column; gap: 2px; max-width: 65%; overflow: hidden;">
+                <span style="font-size: 11px; font-weight: 700; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Whole Wheat Pancake</span>
+                <span style="font-size: 8.5px; color: #8B949E; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">High-fiber breakfast pancake</span>
+              </div>
+              <img src="https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=80&q=80" style="width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0;" alt="Pancake">
+            </div>
+          </div>
+          
+          <!-- Right Dummy Card -->
+          <div style="width: 28px; height: 72px; background: #1E1B18; border-radius: 16px 0 0 16px; opacity: 0.35; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding-left: 4px; gap: 2px;">
+            <span style="font-size: 8px; font-weight: 700; color: #FFFFFF; opacity: 0.6; white-space: nowrap;">Peanut</span>
+            <span style="font-size: 6px; color: #8B949E; opacity: 0.5; white-space: nowrap;">Protein</span>
+          </div>
+          
+          <!-- Right Arrow -->
+          <div style="width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF; color: #000000; display: flex; align-items: center; justify-content: center; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 7px; font-weight: bold; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); z-index: 10;">
+            <i class="fa-solid fa-chevron-right"></i>
+          </div>
+        </div>
+        
+        <!-- Recipe Detail Sheet (Screenshot 2 & 3 content stacked vertically) -->
+        <div style="display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+          <!-- Grab Handle -->
+          <div style="width: 36px; height: 4px; background: rgba(255,255,255,0.25); border-radius: 2px; margin: 0 auto 2px;"></div>
+          
+          <!-- Detail Image -->
+          <div style="position: relative; border-radius: 16px; overflow: hidden; width: 168px; height: 168px; margin: 0 auto; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.03);">
+            <img src="/assets/images/tarhana_soup.png" style="width: 100%; height: 100%; object-fit: cover;" alt="Tarhana Soup">
+          </div>
+          
+          <!-- Title & Calories -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; padding: 0 2px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 15px; font-weight: 800; color: #FFFFFF;">Tarhana Soup</span>
+              <span style="font-size: 10px; color: #8B949E; line-height: 1.3;">Traditional fermented grain morning soup</span>
+            </div>
+            <div style="background: rgba(212,122,42,0.15); border: 1px solid rgba(212,122,42,0.3); color: #FFA100; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 12px; white-space: nowrap;">
+              210 kcal
+            </div>
+          </div>
+          
+          <!-- Meta tags (time, probiotic, veg) -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 8px; font-size: 11px; color: #8B949E; border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <i class="fa-regular fa-clock" style="color: #FFA100;"></i>
+              <span>15 min</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px; text-transform: uppercase; font-weight: 600; font-size: 9px; letter-spacing: 0.3px;">
+              <i class="fa-solid fa-fire-flame-simple" style="color: #FFA100;"></i>
+              <span>PROBIOTIC</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px; text-transform: lowercase;">
+              <i class="fa-solid fa-leaf" style="color: #7EE787;"></i>
+              <span>vegetarian</span>
+            </div>
+          </div>
+          
+          <!-- Nutrition Facts Header -->
+          <div style="font-size: 13px; font-weight: 700; color: #E6EDF3; padding: 0 2px;">Nutrition Facts</div>
+          
+          <!-- Nutrition Grid Card -->
+          <div style="background: #161B22; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="color: #7EE787; font-weight: 800; font-size: 11.5px;">9.0g</span>
+                <span style="color: #8B949E; font-size: 9.5px;">Protein</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="color: #58A6FF; font-weight: 800; font-size: 11.5px;">32.0g</span>
+                <span style="color: #8B949E; font-size: 9.5px;">Carbs</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="color: #FFA100; font-weight: 800; font-size: 11.5px;">5.0g</span>
+                <span style="color: #8B949E; font-size: 9.5px;">Fat</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="color: #B388FF; font-weight: 800; font-size: 11.5px;">4.0g</span>
+                <span style="color: #8B949E; font-size: 9.5px;">Fiber</span>
+              </div>
+            </div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: #8B949E; cursor: pointer;">
+              <span>More...</span>
+              <i class="fa-solid fa-chevron-down" style="font-size: 9px;"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Ingredients Section (Naturally cut off / clipped at bottom of mockup viewport) -->
+        <div style="display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+          <div style="font-size: 13px; font-weight: 700; color: #E6EDF3; padding: 0 2px;">Ingredients</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding-left: 2px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #E6EDF3;">
+              <i class="fa-solid fa-circle-check" style="color: #FFA100; font-size: 11px;"></i>
+              <span>4 tablespoons tarhana</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #E6EDF3;">
+              <i class="fa-solid fa-circle-check" style="color: #FFA100; font-size: 11px;"></i>
+              <span>3 cups water</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #E6EDF3;">
+              <i class="fa-solid fa-circle-check" style="color: #FFA100; font-size: 11px;"></i>
+              <span>Butter</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #E6EDF3;">
+              <i class="fa-solid fa-circle-check" style="color: #FFA100; font-size: 11px;"></i>
+              <span>Red pepper flakes</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #E6EDF3;">
+              <i class="fa-solid fa-circle-check" style="color: #FFA100; font-size: 11px;"></i>
+              <span>Mint</span>
+            </div>
+          </div>
+          
+          <!-- Instructions -->
+          <div style="font-size: 13px; font-weight: 700; color: #E6EDF3; padding: 0 2px; margin-top: 4px;">Instructions</div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding-left: 2px;">
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <div style="width: 18px; height: 18px; border-radius: 50%; background: #FFA100; color: #FFFFFF; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">1</div>
+              <p style="margin: 0; font-size: 11.5px; color: #8B949E; line-height: 1.4;">Dissolve tarhana in cold water.</p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <div style="width: 18px; height: 18px; border-radius: 50%; background: #FFA100; color: #FFFFFF; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">2</div>
+              <p style="margin: 0; font-size: 11.5px; color: #8B949E; line-height: 1.4;">Cook over low heat while stirring.</p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <div style="width: 18px; height: 18px; border-radius: 50%; background: #FFA100; color: #FFFFFF; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">3</div>
+              <p style="margin: 0; font-size: 11.5px; color: #8B949E; line-height: 1.4;">Saute mint and red pepper flakes in butter and pour over.</p>
+            </div>
+          </div>
+          
+          <!-- Add Recipe Button -->
+          <div style="background: #FFA100; border-radius: 12px; padding: 10px; font-size: 12px; font-weight: 700; color: #FFFFFF; text-align: center; cursor: pointer; margin-top: 8px;">
+            Add Recipe
+          </div>
+        </div>
+        
+      </div>
+    `,
+    'fasting': `
+      <div class="no-scrollbar" style="display: flex; flex-direction: column; gap: 12px; overflow-y: hidden; height: 100%;">
+        
+        <!-- Circular Progress Ring (Image 1 top part) - No header, margin-top added -->
+        <div style="display: flex; justify-content: center; margin-top: 14px; margin-bottom: 4px; flex-shrink: 0;">
+          <div style="position: relative; width: 196px; height: 196px;">
+            <!-- Circular Ring SVG -->
+            <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible;">
+              <!-- Background track -->
+              <circle cx="50" cy="50" r="41" fill="none" stroke="#1F2937" stroke-width="5" />
+              <!-- Teal active progress ring (approx 67% arc representing 16h/24h) -->
+              <circle id="fasting-progress-arc" cx="50" cy="50" r="41" fill="none" stroke="#10B981" stroke-width="5" 
+                      stroke-dasharray="171.7 257.6" />
+              <!-- Blue start marker -->
+              <circle id="fasting-start-marker" cx="50" cy="50" r="41" fill="none" stroke="#3B82F6" stroke-width="5" 
+                      stroke-dasharray="2.5 257.6" />
+              <!-- Orange end marker -->
+              <circle id="fasting-end-marker" cx="50" cy="50" r="41" fill="none" stroke="#FFA100" stroke-width="5" 
+                      stroke-dasharray="2.5 257.6" />
+              <!-- Clock crosshair ticks -->
+              <line x1="50" y1="6" x2="50" y2="12" stroke="#4B5563" stroke-width="1.2" opacity="0.5" />
+              <line x1="50" y1="88" x2="50" y2="94" stroke="#4B5563" stroke-width="1.2" opacity="0.5" />
+              <line x1="88" y1="50" x2="94" y2="50" stroke="#4B5563" stroke-width="1.2" opacity="0.5" />
+              <line x1="6" y1="50" x2="12" y2="50" stroke="#4B5563" stroke-width="1.2" opacity="0.5" />
+            </svg>
+            
+            <!-- Time numbers over the circle (absolute positions) -->
+            <div style="position: absolute; top: -2px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: #4B5563;">24</div>
+            <div style="position: absolute; right: -2px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #4B5563;">06</div>
+            <div style="position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: #4B5563;">12</div>
+            <div style="position: absolute; left: -2px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #4B5563;">18</div>
+            
+            <!-- Center Text & Times -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 146px; height: 146px;">
+              <span style="font-size: 8.5px; color: #8B949E; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;">Target Time</span>
+              <span style="font-size: 18px; font-weight: 800; color: #FFFFFF; margin-top: 2px; margin-bottom: 4px; border-bottom: 1.5px solid rgba(255,255,255,0.2); padding-bottom: 1px;">16 hours</span>
+              
+              <!-- Start/End Details -->
+              <div style="display: flex; flex-direction: column; gap: 3px; align-items: flex-start; margin-top: 4px; font-size: 10px;">
+                <div style="display: flex; align-items: center; gap: 4px; color: #E6EDF3; font-weight: 600;">
+                  <span style="width: 6px; height: 6px; border-radius: 50%; background: #3B82F6; display: inline-block;"></span>
+                  <span id="fasting-start-time">Start: 23:09</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px; color: #E6EDF3; font-weight: 600;">
+                  <span style="width: 6px; height: 6px; border-radius: 50%; background: #FFA100; display: inline-block;"></span>
+                  <span id="fasting-end-time">End: 15:09</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Protocol Cards (Image 1 bottom & Image 2 top) -->
+        <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+          
+          <!-- Card 1: 12:12 -->
+          <div style="background: #161B22; border-radius: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 3px; text-align: left;">
+            <div style="font-size: 11px; font-weight: 800; color: #FFFFFF;">12:12 (Beginner)</div>
+            <div style="font-size: 9px; color: #8B949E; line-height: 1.3;">12 hours fasting, 12 hours eating.</div>
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: #8B949E; margin-top: 2px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;">
+              <i class="fa-regular fa-sun" style="font-size: 9px; color: #FFA100;"></i>
+              <span>For circadian balance.</span>
+            </div>
+          </div>
+
+          <!-- Card 2: 16:8 (Active) -->
+          <div style="background: #161B22; border-radius: 16px; padding: 10px 12px; border: 1.5px solid #10B981; display: flex; flex-direction: column; gap: 3px; text-align: left; box-shadow: 0 0 10px rgba(16,185,129,0.08);">
+            <div style="font-size: 11px; font-weight: 800; color: #10B981;">16:8 (Standard)</div>
+            <div style="font-size: 9px; color: #8B949E; line-height: 1.3;">16 hours fasting, 8 hours eating.</div>
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: #8B949E; margin-top: 2px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;">
+              <i class="fa-regular fa-star" style="font-size: 9px; color: #10B981;"></i>
+              <span>Most popular and sustainable mode.</span>
+            </div>
+          </div>
+
+          <!-- Card 3: 18:6 -->
+          <div style="background: #161B22; border-radius: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 3px; text-align: left;">
+            <div style="font-size: 11px; font-weight: 800; color: #FFFFFF;">18:6 (Advanced)</div>
+            <div style="font-size: 9px; color: #8B949E; line-height: 1.3;">18 hours fasting, 6 hours eating.</div>
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: #8B949E; margin-top: 2px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;">
+              <i class="fa-solid fa-wand-magic-sparkles" style="font-size: 9px; color: #B388FF;"></i>
+              <span>For deeper autophagy.</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Custom -->
+          <div style="background: #161B22; border-radius: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 3px; text-align: left;">
+            <div style="font-size: 11px; font-weight: 800; color: #FFFFFF;">Custom</div>
+            <div style="font-size: 9px; color: #8B949E; line-height: 1.3;">14 hours fasting, 10 hours eating.</div>
+            <div style="display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: #8B949E; margin-top: 2px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;">
+              <i class="fa-solid fa-sliders" style="font-size: 9px; color: #58A6FF;"></i>
+              <span>Customize based on your goals.</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Start Fasting Button (Image 2 bottom) -->
+        <div style="background: #3B82F6; border-radius: 16px; padding: 11px; font-size: 11.5px; font-weight: 800; color: #FFFFFF; text-align: center; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px;">
+          <i class="fa-solid fa-play" style="font-size: 8.5px;"></i>
+          <span>Start Fasting</span>
+        </div>
+
+        <!-- History Section (Image 3) -->
+        <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; margin-top: 4px;">
+          <div style="font-size: 11.5px; font-weight: 800; color: #E6EDF3; text-align: left; padding-left: 2px;">Fasting History</div>
+          
+          <!-- Card 1: Today -->
+          <div style="background: #161B22; border-radius: 16px; padding: 10px 12px; border: 1.5px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.15); display: flex; align-items: center; justify-content: center; color: #3B82F6; font-size: 8.5px; font-weight: 800; flex-shrink: 0;">16:8</div>
+              <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                <span id="fasting-history-date" style="font-size: 10.5px; font-weight: 700; color: #FFFFFF;">Sun 17 May, 17:12</span>
+                <span style="font-size: 8.5px; color: #8B949E;">Completed ✓</span>
+              </div>
+            </div>
+            <div style="background: rgba(16,185,129,0.15); color: #10B981; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.2);">
+              16h
+            </div>
+          </div>
+
+          <!-- Card 2: 2 Days Ago -->
+          <div style="background: #161B22; border-radius: 16px; padding: 10px 12px; border: 1.5px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.15); display: flex; align-items: center; justify-content: center; color: #3B82F6; font-size: 8.5px; font-weight: 800; flex-shrink: 0;">16:8</div>
+              <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                <span id="fasting-history-date-2" style="font-size: 10.5px; font-weight: 700; color: #FFFFFF;">Fri 15 May, 17:12</span>
+                <span style="font-size: 8.5px; color: #8B949E;">Completed ✓</span>
+              </div>
+            </div>
+            <div style="background: rgba(16,185,129,0.15); color: #10B981; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.2);">
+              16h
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    `,
+    'analytics': `
+      <div class="phone-screen-header">
+        <span class="phone-app-name" style="font-size: 14px; letter-spacing: 0;">Analytics & Sync</span>
+        <div style="display: flex; align-items: center; gap: 3px; font-weight: 700; font-size: 8px; color: #7EE787; border: 1px solid rgba(126, 231, 135, 0.3); border-radius: 10px; padding: 1px 6px; background: rgba(126, 231, 135, 0.05);">
+          <i class="fa-solid fa-arrows-rotate"></i> Synced
+        </div>
+      </div>
+      
+      <div style="background: var(--surface); border-radius: 16px; padding: 10px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.03);">
+        <div style="font-size: 10px; font-weight: 700; color: #E6EDF3; margin-bottom: 6px;">Weekly Weight Trend</div>
+        
+        <svg viewBox="0 0 200 60" style="width:100%; height:46px; overflow:visible; margin:6px 0;">
+          <path d="M 0 50 Q 40 45 80 30 T 160 15 T 200 10" fill="none" stroke="#58A6FF" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M 0 50 Q 40 45 80 30 T 160 15 T 200 10 L 200 60 L 0 60 Z" fill="rgba(88,166,255,0.05)"/>
+          <circle cx="200" cy="10" r="3" fill="#58A6FF"/>
+        </svg>
+        
+        <div style="display:flex; justify-content:space-between; font-size:8px; color:var(--muted);">
+          <span>Mon</span>
+          <span>Wed</span>
+          <span>Fri</span>
+          <span>Sun</span>
+        </div>
+      </div>
+      
+      <div style="background: var(--surface); border-radius: 16px; padding: 10px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:8.5px;">
+          <span style="color:#E6EDF3; font-weight:600;"><i class="fa-solid fa-heart" style="color:#FF3B30; margin-right:3px;"></i> Apple Health</span>
+          <span style="color:#7EE787; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Connected</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:8.5px;">
+          <span style="color:#E6EDF3; font-weight:600;"><i class="fa-solid fa-share-from-square" style="color:#58A6FF; margin-right:3px;"></i> Doctor PDF Report</span>
+          <span style="color:#58A6FF; font-weight:700; cursor:pointer;">Export <i class="fa-solid fa-download" style="font-size:7px;"></i></span>
+        </div>
+      </div>
+    `
+  };
+
+  let isScrollingToCard = false;
+  let scrollTimeout;
+  let currentFeatureId = null;
+
+  function switchFeature(featureId, shouldScroll = true) {
+    if (currentFeatureId === featureId) {
+      if (shouldScroll) {
+        scrollToFeatureProgress(featureId);
+      }
+      return;
+    }
+    currentFeatureId = featureId;
+
+    // Update active card styling
+    document.querySelectorAll('.feature-card').forEach(card => {
+      if (card.getAttribute('data-feature') === featureId) {
+        card.classList.add('active');
+      } else {
+        card.classList.remove('active');
+      }
+    });
+
+    // Translate left column to center active card (desktop only)
+    if (window.innerWidth > 768) {
+      const leftCol = document.querySelector('.features-left-col');
+      const wrapper = document.querySelector('.features-left-col-wrapper');
+      const activeCard = document.querySelector(`.feature-card[data-feature="${featureId}"]`);
+      if (leftCol && wrapper && activeCard) {
+        const cardTop = activeCard.offsetTop;
+        const cardHeight = activeCard.offsetHeight;
+        const wrapperHeight = wrapper.offsetHeight;
+        const targetY = -(cardTop - (wrapperHeight / 2 - cardHeight / 2));
+        leftCol.style.transform = `translateY(${targetY}px)`;
+      }
+    }
+
+    // Update screen mockup inside phone with a cross-fade transition
+    const screenContainer = document.getElementById('features-phone-screen');
+    if (screenContainer && featureScreens[featureId]) {
+      let innerWrapper = screenContainer.querySelector('.phone-screen-inner');
+      
+      const updateFastingTimesIfActive = () => {
+        if (featureId === 'fasting') {
+          const now = new Date();
+          const formatTime = (d) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+          const startStr = formatTime(now);
+          const endDate = new Date(now.getTime() + 16 * 60 * 60 * 1000);
+          const endStr = formatTime(endDate);
+          
+          // Calculate SVG dashoffset
+          const startHour = now.getHours() + now.getMinutes() / 60;
+          const circumference = 257.61;
+          const dashOffset = - (startHour / 24) * circumference;
+          const endDashOffset = - ((startHour + 16) / 24) * circumference;
+          
+          const startEl = document.getElementById('fasting-start-time');
+          const endEl = document.getElementById('fasting-end-time');
+          const arcEl = document.getElementById('fasting-progress-arc');
+          const startMarkerEl = document.getElementById('fasting-start-marker');
+          const endMarkerEl = document.getElementById('fasting-end-marker');
+          const dateEl = document.getElementById('fasting-history-date');
+          const dateEl2 = document.getElementById('fasting-history-date-2');
+          
+          if (startEl) startEl.innerText = 'Start: ' + startStr;
+          if (endEl) endEl.innerText = 'End: ' + endStr;
+          
+          if (arcEl) {
+            arcEl.setAttribute('stroke-dashoffset', String(dashOffset));
+            arcEl.style.strokeDashoffset = String(dashOffset);
+          }
+          if (startMarkerEl) {
+            startMarkerEl.setAttribute('stroke-dashoffset', String(dashOffset));
+            startMarkerEl.style.strokeDashoffset = String(dashOffset);
+          }
+          if (endMarkerEl) {
+            endMarkerEl.setAttribute('stroke-dashoffset', String(endDashOffset));
+            endMarkerEl.style.strokeDashoffset = String(endDashOffset);
+          }
+          
+          const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          
+          if (dateEl) {
+            const dateStr = `${daysEn[now.getDay()]} ${now.getDate()} ${monthsEn[now.getMonth()]}, ${startStr}`;
+            dateEl.innerText = dateStr;
+          }
+          
+          if (dateEl2) {
+            const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+            const dateStr2 = `${daysEn[twoDaysAgo.getDay()]} ${twoDaysAgo.getDate()} ${monthsEn[twoDaysAgo.getMonth()]}, ${startStr}`;
+            dateEl2.innerText = dateStr2;
+          }
+        }
+      };
+
+      if (!innerWrapper) {
+        screenContainer.innerHTML = `<div class="phone-screen-inner">${featureScreens[featureId]}</div>`;
+        updateFastingTimesIfActive();
+      } else {
+        if (!innerWrapper.innerHTML.trim()) {
+          innerWrapper.innerHTML = featureScreens[featureId];
+          updateFastingTimesIfActive();
+        } else {
+          innerWrapper.classList.add('switching');
+          setTimeout(() => {
+            innerWrapper.innerHTML = featureScreens[featureId];
+            updateFastingTimesIfActive();
+            innerWrapper.classList.remove('switching');
+          }, 150);
+        }
+      }
+    }
+
+    if (shouldScroll) {
+      scrollToFeatureProgress(featureId);
+    }
+  }
+
+  function scrollToFeatureProgress(featureId) {
+    if (window.innerWidth <= 768) {
+      const card = document.querySelector(`.feature-card[data-feature="${featureId}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    const track = document.querySelector('.features-scroll-track');
+    if (!track) return;
+
+    const featureIds = ['nutrients', 'ai-coach', 'stool', 'recipes', 'fasting', 'analytics'];
+    const idx = featureIds.indexOf(featureId);
+    if (idx === -1) return;
+
+    const rect = track.getBoundingClientRect();
+    const trackTop = rect.top + window.scrollY;
+    const scrollDistance = rect.height - window.innerHeight;
+    
+    const targetProgress = (idx + 0.5) / 6;
+    const targetScrollY = trackTop + targetProgress * scrollDistance;
+
+    isScrollingToCard = true;
+    window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
+
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      isScrollingToCard = false;
+    }, 1000);
+  }
+
+  // Scrollspy logic
+  window.addEventListener('scroll', () => {
+    if (window.innerWidth <= 768) return;
+    if (isScrollingToCard) return;
+
+    const track = document.querySelector('.features-scroll-track');
+    if (!track) return;
+
+    const rect = track.getBoundingClientRect();
+    const scrollDistance = rect.height - window.innerHeight;
+    if (scrollDistance <= 0) return;
+
+    let progress = -rect.top / scrollDistance;
+    progress = Math.max(0, Math.min(1, progress));
+
+    const featureIds = ['nutrients', 'ai-coach', 'stool', 'recipes', 'fasting', 'analytics'];
+    const zoneSize = 1 / 6;
+    const idx = Math.min(5, Math.floor(progress / zoneSize));
+    const activeFeature = featureIds[idx];
+
+    if (activeFeature) {
+      switchFeature(activeFeature, false);
+    }
+  });
+
+  // Set default active feature on load
+  document.addEventListener('DOMContentLoaded', () => {
+    switchFeature('nutrients', false);
+  });
 </script>
 </body>
 </html>
