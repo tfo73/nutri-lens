@@ -244,7 +244,7 @@ class OnboardingData {
 
 enum _StepId {
   // Section 1 – Karşılama
-  welcome, login, accountNotFound, comparison, longevity, recipeFeature,
+  welcome, login, accountNotFound, longevity, comparison, comparisonTable, recipeFeature,
   // Section 2 – Tanışma
   name, primaryGoals, goalConfirm, howHeard,
   // Section 3 – Kişiselleştirme 1
@@ -276,6 +276,8 @@ enum _Section {
   s7Processing,
   s8Done,
 }
+
+enum _RowState { check, cross, dash }
 
 
 // =============================================================================
@@ -674,6 +676,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             _data.pastWeightLoss == true;
       case _StepId.accountNotFound:
       case _StepId.recipeFeature:
+      case _StepId.comparison:
         return false;
       default:
         return true;
@@ -692,6 +695,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case _StepId.login:
       case _StepId.accountNotFound:
       case _StepId.comparison:
+      case _StepId.comparisonTable:
       case _StepId.longevity:
       case _StepId.recipeFeature:
         return _Section.s1Welcome;
@@ -833,7 +837,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _navigateTo(_StepId step) {
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() => _current = step);
+    final steps = _activeSteps;
+    final idx = steps.indexOf(step);
+    setState(() {
+      _current = step;
+      if (idx >= 0) {
+        _completedSteps = idx;
+      }
+    });
 
     if (step == _StepId.name) {
       Future.delayed(const Duration(milliseconds: 400), () {
@@ -853,9 +864,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (step == _StepId.goalConfirm) {
       _goalConfirmVisitCount++;
     }
-    if (step == _StepId.comparison && !_comparisonPlayed) {
-      _comparisonPlayed = true;
-      _comparisonCtrl.forward();
+    if (step == _StepId.comparison || step == _StepId.comparisonTable) {
+      _comparisonCtrl.forward(from: 0.0);
     }
     if (step == _StepId.completion) {
       _completionCtrl.forward();
@@ -1111,8 +1121,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         _navigateTo(_StepId.rateUs);
         return;
       }
+      if (_current == _StepId.longevity) {
+        _navigateTo(_StepId.login);
+        return;
+      }
+      if (_current == _StepId.comparisonTable) {
+        _navigateTo(_StepId.longevity);
+        return;
+      }
       int prevIdx = idx - 1;
-      while (prevIdx > 0 && _isTransitionStep(steps[prevIdx])) {
+      while (prevIdx > 0 && (
+        _isTransitionStep(steps[prevIdx]) || 
+        steps[prevIdx] == _StepId.login || 
+        steps[prevIdx] == _StepId.accountNotFound
+      )) {
         prevIdx--;
       }
       _navigateTo(steps[prevIdx]);
@@ -1428,7 +1450,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ? () {
               HapticFeedback.mediumImpact();
               if (isWelcome) {
-                _navigateTo(_StepId.comparison);
+                _navigateTo(_StepId.longevity);
               } else {
                 _next();
               }
@@ -1543,7 +1565,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 button,
               ],
             )
-          : button,
+          : (_current == _StepId.comparisonTable
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _t(
+                        '* Değerler piyasadaki ortalama uygulamalar temel alınarak gösterilmiştir.',
+                        '* Values are shown based on average applications on the market.'
+                      ),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _kTextSub,
+                        height: 1.3,
+                        fontFamily: theme.textTheme.bodyMedium?.fontFamily,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    button,
+                  ],
+                )
+              : button),
     );
   }
 
@@ -1720,6 +1763,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         return _stepAccountNotFound();
       case _StepId.comparison:
         return _stepComparison();
+      case _StepId.comparisonTable:
+        return _stepComparisonTable();
       case _StepId.longevity:
         return _stepLongevity();
       case _StepId.recipeFeature:
@@ -1830,90 +1875,75 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         ? const [Color(0xFF58A6FF), Color(0xFFC0E0FF), Color(0xFF58A6FF)]
         : const [Color(0xFF0969DA), Color(0xFF4393E4), Color(0xFF0969DA)];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedBuilder(
-            animation: _logoCtrl,
-            builder: (_, child) => Opacity(
-              opacity: _logoFade.value,
-              child: Transform.scale(
-                scale: _logoScale.value,
-                child: SizedBox(
-                  width: 280,
-                  height: 280,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child: Image.asset('assets/onboarding/intro.webp', fit: BoxFit.contain),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 36),
-          // Title with gradient "sen" – 3 lines
-          RichText(
-            textAlign: TextAlign.center,
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: textMain,
-                height: 1.3,
-              ),
-              children: [
-                TextSpan(text: _t('Hücresel gençlik ve uzun ', 'Welcome to your cellular youth & ')),
-                TextSpan(
-                  text: _t('yaşam', 'longevity'),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    shadows: [
-                      Shadow(
-                        color: accentColor.withValues(alpha: 0.6),
-                        blurRadius: 16,
-                        offset: const Offset(0, 0),
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: _logoCtrl,
+                builder: (_, child) => Opacity(
+                  opacity: _logoFade.value,
+                  child: Transform.scale(
+                    scale: _logoScale.value,
+                    child: SizedBox(
+                      width: 280,
+                      height: 280,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: Image.asset('assets/onboarding/intro.webp', fit: BoxFit.contain),
                       ),
-                    ],
-                    foreground: Paint()
-                      ..shader = LinearGradient(
-                        colors: gradientColors,
-                      ).createShader(const Rect.fromLTWH(0, 0, 100, 40)),
+                    ),
                   ),
                 ),
-                TextSpan(
-                    text: _t(' yolculuğuna hoş geldin! ✨', ' journey! ✨'),
-                    style: TextStyle(color: textMain)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          RichText(
-            textAlign: TextAlign.center,
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: 13,
-                color: textMain,
-                height: 1.6,
-                fontFamily: theme.textTheme.bodyMedium?.fontFamily,
               ),
-              children: [
-                TextSpan(text: _t('Artık tahminlerle değil, verilerle ilerleme zamanı.\n', 'No more guessing, time to use data.\n')),
-                TextSpan(
-                  text: _t('65 farklı mikro besin analizi', '65 different micro nutrient analysis'),
-                  style: TextStyle(color: textMain, fontWeight: FontWeight.w600),
+              const SizedBox(height: 36),
+              // Title with standard text style (no blue gradient for yaşam/longevity)
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: textMain,
+                    height: 1.3,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: _t(
+                        'Hücresel gençlik ve uzun yaşam yolculuğuna hoş\u{00A0}geldin!\u{00A0}✨',
+                        'Welcome to your\ncellular youth and\nlongevity journey! ✨'
+                      ),
+                    ),
+                  ],
                 ),
-                TextSpan(text: _t(' ve ', ' and ')),
-                TextSpan(
-                  text: _t('uzun yaşam', 'longevity'),
-                  style: TextStyle(color: textMain, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: textMain.withValues(alpha: 0.85),
+                    height: 1.6,
+                    fontFamily: theme.textTheme.bodyMedium?.fontFamily,
+                  ),
+                  children: [
+                    TextSpan(text: _t('Kulaktan dolma bilgilerle değil, ', 'Move forward with your ')),
+                    TextSpan(
+                      text: _t('vücudunun gerçek ihtiyaçlarıyla', 'body\'s real needs'),
+                      style: TextStyle(color: textMain, fontWeight: FontWeight.w700),
+                    ),
+                    TextSpan(text: _t(' ilerle.', ', not guesswork.')),
+                  ],
                 ),
-                TextSpan(text: _t('\nodaklı yaklaşımımızla hücresel sağlığını en üst seviyeye taşıyalım.', '\noriented approach to bring your cellular health to the highest level.')),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1934,7 +1964,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           RichText(
             textAlign: TextAlign.center,
             text: TextSpan(
-              style: TextStyle(fontSize: 13, color: _kTextSub, height: 1.5),
+              style: TextStyle(fontSize: 15, color: _kTextSub, height: 1.5),
               children: [
                 TextSpan(text: _t('Daha önce de mi bizimleydin? Hesabına ', 'Were you with us before? ')),
                 TextSpan(
@@ -1968,7 +1998,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ],
           const SizedBox(height: 28),
           GestureDetector(
-            onTap: () => _navigateTo(_StepId.comparison),
+            onTap: () => _navigateTo(_StepId.longevity),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -2021,7 +2051,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const SizedBox(height: 48),
           _authButton(
             label: _t('Yolculuğa Başla →', 'Start Journey →'),
-            onTap: () => _navigateTo(_StepId.comparison),
+            onTap: () => _navigateTo(_StepId.longevity),
           ),
           const SizedBox(height: 16),
           GestureDetector(
@@ -2065,13 +2095,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           RichText(
             textAlign: TextAlign.center,
             text: TextSpan(
-              style: TextStyle(fontSize: 13, color: _kTextSub, height: 1.6),
+              style: TextStyle(fontSize: 15, color: _kTextSub, height: 1.6),
               children: [
                 TextSpan(
                   text: 'LensEat ',
                   style: TextStyle(color: _kBlue, fontWeight: FontWeight.w700),
                 ),
-                TextSpan(text: _t('sadece kilo takibi değil, mikro besin analiziyle\n', 'is not just about weight tracking, but with micro nutrient analysis,\n')),
+                TextSpan(text: _t('sadece kalori takibiyle değil,\nmikro besin analiziyle de ', 'is not just about calorie tracking, but also with micro nutrient analysis,\n')),
                 TextSpan(
                   text: _t('hücresel sağlığını', 'your cellular health'),
                   style: TextStyle(color: _tw, fontWeight: FontWeight.w600),
@@ -2081,7 +2111,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   text: _t('uzun ömürlülüğünü', 'your longevity'),
                   style: TextStyle(color: _tw, fontWeight: FontWeight.w600),
                 ),
-                TextSpan(text: _t('\nartırmayı hedefler.', '\naims to increase.')),
+                TextSpan(text: _t(' artırmayı hedefler.', '\naims to increase.')),
               ],
             ),
           ),
@@ -2102,7 +2132,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ],
             ),
-            child: const _LongevityChart(),
+            child: _LongevityChart(active: _current == _StepId.longevity),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _t(
+              '* Bu grafik, beslenme takibinin uzun vadeli etkilerini inceleyen PREMIER Klinik Araştırması ve literatürdeki mikro besin yeterlilik verileri temel alınarak simüle edilmiştir.',
+              '* This graph is simulated based on the PREMIER Clinical Trial studying the long-term effects of nutrition tracking and micro-nutrient sufficiency data in literature.'
+            ),
+            style: const TextStyle(
+              fontSize: 10,
+              color: _kTextSub,
+              height: 1.3,
+            ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
         ],
@@ -2134,7 +2177,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: TextStyle(fontSize: 13, color: _kTextSub, height: 1.6),
+                  style: TextStyle(fontSize: 15, color: _kTextSub, height: 1.6),
                   children: [
                     TextSpan(
                       text: 'LensEat ',
@@ -2198,6 +2241,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 52), // Offset for progress bar
               Text(
                 _t('Besin analizinde 8 kat\ndaha fazlasını keşfet', 'Discover 8 times more\nin nutrient analysis'),
                 textAlign: TextAlign.center,
@@ -2213,7 +2257,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 textAlign: TextAlign.center,
                 text: TextSpan(
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 15,
                     color: _kTextSub,
                     height: 1.6,
                   ),
@@ -2398,6 +2442,297 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         );
       },
     );
+  }
+
+  Widget _stepComparisonTable() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textMain = theme.colorScheme.onSurface;
+
+    // CurvedAnimations for staggered Row item entrances
+    final anim1 = CurvedAnimation(
+      parent: _comparisonCtrl,
+      curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
+    );
+    final anim2 = CurvedAnimation(
+      parent: _comparisonCtrl,
+      curve: const Interval(0.12, 0.52, curve: Curves.easeOutBack),
+    );
+    final anim3 = CurvedAnimation(
+      parent: _comparisonCtrl,
+      curve: const Interval(0.24, 0.64, curve: Curves.easeOutBack),
+    );
+    final anim4 = CurvedAnimation(
+      parent: _comparisonCtrl,
+      curve: const Interval(0.36, 0.76, curve: Curves.easeOutBack),
+    );
+    final anim5 = CurvedAnimation(
+      parent: _comparisonCtrl,
+      curve: const Interval(0.48, 0.88, curve: Curves.easeOutBack),
+    );
+    final anim6 = CurvedAnimation(
+      parent: _comparisonCtrl,
+      curve: const Interval(0.6, 1.0, curve: Curves.easeOutBack),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(), // Disable vertical scroll
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 36), // Offset for progress bar (reduced from 52)
+              Text(
+                _t('Diğerleri gibi değiliz!', "We're not like the others!"),
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: textMain,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 10), // Reduced from 16
+              Text(
+                _t(
+                  'Sağlık yolculuğunda sıradan uygulamalar gibi değiliz!',
+                  'We are not like ordinary health apps on your journey!'
+                ),
+                style: TextStyle(
+                  fontSize: 15,
+                  color: _kTextSub,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 16), // Reduced from 28
+              
+              // Table Card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(
+                  color: isDark ? _kCard : const Color(0xFFF6F8FA),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF30363D) : const Color(0xFFE1E4E8),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Header Row
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 4, child: const SizedBox()),
+                          Expanded(
+                            flex: 2,
+                            child: Center(
+                              child: Text(
+                                'LENSEAT',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF0969DA),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Center(
+                              child: Text(
+                                _t('DİĞER*', 'OTHERS*'),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: _kTextSub,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, thickness: 1),
+                    const SizedBox(height: 16),
+ 
+                    // Row 1: 4 Different Meal Analyses
+                    _buildComparisonRow(
+                      title: _t('4 Farklı Yemek Analizi', '4 Different Meal Analyses'),
+                      subtitle: _t('Görsel, anlatım, barkod veya manuel giriş', 'Image, description, barcode or manual entry'),
+                      anim: anim1,
+                      isTr: true,
+                      otherState: _RowState.cross,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12), // Reduced from 16
+ 
+                    // Row 2: Micro-nutrient tracking
+                    _buildComparisonRow(
+                      title: _t('Mikro Besin Analizi', 'Micro-nutrient Analysis'),
+                      subtitle: _t('Vitamin, mineral vb. mikro besin takibi', 'Tracking of vitamins, minerals & micro-nutrients'),
+                      anim: anim2,
+                      isTr: true,
+                      otherState: _RowState.dash,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12), // Reduced from 16
+ 
+                    // Row 3: 4 Different Fasting Modes
+                    _buildComparisonRow(
+                      title: _t('4 Farklı Oruç Modu', '4 Different Fasting Modes'),
+                      subtitle: _t('Farklı protokollerle aralıklı oruç takibi', 'Intermittent fasting tracking with different protocols'),
+                      anim: anim3,
+                      isTr: true,
+                      otherState: _RowState.cross,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12), // Reduced from 16
+ 
+                    // Row 4: Personalized Recipes
+                    _buildComparisonRow(
+                      title: _t('Kişisel Tarif Önerileri', 'Personalized Recipes'),
+                      subtitle: _t('Günlük verilerine göre tarif tavsiyeleri', 'Recipe suggestions based on your daily data'),
+                      anim: anim4,
+                      isTr: true,
+                      otherState: _RowState.dash,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12), // Reduced from 16
+
+                    // Row 5: AI Chat Coach
+                    _buildComparisonRow(
+                      title: _t('Birebir Beslenme Koçu', 'Personal Nutrition Coach'),
+                      subtitle: _t('Seni dinleyen, sorularını yanıtlayan ve yol gösteren asistan', 'Assistant that listens to you, answers questions & guides you'),
+                      anim: anim5,
+                      isTr: true,
+                      otherState: _RowState.dash,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12), // Reduced from 16
+
+                    // Row 6: Progress Reports
+                    _buildComparisonRow(
+                      title: _t('Haftalık Gelişim Raporları', 'Weekly Progress Reports'),
+                      subtitle: _t('Kilo, besin ve hücresel sağlık analizleri', 'Weekly weight, nutrition & cellular reports'),
+                      anim: anim6,
+                      isTr: true,
+                      otherState: _RowState.cross,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildComparisonRow({
+    required String title,
+    required String subtitle,
+    required Animation<double> anim,
+    required bool isTr,
+    required _RowState otherState,
+    required bool isDark,
+  }) {
+    return Row(
+      children: [
+        // Feature description
+        Expanded(
+          flex: 4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _kTextSub,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // LensEat
+        Expanded(
+          flex: 2,
+          child: Center(
+            child: ScaleTransition(
+              scale: anim,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0969DA),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 14),
+              ),
+            ),
+          ),
+        ),
+
+        // Other
+        Expanded(
+          flex: 2,
+          child: Center(
+            child: ScaleTransition(
+              scale: anim,
+              child: _buildOtherIcon(otherState, isDark),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOtherIcon(_RowState state, bool isDark) {
+    if (state == _RowState.cross) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          Icons.close,
+          color: isDark ? Colors.white30 : Colors.black26,
+          size: 14,
+        ),
+      );
+    } else {
+      return Text(
+        '—',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white30 : Colors.black26,
+        ),
+      );
+    }
   }
 
   Widget _authButton({
@@ -2624,7 +2959,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       textAlign: TextAlign.center,
       text: TextSpan(
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: 15,
           color: _kTextSub,
           height: 1.4,
           fontFamily: 'Inter',
@@ -2667,7 +3002,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ('✏️', _t('Diğer', 'Other')),
     ];
     return _shell(
-      title: _t('Ana hedefiniz nedir?', 'What is your primary goal?'),
+      title: _t('Ana hedefin nedir?', 'What is your primary goal?'),
       subtitle: _t('Hedeflerin konusunda sınır tanıma. Sana en önemli olan tüm başlıkları belirle!', 'Do not limit yourself with your goals. Mark all that matter to you!'),
       child: _multiSelectWithOther(
         options: options,
@@ -2687,6 +3022,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // ── S2: Goal confirm (shown as system Overlay, not a PageView page) ─────────
 
   Widget _stepGoalConfirm() {
+    final hasMultipleGoals = _data.primaryGoals.length > 1;
     return GestureDetector(
       onTap: _next,
       behavior: HitTestBehavior.opaque,
@@ -2714,7 +3050,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40),
                 child: Text(
-                  _t('Merak etme, bu hedefine ulaşman için yanındayız 💪', 'Don\'t worry, we are with you to reach this goal 💪'),
+                  hasMultipleGoals
+                      ? _t('Merak etme, bu hedeflerine ulaşman için yanındayız 💪', 'Don\'t worry, we are with you to reach these goals 💪')
+                      : _t('Merak etme, bu hedefine ulaşman için yanındayız 💪', 'Don\'t worry, we are with you to reach this goal 💪'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20,
@@ -5681,7 +6019,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
-                          style: TextStyle(fontSize: 13, color: _kTextSub, height: 1.6),
+                          style: TextStyle(fontSize: 15, color: _kTextSub, height: 1.6),
                           children: [
                             TextSpan(text: 'LensEat',
                                 style: TextStyle(color: _kBlue, fontWeight: FontWeight.w700)),
@@ -5828,7 +6166,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       subtitle as String,
                       textAlign: centered ? TextAlign.center : TextAlign.start,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 15,
                         color: _kTextSub,
                         height: 1.5,
                       ),
@@ -7356,7 +7694,8 @@ class _AnalysisPageState extends State<_AnalysisPage> with TickerProviderStateMi
 // =============================================================================
 
 class _LongevityChart extends StatefulWidget {
-  const _LongevityChart();
+  final bool active;
+  const _LongevityChart({required this.active});
 
   @override
   State<_LongevityChart> createState() => _LongevityChartState();
@@ -7373,7 +7712,19 @@ class _LongevityChartState extends State<_LongevityChart>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
-    _ctrl.forward();
+    if (widget.active) {
+      _ctrl.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_LongevityChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) {
+      _ctrl.forward(from: 0.0);
+    } else if (!widget.active) {
+      _ctrl.value = 0.0;
+    }
   }
 
   @override
@@ -7402,6 +7753,7 @@ class _LongevityPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final smoothProgress = Curves.easeInOutCubic.transform(progress);
     final padding = const EdgeInsets.fromLTRB(40, 40, 40, 40);
     final w = size.width - padding.left - padding.right;
     final h = size.height - padding.top - padding.bottom;
@@ -7447,7 +7799,7 @@ class _LongevityPainter extends CustomPainter {
 
     final baseLinePath = Path();
     baseLinePath.moveTo(startX, baselineY);
-    baseLinePath.lineTo(startX + (w * progress), baselineY);
+    baseLinePath.lineTo(startX + (w * smoothProgress), baselineY);
     canvas.drawPath(baseLinePath, paintBase);
 
     // 3. Longevity Line (Rising Blue Curve)
@@ -7460,7 +7812,7 @@ class _LongevityPainter extends CustomPainter {
     final blueCurvePath = Path();
     blueCurvePath.moveTo(startX, baselineY);
     
-    for (double t = 0; t <= progress; t += 0.01) {
+    for (double t = 0; t <= smoothProgress; t += 0.01) {
       final x = _cubic(startX, cp1.dx, cp2.dx, targetPoint.dx, t);
       final y = _cubic(baselineY, cp1.dy, cp2.dy, targetPoint.dy, t);
       blueCurvePath.lineTo(x, y);
@@ -7468,20 +7820,20 @@ class _LongevityPainter extends CustomPainter {
     canvas.drawPath(blueCurvePath, paintBlue);
 
     // 4. Shade Area Between Lines
-    if (progress > 0.1) {
+    if (smoothProgress > 0.1) {
       final fillPath = Path();
       fillPath.moveTo(startX, baselineY);
-      for (double t = 0; t <= progress; t += 0.02) {
+      for (double t = 0; t <= smoothProgress; t += 0.02) {
         final x = _cubic(startX, cp1.dx, cp2.dx, targetPoint.dx, t);
         final y = _cubic(baselineY, cp1.dy, cp2.dy, targetPoint.dy, t);
         fillPath.lineTo(x, y);
       }
-      fillPath.lineTo(startX + (w * progress), baselineY);
+      fillPath.lineTo(startX + (w * smoothProgress), baselineY);
       fillPath.close();
 
       canvas.drawPath(
         fillPath,
-        Paint()..color = const Color(0xFF58A6FF).withValues(alpha: 0.15 * progress),
+        Paint()..color = const Color(0xFF58A6FF).withValues(alpha: 0.15 * smoothProgress),
       );
     }
 
@@ -7494,7 +7846,7 @@ class _LongevityPainter extends CustomPainter {
     _drawText(canvas, textPainter, "6. Ay", Offset(endX - 20, size.height - padding.bottom + 10), Colors.black);
 
     // "LensEat" label above the blue line
-    if (progress > 0.85) {
+    if (smoothProgress > 0.85) {
       _drawText(
         canvas, 
         textPainter, 
@@ -7507,7 +7859,7 @@ class _LongevityPainter extends CustomPainter {
     }
 
     // "Diğer Uygulamalar" label at the end of the black line
-    if (progress > 0.85) {
+    if (smoothProgress > 0.85) {
       _drawText(
         canvas, 
         textPainter, 
