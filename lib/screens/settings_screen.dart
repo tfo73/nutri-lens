@@ -984,22 +984,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              FutureBuilder<PackageInfo>(
-                future: PackageInfo.fromPlatform(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return Center(
-                      child: Text(
-                        'Versiyon ${snapshot.data!.version}',
-                        style: TextStyle(
-                            color: cs.onSurface.withValues(alpha: 0.3),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400),
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
+              Center(
+                child: Text(
+                  langProvider.isTurkish ? 'Versiyon 1.0.0' : 'Version 1.0.0',
+                  style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.3),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400),
+                ),
               ),
               const SizedBox(height: 32),
             ],

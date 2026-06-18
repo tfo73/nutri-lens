@@ -74,6 +74,43 @@ class _Tarif {
   final double? zinc;
   final double? potasyum;
   final double? omega3;
+  // Newly added optional fields to support all ~50 micronutrients
+  final double? sugar;
+  final double? saturatedFat;
+  final double? monoFat;
+  final double? polyFat;
+  final double? transFat;
+  final double? cholesterol;
+  final double? selenium;
+  final double? sodium;
+  final double? phosphorus;
+  final double? copper;
+  final double? manganese;
+  final double? vitaminK;
+  final double? riboflavin;
+  final double? niacin;
+  final double? pantothenic;
+  final double? folate;
+  final double? choline;
+  final double? biotin;
+  final double? omega6;
+  final double? ala;
+  final double? epa;
+  final double? dha;
+  final double? tryptophan;
+  final double? threonine;
+  final double? isoleucine;
+  final double? leucine;
+  final double? lysine;
+  final double? methionine;
+  final double? phenylalanine;
+  final double? valine;
+  final double? histidine;
+  final double? betaCarotene;
+  final double? lycopene;
+  final double? luteinZeaxanthin;
+  final double? alphaCarotene;
+
   final int dakika;
   final List<String> etiketler;
   final List<String> ogunler;
@@ -106,6 +143,41 @@ class _Tarif {
     this.zinc,
     this.potasyum,
     this.omega3,
+    this.sugar,
+    this.saturatedFat,
+    this.monoFat,
+    this.polyFat,
+    this.transFat,
+    this.cholesterol,
+    this.selenium,
+    this.sodium,
+    this.phosphorus,
+    this.copper,
+    this.manganese,
+    this.vitaminK,
+    this.riboflavin,
+    this.niacin,
+    this.pantothenic,
+    this.folate,
+    this.choline,
+    this.biotin,
+    this.omega6,
+    this.ala,
+    this.epa,
+    this.dha,
+    this.tryptophan,
+    this.threonine,
+    this.isoleucine,
+    this.leucine,
+    this.lysine,
+    this.methionine,
+    this.phenylalanine,
+    this.valine,
+    this.histidine,
+    this.betaCarotene,
+    this.lycopene,
+    this.luteinZeaxanthin,
+    this.alphaCarotene,
     required this.dakika,
     required this.etiketler,
     required this.ogunler,
@@ -172,7 +244,7 @@ const _db = <_Tarif>[
     demir: 2.2, magnezyum: 140, kalsiyum: 180, vitaminC: 12, vitaminE: 1.5, zinc: 1.5, potasyum: 280, omega3: 5.5, dakika: 5,
     etiketler: ['HAFİF', 'LİF'], ogunler: ['kahvalti', 'araOgun'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'omega3', 'magnezyum'], renk: Color(0xFF9C27B0),
-    gorselUrl: 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1532634922-8fe0b757fb13?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['3 yemek kaşığı chia', '1 su bardağı hindistan cevizi sütü', 'Meyve'],
     adimlar: ['Chia ve sütü karıştırıp buzdolabında bekletin.', 'Kıvam alınca meyvelerle süsleyin.'],
   ),
@@ -254,7 +326,7 @@ const _db = <_Tarif>[
     demir: 5.2, magnezyum: 100, kalsiyum: 90, vitaminC: 10, vitaminB1: 0.3, vitaminB6: 0.4, zinc: 2.2, potasyum: 390, dakika: 35,
     etiketler: ['VEGAN', 'YÜKSEK LİF'], ogunler: ['ogle', 'aksam'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'protein', 'demir'], renk: Color(0xFF8BC34A),
-    gorselUrl: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1547058886-af77992d478c?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['Nohut', 'Maydanoz', 'Sarımsak', 'Baharatlar'],
     adimlar: ['Malzemeleri robottan geçirin.', 'Toplar şekline getirip fırında 200°C\'de 25 dakika pişirin.'],
   ),
@@ -427,7 +499,7 @@ const _db = <_Tarif>[
     magnezyum: 40, zinc: 1.2, potasyum: 180, omega3: 0.5, dakika: 10,
     etiketler: ['PROTEİN', 'SPOR'], ogunler: ['araOgun'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'magnezyum'], renk: Color(0xFF6D4C41),
-    gorselUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['Yulaf', 'Fıstık ezmesi', 'Kakao tozu', 'Bal', 'Protein tozu (isteğe bağlı)'],
     adimlar: ['Tüm malzemeleri karıştırın.', 'Toplar şekline getirin.', 'Buzdolabında 30 dakika soğutun.'],
   ),
@@ -464,7 +536,7 @@ const _db = <_Tarif>[
     demir: 2.8, magnezyum: 70, kalsiyum: 110, vitaminB1: 0.3, vitaminB6: 0.1, zinc: 1.8, potasyum: 380, dakika: 3,
     etiketler: ['ENERJİ', 'MİNERAL'], ogunler: ['kahvalti'],
     diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['demir', 'magnezyum', 'kalsiyum'], renk: Color(0xFF8D6E63),
-    gorselUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['2 yemek kaşığı tahin', '2 yemek kaşığı üzüm pekmezi', 'Tam buğday ekmek'],
     adimlar: ['Tahini tabağa alın.', 'Üzerine pekmezi gezdirin.', 'Tost ya da ekmekle servis edin.'],
   ),
@@ -474,7 +546,7 @@ const _db = <_Tarif>[
     demir: 3.0, magnezyum: 85, kalsiyum: 30, vitaminB1: 0.4, vitaminB6: 0.3, zinc: 1.8, potasyum: 360, dakika: 20,
     etiketler: ['YÜKSEK LİF', 'ENERJİ'], ogunler: ['ogle', 'aksam'],
     diyetler: ['vegan', 'vejetaryen'], zenginOldugu: ['lif', 'magnezyum', 'demir'], renk: Color(0xFFD4A056),
-    gorselUrl: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1505576399279-565b52d4ac71?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['1 su bardağı iri bulgur', '1 soğan', 'Şehriye', 'Domates salçası', 'Zeytinyağı'],
     adimlar: ['Soğanı zeytinyağında kavurun.', 'Salça ve bulguru ekleyip kavurun.', 'Sıcak su ekleyip kısık ateşte demleyin.'],
   ),
@@ -483,7 +555,7 @@ const _db = <_Tarif>[
     demir: 2.2, magnezyum: 45, kalsiyum: 55, vitaminA: 600, vitaminC: 25, vitaminB6: 0.2, zinc: 0.8, potasyum: 420, dakika: 35,
     etiketler: ['VEGAN', 'DÜŞÜK KALORİ'], ogunler: ['ogle', 'aksam'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'vitaminA'], renk: Color(0xFF4CAF50),
-    gorselUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['500g taze fasulye', '2 domates', '1 soğan', 'Zeytinyağı', 'Şeker'],
     adimlar: ['Soğanı zeytinyağında kavurun.', 'Domates ve fasulyeleri ekleyin.', 'Kısık ateşte 30 dakika pişirin, soğuk servis yapın.'],
   ),
@@ -492,7 +564,7 @@ const _db = <_Tarif>[
     demir: 4.5, magnezyum: 50, kalsiyum: 50, vitaminA: 500, vitaminC: 20, vitaminB12: 1.5, vitaminB6: 0.5, zinc: 4.0, potasyum: 620, dakika: 50,
     etiketler: ['GELENEKSEL', 'YÜKSEK PROTEİN'], ogunler: ['ogle', 'aksam'],
     diyetler: ['glutensiz'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF6D4C41),
-    gorselUrl: 'https://images.unsplash.com/photo-1576866209830-589e1bfbaa4d?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['2 patlıcan', '300g kıyma', '1 soğan', 'Domates sosu', 'Zeytinyağı'],
     adimlar: ['Patlıcanları dilimleyip tuzlayın, hafif kızartın.', 'Kıymayı soğanla kavurun, domates sosunu ekleyin.', 'Katmanlar halinde dizin, fırında 35 dakika pişirin.'],
   ),
@@ -501,7 +573,7 @@ const _db = <_Tarif>[
     demir: 2.5, magnezyum: 40, kalsiyum: 80, vitaminD: 4.0, vitaminB12: 1.8, vitaminB6: 0.3, zinc: 2.0, potasyum: 350, omega3: 0.6, dakika: 15,
     etiketler: ['YÜKSEK PROTEİN', 'OMEGA-3'], ogunler: ['ogle', 'aksam'],
     diyetler: ['glutensiz', 'keto', 'karnivor'], zenginOldugu: ['protein', 'vitaminD', 'zinc'], renk: Color(0xFFFF7043),
-    gorselUrl: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1559737558-cc85392e2ee6?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['300g karides', '3 diş sarımsak', 'Tereyağı', 'Limon', 'Maydanoz'],
     adimlar: ['Sarımsağı tereyağında kavurun.', 'Karidesler pembeye dönünce limon sıkın.', 'Maydanoz ekleyip servis yapın.'],
   ),
@@ -510,7 +582,7 @@ const _db = <_Tarif>[
     demir: 4.0, magnezyum: 60, kalsiyum: 70, vitaminA: 100, vitaminC: 8, vitaminB1: 0.3, vitaminB6: 0.4, zinc: 2.0, potasyum: 480, dakika: 30,
     etiketler: ['YÜKSEK LİF', 'VEGAN'], ogunler: ['ogle', 'aksam'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'demir', 'protein'], renk: Color(0xFFD4A056),
-    gorselUrl: 'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['2 su bardağı haşlanmış nohut', '1 soğan', 'Zerdeçal', 'Kimyon', 'Zeytinyağı'],
     adimlar: ['Soğanı zeytinyağında kavurun.', 'Nohut ve baharatları ekleyin, suyunu koyun.', 'Kıvam alınca servis yapın.'],
   ),
@@ -520,7 +592,7 @@ const _db = <_Tarif>[
     demir: 1.8, magnezyum: 55, kalsiyum: 60, vitaminD: 18.0, vitaminB12: 3.5, vitaminB6: 0.7, zinc: 1.5, potasyum: 550, omega3: 2.8, dakika: 30,
     etiketler: ['OMEGA-3', 'DÜŞÜK KALORİ'], ogunler: ['aksam'],
     diyetler: ['glutensiz', 'karnivor'], zenginOldugu: ['omega3', 'protein', 'vitaminD'], renk: Color(0xFF4A8ECC),
-    gorselUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['1 levrek (400g)', 'Zeytinyağı', 'Limon', 'Havuç', 'Kereviz', 'Defne yaprağı'],
     adimlar: ['Levreği ve sebzeleri tencereye dizin.', 'Limon suyu ve zeytinyağı ekleyin.', 'Kapağı kapalı 20 dakika buharda pişirin.'],
   ),
@@ -529,7 +601,7 @@ const _db = <_Tarif>[
     demir: 6.0, magnezyum: 45, kalsiyum: 40, vitaminA: 400, vitaminB12: 2.5, vitaminB6: 0.6, zinc: 7.0, potasyum: 680, dakika: 90,
     etiketler: ['YÜKSEK PROTEİN', 'GELENEKSEL'], ogunler: ['aksam'],
     diyetler: ['glutensiz', 'karnivor'], zenginOldugu: ['protein', 'demir', 'zinc'], renk: Color(0xFF8B3A3A),
-    gorselUrl: 'https://images.unsplash.com/photo-1551881192-002c429f5a03?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['400g dana kuşbaşı', 'Patates', 'Havuç', 'Biber', 'Domates', 'Soğan', 'Zeytinyağı'],
     adimlar: ['Eti zeytinyağında sote edin.', 'Sebzeleri ekleyip kavurun.', 'Sıcak su koyup 75 dakika kısık ateşte pişirin.'],
   ),
@@ -538,7 +610,7 @@ const _db = <_Tarif>[
     demir: 1.5, magnezyum: 50, kalsiyum: 40, vitaminC: 15, vitaminB6: 0.2, zinc: 0.6, potasyum: 380, dakika: 40,
     etiketler: ['VEGAN', 'DÜŞÜK KALORİ'], ogunler: ['ogle', 'aksam'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['lif', 'magnezyum'], renk: Color(0xFF558B2F),
-    gorselUrl: 'https://images.unsplash.com/photo-1596547609652-9cf5d8c10616?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['4 adet enginar', 'Zeytinyağı', 'Limon', 'Soğan', 'Bezelye', 'Şeker'],
     adimlar: ['Enginarları limonlu suda bekletin.', 'Soğan ve bezelyeyle tencereye koyun.', 'Zeytinyağı ve limon ekleyip 30 dakika pişirin, soğutun.'],
   ),
@@ -557,7 +629,7 @@ const _db = <_Tarif>[
     demir: 0.8, magnezyum: 20, kalsiyum: 180, vitaminA: 250, vitaminC: 15, vitaminB12: 0.5, zinc: 1.2, potasyum: 280, dakika: 5,
     etiketler: ['YÜKSEK PROTEİN', 'DÜŞÜK KALORİ'], ogunler: ['araOgun', 'kahvalti'],
     diyetler: ['vejetaryen', 'glutensiz'], zenginOldugu: ['protein', 'kalsiyum'], renk: Color(0xFFE91E63),
-    gorselUrl: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['150g lor peyniri', '2 domates', 'Zeytinyağı', 'Kekik', 'Tuz'],
     adimlar: ['Domatesleri dilimleyin.', 'Lor peyniri ile tabağa dizin.', 'Zeytinyağı ve kekik gezdirerek servis edin.'],
   ),
@@ -566,7 +638,7 @@ const _db = <_Tarif>[
     demir: 5.5, magnezyum: 75, kalsiyum: 50, vitaminA: 300, vitaminC: 18, vitaminB1: 0.4, vitaminB6: 0.4, zinc: 2.2, potasyum: 490, dakika: 30,
     etiketler: ['VEGAN', 'YÜKSEK DEMİR'], ogunler: ['ogle', 'araOgun'],
     diyetler: ['vegan', 'vejetaryen', 'glutensiz'], zenginOldugu: ['demir', 'lif', 'protein'], renk: Color(0xFFB05C1A),
-    gorselUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=600',
+    gorselUrl: 'https://images.unsplash.com/photo-1547058886-af77992d478c?auto=format&fit=crop&q=80&w=600',
     malzemeler: ['1 su bardağı kırmızı mercimek', '½ su bardağı ince bulgur', '1 soğan', 'Salça', 'Zeytinyağı', 'Maydanoz', 'Limon'],
     adimlar: ['Mercimeği haşlayın, suyunu süzün.', 'Bulgur, salça ve yağı ekleyip yoğurun.', 'Köfte şekli verip maydanoz ve limonla servis yapın.'],
   ),
@@ -715,15 +787,20 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
       return true;
     }).toList();
 
+    // Görseli olan tarifleri önceliklendir (olmayanları listenin sonuna at)
+    final recipesWithImage = safeRecipes.where((r) => r.gorselUrl.isNotEmpty && r.gorselUrl.startsWith('http')).toList();
+    final recipesWithoutImage = safeRecipes.where((r) => r.gorselUrl.isEmpty || !r.gorselUrl.startsWith('http')).toList();
+    final finalRecipes = [...recipesWithImage, ...recipesWithoutImage];
+
     // ─── Bölüm Listeleri ──────────────────────────────────────────────────────
     
     // Metabolism: Always energetic
-    final metabolismRecipes = safeRecipes.where((r) => r.etiketler.contains('ENERJİ') || r.etiketler.contains('METABOLİZMA')).take(5).toList();
-    if (metabolismRecipes.isEmpty) metabolismRecipes.addAll(safeRecipes.take(5));
+    final metabolismRecipes = finalRecipes.where((r) => r.etiketler.contains('ENERJİ') || r.etiketler.contains('METABOLİZMA')).take(5).toList();
+    if (metabolismRecipes.isEmpty) metabolismRecipes.addAll(finalRecipes.take(5));
 
     // Main Section: Personalized based on gaps
-    final lunchRecipesAll = safeRecipes.where((r) => r.ogunler.contains(currentPeriod.dbKey)).toList();
-    if (lunchRecipesAll.isEmpty) lunchRecipesAll.addAll(safeRecipes.take(5));
+    final lunchRecipesAll = finalRecipes.where((r) => r.ogunler.contains(currentPeriod.dbKey)).toList();
+    if (lunchRecipesAll.isEmpty) lunchRecipesAll.addAll(finalRecipes.take(5));
 
     if (gaps.isNotEmpty) {
       lunchRecipesAll.sort((a, b) {
@@ -734,8 +811,8 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     }
     final lunchRecipes = lunchRecipesAll.take(5).toList();
 
-    final eveningRecipes = safeRecipes.where((r) => r.ogunler.contains(hour < 12 ? 'kahvalti' : 'aksam')).take(5).toList();
-    if (eveningRecipes.isEmpty) eveningRecipes.addAll(safeRecipes.reversed.take(5));
+    final eveningRecipes = finalRecipes.where((r) => r.ogunler.contains(hour < 12 ? 'kahvalti' : 'aksam')).take(5).toList();
+    if (eveningRecipes.isEmpty) eveningRecipes.addAll(finalRecipes.reversed.take(5));
 
     return ListView(
       key: const PageStorageKey<String>('recipes_tab'),
@@ -883,27 +960,67 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     );
   }
 
-  FoodEntry _foodEntryFromTarif(_Tarif r, String mealType) {
-    final nutritionData = NutritionData(
+  NutritionData _getEstimatedNutrition(_Tarif r) {
+    final base = NutritionData(
       calories: r.kalori.toDouble(),
       protein: r.protein,
       carbohydrates: r.karb,
       fat: r.yag,
       fiber: r.lif,
-      iron: r.demir ?? 0,
-      magnesium: r.magnezyum ?? 0,
-      calcium: r.kalsiyum ?? 0,
-      vitaminA: r.vitaminA ?? 0,
-      vitaminC: r.vitaminC ?? 0,
-      vitaminD: r.vitaminD ?? 0,
-      vitaminE: r.vitaminE ?? 0,
-      vitaminB12: r.vitaminB12 ?? 0,
-      vitaminB6: r.vitaminB6 ?? 0,
-      thiamine: r.vitaminB1 ?? 0,
-      zinc: r.zinc ?? 0,
-      potassium: r.potasyum ?? 0,
-      omega3: r.omega3 ?? 0,
+      sugar: r.sugar ?? (r.karb * 0.2), // Estimate sugar if not provided
+      saturatedFat: r.saturatedFat ?? (r.yag * 0.15),
+      monoFat: r.monoFat ?? (r.yag * 0.45),
+      polyFat: r.polyFat ?? (r.yag * 0.3),
+      transFat: r.transFat ?? (r.yag * 0.01),
+      cholesterol: r.cholesterol ?? (r.ogunler.contains('kahvalti') || r.ad.toLowerCase().contains('tavuk') || r.ad.toLowerCase().contains('somon') || r.ad.toLowerCase().contains('biftek') || r.ad.toLowerCase().contains('köfte') ? 45.0 : 0.0),
+      selenium: r.selenium ?? (r.protein * 1.2), // µg
+      magnesium: r.magnezyum ?? (r.lif * 15.0 + 10.0), // mg
+      iron: r.demir ?? (r.protein * 0.15 + 0.5), // mg
+      zinc: r.zinc ?? (r.protein * 0.12 + 0.3), // mg
+      calcium: r.kalsiyum ?? (r.ad.toLowerCase().contains('peynir') || r.ad.toLowerCase().contains('yoğurt') ? 150.0 : r.protein * 5.0 + 15.0), // mg
+      potassium: r.potasyum ?? (r.protein * 15.0 + r.lif * 30.0 + 100.0), // mg
+      sodium: r.sodium ?? 120.0, // mg
+      phosphorus: r.phosphorus ?? (r.protein * 8.0 + 40.0), // mg
+      copper: r.copper ?? (r.lif * 0.05 + 0.08), // mg
+      manganese: r.manganese ?? (r.lif * 0.15 + 0.1), // mg
+      vitaminA: r.vitaminA ?? (r.ad.toLowerCase().contains('havuç') || r.ad.toLowerCase().contains('ıspanak') || r.ad.toLowerCase().contains('biber') ? 600.0 : 40.0), // µg
+      vitaminC: r.vitaminC ?? (r.ad.toLowerCase().contains('limon') || r.ad.toLowerCase().contains('biber') || r.ad.toLowerCase().contains('çilek') || r.ad.toLowerCase().contains('meyve') ? 45.0 : 5.0), // mg
+      vitaminD: r.vitaminD ?? (r.ad.toLowerCase().contains('somon') || r.ad.toLowerCase().contains('balık') ? 15.0 : (r.ad.toLowerCase().contains('yumurta') ? 1.5 : 0.0)), // µg
+      vitaminE: r.vitaminE ?? (r.yag * 0.2 + 0.5), // mg
+      vitaminK: r.vitaminK ?? (r.ad.toLowerCase().contains('ıspanak') || r.ad.toLowerCase().contains('roka') || r.ad.toLowerCase().contains('yeşil') ? 120.0 : 8.0), // µg
+      vitaminB12: r.vitaminB12 ?? (r.ad.toLowerCase().contains('somon') || r.ad.toLowerCase().contains('balık') || r.ad.toLowerCase().contains('biftek') ? 3.0 : (r.ad.toLowerCase().contains('tavuk') || r.ad.toLowerCase().contains('yumurta') ? 0.8 : 0.0)), // µg
+      thiamine: r.vitaminB1 ?? (r.protein * 0.015 + 0.05), // mg
+      riboflavin: r.riboflavin ?? (r.protein * 0.012 + 0.04), // mg
+      niacin: r.niacin ?? (r.protein * 0.2 + 0.5), // mg
+      pantothenic: r.pantothenic ?? (r.protein * 0.08 + 0.2), // mg
+      vitaminB6: r.vitaminB6 ?? (r.protein * 0.018 + 0.08), // mg
+      folate: r.folate ?? (r.lif * 8.0 + 15.0), // µg
+      choline: r.choline ?? (r.ad.toLowerCase().contains('yumurta') ? 125.0 : r.protein * 3.0 + 10.0), // mg
+      biotin: r.biotin ?? (r.protein * 0.2 + 0.5), // µg
+      omega3: r.omega3 ?? (r.ad.toLowerCase().contains('somon') || r.ad.toLowerCase().contains('balık') ? 2.5 : (r.ad.toLowerCase().contains('chia') || r.ad.toLowerCase().contains('ceviz') ? 1.5 : r.yag * 0.03)), // g
+      omega6: r.omega6 ?? (r.yag * 0.15), // g
+      ala: r.ala ?? (r.ad.toLowerCase().contains('chia') || r.ad.toLowerCase().contains('ceviz') ? 1.2 : 0.1), // g
+      epa: r.epa ?? (r.ad.toLowerCase().contains('somon') || r.ad.toLowerCase().contains('balık') ? 0.8 : 0.0), // g
+      dha: r.dha ?? (r.ad.toLowerCase().contains('somon') || r.ad.toLowerCase().contains('balık') ? 1.2 : 0.0), // g
+      tryptophan: r.tryptophan ?? (r.protein * 0.012), // g
+      threonine: r.threonine ?? (r.protein * 0.038), // g
+      isoleucine: r.isoleucine ?? (r.protein * 0.048), // g
+      leucine: r.leucine ?? (r.protein * 0.078), // g
+      lysine: r.lysine ?? (r.protein * 0.065), // g
+      methionine: r.methionine ?? (r.protein * 0.022), // g
+      phenylalanine: r.phenylalanine ?? (r.protein * 0.045), // g
+      valine: r.valine ?? (r.protein * 0.050), // g
+      histidine: r.histidine ?? (r.protein * 0.028), // g
+      betaCarotene: r.betaCarotene ?? (r.ad.toLowerCase().contains('havuç') || r.ad.toLowerCase().contains('ıspanak') || r.ad.toLowerCase().contains('biber') ? 3000.0 : 120.0), // µg
+      lycopene: r.lycopene ?? (r.ad.toLowerCase().contains('domates') ? 4500.0 : 0.0), // µg
+      luteinZeaxanthin: r.luteinZeaxanthin ?? (r.ad.toLowerCase().contains('ıspanak') || r.ad.toLowerCase().contains('yumurta') ? 2000.0 : 50.0), // µg
+      alphaCarotene: r.alphaCarotene ?? (r.ad.toLowerCase().contains('havuç') ? 800.0 : 0.0), // µg
     );
+    return base;
+  }
+
+  FoodEntry _foodEntryFromTarif(_Tarif r, String mealType) {
+    final nutritionData = _getEstimatedNutrition(r);
 
     return FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -1124,18 +1241,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(child: Text(r.ad, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      Row(
-                        children: [
-                          const Icon(Icons.star_rounded, color: Colors.green, size: 14),
-                          Text(' 4.8', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
-                        ],
-                      ),
-                    ],
-                  ),
+                  Text(r.ad, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -1199,6 +1305,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
   }
 
   void _showRecipeDetails(BuildContext context, _Tarif r) {
+    final entry = _foodEntryFromTarif(r, 'ara öğün');
+    final microsMap = _getMicrosMap(entry.nutritionData);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1302,58 +1411,14 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                         _macroItem('Lif', '${r.lif}g', const Color(0xFFBC8CF2)),
                       ],
                     ),
-                    if (r.demir != null || r.magnezyum != null || r.kalsiyum != null || r.vitaminA != null || r.vitaminC != null || r.vitaminD != null || r.omega3 != null || r.zinc != null || r.potasyum != null || r.vitaminB12 != null || r.vitaminB6 != null || r.vitaminB1 != null || r.vitaminE != null) ...[
+                    if (microsMap.isNotEmpty) ...[
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Divider(height: 1),
                       ),
-                      StatefulBuilder(
-                        builder: (context, setState) {
-                          bool isExpanded = false;
-                          return StatefulBuilder( // use another inner one for local state
-                            builder: (context, setState) {
-                              return Column(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        isExpanded = !isExpanded;
-                                      });
-                                    },
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text('Daha fazlası', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey)),
-                                        Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
-                                      ],
-                                    ),
-                                  ),
-                                  if (isExpanded) ...[
-                                    const SizedBox(height: 16),
-                                    Wrap(
-                                      spacing: 12,
-                                      runSpacing: 12,
-                                      alignment: WrapAlignment.center,
-                                      children: [
-                                        if (r.demir != null) _microItem('Demir', '${r.demir}mg'),
-                                        if (r.magnezyum != null) _microItem('Magnezyum', '${r.magnezyum}mg'),
-                                        if (r.kalsiyum != null) _microItem('Kalsiyum', '${r.kalsiyum}mg'),
-                                        if (r.vitaminA != null) _microItem('Vit A', '${r.vitaminA}µg'),
-                                        if (r.vitaminC != null) _microItem('Vit C', '${r.vitaminC}mg'),
-                                        if (r.vitaminD != null) _microItem('Vit D', '${r.vitaminD}µg'),
-                                        if (r.vitaminB12 != null) _microItem('Vit B12', '${r.vitaminB12}µg'),
-                                        if (r.vitaminB1 != null) _microItem('Vit B1', '${r.vitaminB1}mg'),
-                                        if (r.zinc != null) _microItem('Çinko', '${r.zinc}mg'),
-                                        if (r.potasyum != null) _microItem('Potasyum', '${r.potasyum}mg'),
-                                        if (r.omega3 != null) _microItem('Omega-3', '${r.omega3}g'),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              );
-                            }
-                          );
-                        }
+                      _ExpandableMicrosSection(
+                        microsMap: microsMap,
+                        microItemBuilder: (label, value) => _microItem(label, value),
                       ),
                     ],
                   ],
@@ -1414,6 +1479,82 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     );
   }
 
+  Map<String, String> _getMicrosMap(NutritionData nd) {
+    final Map<String, String> map = {};
+
+    void addIfValid(String label, double? value, String unit) {
+      if (value != null && value > 0) {
+        String formattedVal = value.toStringAsFixed(value < 0.1 ? 3 : (value < 1 ? 2 : 1));
+        if (formattedVal.endsWith('.0')) {
+          formattedVal = formattedVal.substring(0, formattedVal.length - 2);
+        }
+        map[label] = '$formattedVal$unit';
+      }
+    }
+
+    // Yağlar & Kolesterol
+    addIfValid('Şeker', nd.sugar, 'g');
+    addIfValid('Doymuş Yağ', nd.saturatedFat, 'g');
+    addIfValid('Tekli Doymamış Yağ', nd.monoFat, 'g');
+    addIfValid('Çoklu Doymamış Yağ', nd.polyFat, 'g');
+    addIfValid('Trans Yağ', nd.transFat, 'g');
+    addIfValid('Kolesterol', nd.cholesterol, 'mg');
+
+    // Mineraller
+    addIfValid('Selenyum', nd.selenium, 'µg');
+    addIfValid('Magnezyum', nd.magnesium, 'mg');
+    addIfValid('Demir', nd.iron, 'mg');
+    addIfValid('Çinko', nd.zinc, 'mg');
+    addIfValid('Kalsiyum', nd.calcium, 'mg');
+    addIfValid('Potasyum', nd.potassium, 'mg');
+    addIfValid('Sodyum', nd.sodium, 'mg');
+    addIfValid('Fosfor', nd.phosphorus, 'mg');
+    addIfValid('Bakır', nd.copper, 'mg');
+    addIfValid('Manganez', nd.manganese, 'mg');
+
+    // Vitaminler
+    addIfValid('A Vitamini', nd.vitaminA, 'µg');
+    addIfValid('C Vitamini', nd.vitaminC, 'mg');
+    addIfValid('D Vitamini', nd.vitaminD, 'µg');
+    addIfValid('E Vitamini', nd.vitaminE, 'mg');
+    addIfValid('K Vitamini', nd.vitaminK, 'µg');
+    addIfValid('B12 Vitamini', nd.vitaminB12, 'µg');
+    addIfValid('B1 Vitamini', nd.thiamine, 'mg');
+    addIfValid('B2 Vitamini', nd.riboflavin, 'mg');
+    addIfValid('B3 Vitamini', nd.niacin, 'mg');
+    addIfValid('B5 Vitamini', nd.pantothenic, 'mg');
+    addIfValid('B6 Vitamini', nd.vitaminB6, 'mg');
+    addIfValid('Folat', nd.folate, 'µg');
+    addIfValid('Kolin', nd.choline, 'mg');
+    addIfValid('Biyotin', nd.biotin, 'µg');
+
+    // Yağ Asitleri
+    addIfValid('Omega-3', nd.omega3, 'g');
+    addIfValid('Omega-6', nd.omega6, 'g');
+    addIfValid('ALA', nd.ala, 'g');
+    addIfValid('EPA', nd.epa, 'g');
+    addIfValid('DHA', nd.dha, 'g');
+
+    // Amino Asitler
+    addIfValid('Triptofan', nd.tryptophan, 'g');
+    addIfValid('Treonin', nd.threonine, 'g');
+    addIfValid('İzolösin', nd.isoleucine, 'g');
+    addIfValid('Lösin', nd.leucine, 'g');
+    addIfValid('Lisin', nd.lysine, 'g');
+    addIfValid('Metiyonin', nd.methionine, 'g');
+    addIfValid('Fenilalanin', nd.phenylalanine, 'g');
+    addIfValid('Valin', nd.valine, 'g');
+    addIfValid('Histidin', nd.histidine, 'g');
+
+    // Karotenoidler
+    addIfValid('Beta-Karoten', nd.betaCarotene, 'µg');
+    addIfValid('Likopen', nd.lycopene, 'µg');
+    addIfValid('Lutein & Zeaksantin', nd.luteinZeaxanthin, 'µg');
+    addIfValid('Alfa-Karoten', nd.alphaCarotene, 'µg');
+
+    return map;
+  }
+
   Widget _macroItem(String label, String value, Color color) {
     return Column(
       children: [
@@ -1426,17 +1567,16 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
 
   Widget _microItem(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey)),
-          const SizedBox(width: 6),
           Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blueGrey)),
         ],
       ),
@@ -1454,6 +1594,21 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
   }
 
   Widget _buildRecipeImage(String url, double height, Color renk) {
+    if (url.isEmpty || !url.startsWith('http')) {
+      // Return a loading effect that never finishes loading
+      return Container(
+        height: height,
+        width: double.infinity,
+        color: Colors.grey.withValues(alpha: 0.1),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
     return CachedNetworkImage(
       imageUrl: url,
       height: height,
@@ -1461,8 +1616,15 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
       fit: BoxFit.cover,
       errorWidget: (context, url, error) => Container(
         height: height,
-        color: renk.withValues(alpha: 0.2),
-        child: Icon(Icons.restaurant, color: renk, size: 24),
+        width: double.infinity,
+        color: Colors.grey.withValues(alpha: 0.1),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
       ),
       placeholder: (context, url) => Container(
         height: height,
@@ -1477,6 +1639,126 @@ class _CoachContent {
   final String title;
   final String description;
   _CoachContent(this.title, this.description);
+}
+
+class _ExpandableMicrosSection extends StatefulWidget {
+  final Map<String, String> microsMap;
+  final Widget Function(String, String) microItemBuilder;
+
+  const _ExpandableMicrosSection({
+    required this.microsMap,
+    required this.microItemBuilder,
+  });
+
+  @override
+  State<_ExpandableMicrosSection> createState() => _ExpandableMicrosSectionState();
+}
+
+class _ExpandableMicrosSectionState extends State<_ExpandableMicrosSection> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Categorize
+    final mineralsList = [
+      'Kalsiyum', 'Demir', 'Magnezyum', 'Fosfor', 'Potasyum', 'Çinko', 'Bakır',
+      'Manganez', 'Selenyum', 'Sodyum', 'İyot', 'Krom', 'Molibden', 'Florür',
+    ];
+
+    final vitaminsList = [
+      'A Vitamini', 'C Vitamini', 'D Vitamini', 'E Vitamini', 'K Vitamini', 'B12 Vitamini',
+      'B1 Vitamini', 'B2 Vitamini', 'B3 Vitamini', 'B5 Vitamini', 'B6 Vitamini',
+      'Folat', 'Kolin', 'Biyotin',
+    ];
+
+    final Map<String, String> mineralsMap = {};
+    final Map<String, String> vitaminsMap = {};
+    final Map<String, String> othersMap = {};
+
+    widget.microsMap.forEach((k, v) {
+      if (mineralsList.contains(k)) {
+        mineralsMap[k] = v;
+      } else if (vitaminsList.contains(k) || k.contains('Vitamini')) {
+        vitaminsMap[k] = v;
+      } else {
+        othersMap[k] = v;
+      }
+    });
+
+    Widget buildCategory(String title, Color color, Map<String, String> items) {
+      if (items.isEmpty) return const SizedBox.shrink();
+      
+      final entries = items.entries.toList();
+      final List<Widget> rows = [];
+      
+      for (int i = 0; i < entries.length; i += 2) {
+        final left = entries[i];
+        final right = (i + 1 < entries.length) ? entries[i + 1] : null;
+        
+        rows.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(child: widget.microItemBuilder(left.key, left.value)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: right != null 
+                      ? widget.microItemBuilder(right.key, right.value) 
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 8),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                color: color,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
+          ...rows,
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Daha fazlası', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey)),
+              const SizedBox(width: 4),
+              Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
+            ],
+          ),
+        ),
+        if (_isExpanded) ...[
+          const SizedBox(height: 8),
+          buildCategory('MİNERALLER', const Color(0xFF58A6FF), mineralsMap),
+          buildCategory('VİTAMİNLER', const Color(0xFFFFA726), vitaminsMap),
+          buildCategory('DİĞER BESİNLER', const Color(0xFF7EE787), othersMap),
+        ],
+      ],
+    );
+  }
 }
 
 class _HorizontalScrollSection extends StatefulWidget {

@@ -3177,58 +3177,15 @@ void _showNutritionScoreDetail(
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox.expand(
-                          child: CircularProgressIndicator(
-                            value: score / 100,
-                            strokeWidth: 4,
-                            backgroundColor: cs.outlineVariant,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              scoreColor,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          score.toInt().toString(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: scoreColor,
-                          ),
-                        ),
-                      ],
-                    ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  l10n.isTurkish ? 'Besin Değerleri' : 'Nutritional Values',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.tr('Beslenme Skoru'),
-                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '${items.whereType<_ScoreRow>().length} ${l10n.isTurkish ? "besin" : "nutrients"}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: cs.onSurface.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -6342,23 +6299,78 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
 
                     ...(() {
                         // Merge entries from both scaled (NutritionData) and scaled65 (NutritionData65)
-                        final Map<String, double> allEntries = {};
+                        final Map<String, String> allEntries = {};
                         
-                        // Add from basic NutritionData
-                        scaled.toMap().forEach((k, v) {
-                          if (v > 0.001 && !['Kalori', 'Protein', 'Karbonhidrat', 'Yağ', 'Lif', 'Şeker', 'Sodyum', 'Doymuş Yağ'].contains(k)) {
-                            allEntries[k] = v;
-                          }
-                        });
-
-                        // Override/Add from scaled65
-                        if (scaled65 != null) {
-                          scaled65.toMap().forEach((k, v) {
-                            if (v > 0.001 && !['Enerji', 'Protein', 'Karbonhidrat', 'Yağ', 'Lif', 'Şeker', 'Sodyum'].contains(k)) {
-                              allEntries[k] = v;
+                        void addIfValid(String label, double? value, String unit) {
+                          if (value != null && value > 0.001) {
+                            String formattedVal = value.toStringAsFixed(value < 0.1 ? 3 : (value < 1 ? 2 : 1));
+                            if (formattedVal.endsWith('.0')) {
+                              formattedVal = formattedVal.substring(0, formattedVal.length - 2);
                             }
-                          });
+                            allEntries[label] = '$formattedVal$unit';
+                          }
                         }
+
+                        // Yağlar & Kolesterol
+                        addIfValid('Tekli Doymamış Yağ', scaled.monoFat ?? scaled65?.monoFat, 'g');
+                        addIfValid('Çoklu Doymamış Yağ', scaled.polyFat ?? scaled65?.polyFat, 'g');
+                        addIfValid('Trans Yağ', scaled.transFat ?? scaled65?.transFat, 'g');
+                        addIfValid('Kolesterol', scaled.cholesterol ?? scaled65?.cholesterol, 'mg');
+
+                        // Mineraller
+                        addIfValid('Selenyum', scaled.selenium ?? scaled65?.selenium, 'µg');
+                        addIfValid('Magnezyum', scaled.magnesium ?? scaled65?.magnesium, 'mg');
+                        addIfValid('Demir', scaled.iron ?? scaled65?.iron, 'mg');
+                        addIfValid('Çinko', scaled.zinc ?? scaled65?.zinc, 'mg');
+                        addIfValid('Kalsiyum', scaled.calcium ?? scaled65?.calcium, 'mg');
+                        addIfValid('Potasyum', scaled.potassium ?? scaled65?.potassium, 'mg');
+                        addIfValid('Fosfor', scaled.phosphorus ?? scaled65?.phosphorus, 'mg');
+                        addIfValid('Bakır', scaled.copper ?? scaled65?.copper, 'mg');
+                        addIfValid('Manganez', scaled.manganese ?? scaled65?.manganese, 'mg');
+                        addIfValid('İyot', scaled65?.iodine, 'µg');
+                        addIfValid('Krom', scaled65?.chromium, 'µg');
+                        addIfValid('Molibden', scaled65?.molybdenum, 'µg');
+                        addIfValid('Florür', scaled65?.fluoride, 'µg');
+
+                        // Vitaminler
+                        addIfValid('A Vitamini', scaled.vitaminA ?? scaled65?.vitA_RAE, 'µg RAE');
+                        addIfValid('C Vitamini', scaled.vitaminC ?? scaled65?.vitC, 'mg');
+                        addIfValid('D Vitamini', scaled.vitaminD ?? scaled65?.vitD_mcg, 'µg');
+                        addIfValid('E Vitamini', scaled.vitaminE ?? scaled65?.vitE, 'mg');
+                        addIfValid('K Vitamini', scaled.vitaminK ?? scaled65?.vitK, 'µg');
+                        addIfValid('B12 Vitamini', scaled.vitaminB12 ?? scaled65?.vitB12, 'µg');
+                        addIfValid('B1 Vitamini (Tiamin)', scaled.thiamine ?? scaled65?.thiamine, 'mg');
+                        addIfValid('B2 Vitamini (Riboflavin)', scaled.riboflavin ?? scaled65?.riboflavin, 'mg');
+                        addIfValid('B3 Vitamini (Niasin)', scaled.niacin ?? scaled65?.niacin, 'mg');
+                        addIfValid('B5 Vitamini (Pantotenik)', scaled.pantothenic ?? scaled65?.pantothenic, 'mg');
+                        addIfValid('B6 Vitamini', scaled.vitaminB6 ?? scaled65?.vitB6, 'mg');
+                        addIfValid('Folat', scaled.folate ?? scaled65?.folate, 'µg');
+                        addIfValid('Kolin', scaled.choline ?? scaled65?.choline, 'mg');
+                        addIfValid('Biyotin', scaled.biotin ?? scaled65?.biotin, 'µg');
+
+                        // Yağ Asitleri
+                        addIfValid('Omega-3', scaled.omega3 ?? scaled65?.omega3, 'g');
+                        addIfValid('Omega-6', scaled.omega6 ?? scaled65?.omega6, 'g');
+                        addIfValid('ALA', scaled.ala ?? scaled65?.ala, 'g');
+                        addIfValid('EPA', scaled.epa ?? scaled65?.epa, 'g');
+                        addIfValid('DHA', scaled.dha ?? scaled65?.dha, 'g');
+
+                        // Amino Asitler
+                        addIfValid('Triptofan', scaled.tryptophan ?? scaled65?.tryptophan, 'g');
+                        addIfValid('Treonin', scaled.threonine ?? scaled65?.threonine, 'g');
+                        addIfValid('İzolösin', scaled.isoleucine ?? scaled65?.isoleucine, 'g');
+                        addIfValid('Lösin', scaled.leucine ?? scaled65?.leucine, 'g');
+                        addIfValid('Lisin', scaled.lysine ?? scaled65?.lysine, 'g');
+                        addIfValid('Metiyonin', scaled.methionine ?? scaled65?.methionine, 'g');
+                        addIfValid('Fenilalanin', scaled.phenylalanine ?? scaled65?.phenylalanine, 'g');
+                        addIfValid('Valin', scaled.valine ?? scaled65?.valine, 'g');
+                        addIfValid('Histidin', scaled.histidine ?? scaled65?.histidine, 'g');
+
+                        // Karotenoidler
+                        addIfValid('Beta-Karoten', scaled.betaCarotene ?? scaled65?.betaCarot, 'µg');
+                        addIfValid('Likopen', scaled.lycopene ?? scaled65?.lycopene, 'µg');
+                        addIfValid('Lutein & Zeaksantin', scaled.luteinZeaxanthin ?? scaled65?.luteinZea, 'µg');
+                        addIfValid('Alfa-Karoten', scaled.alphaCarotene ?? scaled65?.alphaCarot, 'µg');
 
                         final minerals = [
                           'Kalsiyum', 'Demir', 'Magnezyum', 'Fosfor', 'Potasyum', 'Çinko', 'Bakır',
@@ -6385,7 +6397,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
                               (e) => _detailRow(
                                 ctx,
                                 e.key,
-                                e.value.toStringAsFixed(2),
+                                e.value,
                                 const Color(0xFF58A6FF),
                               ),
                             ),
@@ -6396,7 +6408,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
                               (e) => _detailRow(
                                 ctx,
                                 e.key,
-                                e.value.toStringAsFixed(2),
+                                e.value,
                                 const Color(0xFFFFA726),
                               ),
                             ),
@@ -6407,7 +6419,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
                               (e) => _detailRow(
                                 ctx,
                                 e.key,
-                                e.value.toStringAsFixed(2),
+                                e.value,
                                 const Color(0xFF7EE787),
                               ),
                             ),
