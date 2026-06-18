@@ -260,54 +260,40 @@ Rules: If unknown, write 0. protein+carbs+fat ≤ 100. Sum of amino acids ≤ pr
             {
               'type': 'text',
               'text': '''
-You are an expert nutrition coach with deep knowledge of "Nutrition5k" and "USDA" data standards. Virtually segment the dish described by the user and analyze it with high precision: "$description"
-Calculate the average portion weight for each ingredient and merge their corresponding USDA macro/micronutrient profiles.
+You are an expert nutrition coach and food analyst with deep knowledge of "Nutrition5k" and "USDA" data standards. Virtually segment the dish described by the user and analyze it with high precision: "$description"
+1. Calculate the portion weight in grams for the entire dish.
+2. Segment the dish into its main component ingredients.
+3. For each main component, select an EXACT USDA standard entry (e.g., USDA 170456 Cooked Salmon) and calculate the cumulative macro/micronutrients by weight.
 
 --- IN-CONTEXT CALIBRATION RULES ---
-Rule 1: As meat cooks, it shrinks in volume, increasing its macros per 100g.
-Rule 2: As grains cook, they absorb water, decreasing their macros per 100g.
-Rule 3: Do not generate random values for micronutrients. Lock onto standard USDA profiles (e.g., Cooked Chicken Breast) as a reference and keep micronutrient ratios constant. Round ratios to the nearest 10% blocks for stability.
+Rule 1: As meat cooks, it shrinks in volume, increasing its macros/micros per 100g.
+Rule 2: As grains cook, they absorb water, decreasing their macros/micros per 100g.
+Rule 3: You MUST NOT return 0 or null for micronutrients if the ingredients are known to contain them. You MUST estimate realistic, USDA-aligned values (per 100g) for all standard vitamins, minerals, amino acids, and fatty acids known to exist in the ingredients.
+  - For eggs (yumurta): Eggs are extremely nutrient-dense. You MUST estimate realistic non-zero values per 100g. Typical values per 100g of whole raw egg are: water (76g), cholesterol_mg (370mg), sodium_mg (140mg), kalsiyum_mg (50mg), demir_mg (1.75mg), magnezyum_mg (12mg), fosfor_mg (198mg), potasyum_mg (138mg), cinko_mg (1.29mg), bakir_mg (0.07mg), manganez_mg (0.02mg), selenyum_mcg (30mcg), a_vitamini_mcg (140mcg), e_vitamini_mg (1mg), d_vitamini_mcg (2mcg), b1_tiamin_mg (0.04mg), b2_riboflavin_mg (0.45mg), b3_niasin_mg (0.07mg), b5_pantotenik_mg (1.4mg), b6_mg (0.17mg), folat_mcg (44mcg), b12_mcg (0.89mcg), kolin_mg (290mg), biotin_mcg (20mcg), omega3_g (0.1g), omega6_g (1.1g), and all standard amino acids (losin_g, lizin_g, valin_g, izolosin_g, treonin_g, metionin_g, fenilalanin_g, triptofan_g, histidin_g, sistin_g, tirozin_g). DO NOT set these to 0.
+  - For meats: Estimate realistic non-zero values for iron, zinc, selenium, phosphorus, potassium, B-vitamins (B1, B2, B3, B5, B6, B12), and amino acids.
+  - For dairy: Estimate calcium, phosphorus, B2 (riboflavin), B12, vitamin A, and zinc.
+  - For grains: Estimate magnesium, iron, selenium, zinc, manganese, and B-vitamins.
+  - For vegetables: Estimate vitamin C, folate, potassium, calcium, vitamin K, beta-carotene, and fiber.
+
+Rule 4: Do not generate random values. Lock onto USDA profiles and keep micronutrient ratios proportional to the ingredients. Round ratios to the nearest 10% blocks for stability. Sum of macronutrients (protein+karbonhidrat+yag) must be <= 100. Sum of amino acids must be <= protein.
+
+Rule 5: If the description is extremely brief or ambiguous (e.g., just "egg", "yumurta", "chicken", or "et" without specific quantities, portions, or cooking styles):
+  - Do NOT default to any cooked or processed preparation (e.g., do NOT assume "boiled egg"/"haşlanmış yumurta" or "grilled chicken" unless the user explicitly said "haşlanmış", "kızartılmış", "ızgara", etc. in their description). Instead, default to the raw/standard whole version of that ingredient (e.g., set the name to "Yumurta" or "Bütün Yumurta" as a raw whole egg of 50g; chicken as raw chicken breast of 100g). Set "pisirme" to "raw".
+  - Calculate portion size based on a standard single portion (e.g., 1 whole raw egg ≈ 50g, raw chicken breast ≈ 100g, meat portion ≈ 150g).
+  - Set "guven_skoru" below 70 (e.g., 60 or 65) to indicate it's an estimate.
+  - Write a helpful, specific recommendation in Turkish in "guven_nedeni" advising the user to specify cooking method, portion, or ingredients for higher accuracy (e.g., "Yumurtanın pişirilme şeklini (haşlanmış, sahanda vb.) ve miktarını yazarak daha kesin sonuçlar alabilirsiniz.").
 ------------------------------------------------
 
-RETURN ONLY JSON, nothing else. All values must be per 100g:
-{
-  "yemek_adi": "string",
-  "yemek_tipi": "soup|main_dish|salad|dessert|drink|breakfast|snack",
-  "porsiyon_gram": number,
-  "guven_skoru": number,
-  "guven_nedeni": "string",
-  "protein": number,
-  "karbonhidrat": number,
-  "yag": number,
-  "lif": number,
-  "seker": number,
-  "doymus_yag": number,
-  "sodyum_mg": number,
-  "demir_mg": number,
-  "kalsiyum_mg": number,
-  "magnezyum_mg": number,
-  "potasyum_mg": number,
-  "cinko_mg": number,
-  "selenyum_mcg": number,
-  "vitamin_c_mg": number,
-  "vitamin_d_mcg": number,
-  "vitamin_b12_mcg": number,
-  "vitamin_b6_mg": number,
-  "vitamin_a_mcg": number,
-  "vitamin_e_mg": number,
-  "folik_asit_mcg": number,
-  "thiamin_mg": number,
-  "omega3_g": number,
-  "omega6_g": number
-}
+Return ONLY JSON, nothing else. All values must be per 100g:
+{"yemek_adi":"string","yemek_tipi":"soup|main_dish|salad|dessert|drink|breakfast|snack","pisirme":"raw|boiled|grilled|fried|baked|other","porsiyon_gram":number,"guven_skoru":number,"guven_nedeni":"string","protein":number,"karbonhidrat":number,"yag":number,"lif":number,"seker":number,"doymus_yag":number,"tekli_doymus_yag":number,"coklu_doymus_yag":number,"trans_yag":number,"kolesterol_mg":number,"su":number,"kalsiyum_mg":number,"demir_mg":number,"magnezyum_mg":number,"fosfor_mg":number,"potasyum_mg":number,"sodyum_mg":number,"cinko_mg":number,"bakir_mg":number,"manganez_mg":number,"selenyum_mcg":number,"iyot_mcg":number,"krom_mcg":number,"molibden_mcg":number,"c_vitamini_mg":number,"d_vitamini_mcg":number,"e_vitamini_mg":number,"k1_vitamini_mcg":number,"a_vitamini_mcg":number,"beta_karoten_mcg":number,"likopen_mcg":number,"lutein_zea_mcg":number,"b1_tiamin_mg":number,"b2_riboflavin_mg":number,"b3_niasin_mg":number,"b5_pantotenik_mg":number,"b6_mg":number,"folat_mcg":number,"b12_mcg":number,"kolin_mg":number,"biotin_mcg":number,"omega3_g":number,"omega6_g":number,"epa_g":number,"dha_g":number,"ala_g":number,"linoleik_g":number,"losin_g":number,"lizin_g":number,"valin_g":number,"izolosin_g":number,"treonin_g":number,"metionin_g":number,"fenilalanin_g":number,"triptofan_g":number,"histidin_g":number,"sistin_g":number,"tirozin_g":number}
 
-Kurallar: 100g başına değerleri ver. protein+karbonhidrat+yag ≤ 100. porsiyon_gram: tarif edilen miktarı grama çevir (örn: 1 kase = 250g). Mikro besin yoksa 0 yaz.
+Rules: If unknown, write 0. protein+karbonhidrat+yag ≤ 100. Sum of amino acids ≤ protein.
 ''',
             }
           ],
         }
       ],
-      maxTokens: 700,
+      maxTokens: 1000,
     );
 
     double g(String k) => (json[k] as num?)?.toDouble() ?? 0.0;
@@ -315,55 +301,74 @@ Kurallar: 100g başına değerleri ver. protein+karbonhidrat+yag ≤ 100. porsiy
     final foodName = (json['yemek_adi'] as String?) ?? 'Bilinmeyen';
     final portionGrams = (json['porsiyon_gram'] as num?)?.toDouble() ?? 200.0;
 
-    final nd100 = NutritionData(
-      calories: calculateCalories(proteinG: g('protein'), carbsG: g('karbonhidrat'), fatG: g('yag')),
+    final n65 = NutritionData65(
+      energy: calculateCalories(
+        proteinG: g('protein'),
+        carbsG: g('karbonhidrat'),
+        fatG: g('yag'),
+      ),
       protein: g('protein'),
-      carbohydrates: g('karbonhidrat'),
       fat: g('yag'),
+      carb: g('karbonhidrat'),
       fiber: g('lif'),
       sugar: g('seker'),
-      saturatedFat: g('doymus_yag'),
+      satFat: g('doymus_yag'),
+      monoFat: g('tekli_doymus_yag'),
+      polyFat: g('coklu_doymus_yag'),
+      transFat: g('trans_yag'),
+      cholesterol: g('kolesterol_mg'),
+      water: g('su'),
+      calcium: g('kalsiyum_mg'),
+      iron: g('demir_mg'),
+      magnesium: g('magnezyum_mg'),
+      phosphorus: g('fosfor_mg'),
+      potassium: g('potasyum_mg'),
       sodium: g('sodyum_mg'),
-      iron: g('demir_mg') > 0 ? g('demir_mg') : null,
-      calcium: g('kalsiyum_mg') > 0 ? g('kalsiyum_mg') : null,
-      magnesium: g('magnezyum_mg') > 0 ? g('magnezyum_mg') : null,
-      potassium: g('potasyum_mg') > 0 ? g('potasyum_mg') : null,
-      zinc: g('cinko_mg') > 0 ? g('cinko_mg') : null,
-      vitaminC: g('vitamin_c_mg') > 0 ? g('vitamin_c_mg') : null,
-      vitaminD: g('vitamin_d_mcg') > 0 ? g('vitamin_d_mcg') : null,
-      vitaminB12: g('vitamin_b12_mcg') > 0 ? g('vitamin_b12_mcg') : null,
-      vitaminB6: g('vitamin_b6_mg') > 0 ? g('vitamin_b6_mg') : null,
-      vitaminA: g('vitamin_a_mcg') > 0 ? g('vitamin_a_mcg') : null,
-      vitaminE: g('vitamin_e_mg') > 0 ? g('vitamin_e_mg') : null,
-      omega3: g('omega3_g') > 0 ? g('omega3_g') : null,
-      omega6: g('omega6_g') > 0 ? g('omega6_g') : null,
+      zinc: g('cinko_mg'),
+      copper: g('bakir_mg'),
+      manganese: g('manganez_mg'),
+      selenium: g('selenyum_mcg'),
+      iodine: g('iyot_mcg'),
+      chromium: g('krom_mcg'),
+      molybdenum: g('molibden_mcg'),
+      vitC: g('c_vitamini_mg'),
+      vitD_mcg: g('d_vitamini_mcg'),
+      vitE: g('e_vitamini_mg'),
+      vitK: g('k1_vitamini_mcg'),
+      vitA_RAE: g('a_vitamini_mcg'),
+      betaCarot: g('beta_karoten_mcg'),
+      lycopene: g('likopen_mcg'),
+      luteinZea: g('lutein_zea_mcg'),
+      thiamine: g('b1_tiamin_mg'),
+      riboflavin: g('b2_riboflavin_mg'),
+      niacin: g('b3_niasin_mg'),
+      pantothenic: g('b5_pantotenik_mg'),
+      vitB6: g('b6_mg'),
+      folate: g('folat_mcg'),
+      vitB12: g('b12_mcg'),
+      choline: g('kolin_mg'),
+      biotin: g('biotin_mcg'),
+      omega3: g('omega3_g'),
+      omega6: g('omega6_g'),
+      ala: g('ala_g'),
+      epa: g('epa_g'),
+      dha: g('dha_g'),
+      linoleic: g('linoleik_g'),
+      leucine: g('losin_g'),
+      lysine: g('lizin_g'),
+      valine: g('valin_g'),
+      isoleucine: g('izolosin_g'),
+      threonine: g('treonin_g'),
+      methionine: g('metionin_g'),
+      phenylalanine: g('fenilalanin_g'),
+      tryptophan: g('triptofan_g'),
+      histidine: g('histidin_g'),
+      cystine: g('sistin_g'),
+      tyrosine: g('tirozin_g'),
       dataSource: 'Claude (Text)',
     );
 
-    final n65 = NutritionData65(
-      energy: nd100.calories,
-      protein: nd100.protein,
-      fat: nd100.fat,
-      carb: nd100.carbohydrates,
-      fiber: nd100.fiber,
-      sugar: nd100.sugar,
-      satFat: nd100.saturatedFat,
-      sodium: nd100.sodium ?? 0.0,
-      iron: nd100.iron ?? 0.0,
-      calcium: nd100.calcium ?? 0.0,
-      magnesium: nd100.magnesium ?? 0.0,
-      potassium: nd100.potassium ?? 0.0,
-      zinc: nd100.zinc ?? 0.0,
-      vitC: nd100.vitaminC ?? 0.0,
-      vitD_mcg: nd100.vitaminD ?? 0.0,
-      vitB12: nd100.vitaminB12 ?? 0.0,
-      vitB6: nd100.vitaminB6 ?? 0.0,
-      vitA_RAE: nd100.vitaminA ?? 0.0,
-      vitE: nd100.vitaminE ?? 0.0,
-      omega3: nd100.omega3 ?? 0.0,
-      omega6: nd100.omega6 ?? 0.0,
-      dataSource: 'Claude (Text)',
-    );
+    final nd100 = n65.toNutritionData();
 
     final portionCalories = calculateCalories(
       proteinG: _round1(nd100.protein * portionGrams / 100),

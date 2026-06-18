@@ -465,6 +465,19 @@ class _CombinedChartCardState extends State<CombinedChartCard>
                       },
                       onTapUp: (_) => setState(() => _touchedIndex = null),
                       onTapCancel: () => setState(() => _touchedIndex = null),
+                      onLongPressStart: (details) {
+                        _touchClearTimer?.cancel();
+                        final idx = _hitBar(details.localPosition, data.length, totalW);
+                        setState(() => _touchedIndex = idx);
+                      },
+                      onLongPressMoveUpdate: (details) {
+                        final idx = _hitBar(details.localPosition, data.length, totalW);
+                        if (idx != _touchedIndex) {
+                          setState(() => _touchedIndex = idx);
+                        }
+                      },
+                      onLongPressEnd: (_) => setState(() => _touchedIndex = null),
+                      onLongPressUp: () => setState(() => _touchedIndex = null),
                       child: SizedBox(
                         width: totalW,
                         height: _totalH,

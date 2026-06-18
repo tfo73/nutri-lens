@@ -53,8 +53,110 @@ void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı
         );
         onDone?.call();
       },
+      onEdit: (result) {
+        Navigator.pop(context); // Close Voice Sheet
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (ctx, scrollCtrl) => _ManualEntryBottomSheet(
+              scrollCtrl: scrollCtrl,
+              selectedMeal: selectedMeal,
+              prefill: buildPrefillMap(result),
+              onSave: (entry) {
+                context.read<NutritionProvider>().addFoodEntry(entry);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('${entry.name} eklendi'),
+                      behavior: SnackBarBehavior.floating),
+                );
+                onDone?.call();
+              },
+            ),
+          ),
+        );
+      },
     ),
   );
+}
+
+Map<String, dynamic> buildPrefillMap(FoodAnalysisResult result) {
+  final scaled = result.nutritionScaled;
+  final factor = result.portionGrams / 100.0;
+  final n65 = result.nutrition65per100g;
+
+  double? s(double? v) => v != null && v > 0 ? v * factor : null;
+  String? f(double? v, [int dec = 1]) => v != null ? v.toStringAsFixed(dec) : null;
+
+  return {
+    'name': result.foodName,
+    'calories': scaled.calories.toStringAsFixed(0),
+    'protein': scaled.protein.toStringAsFixed(1),
+    'carbs': scaled.carbohydrates.toStringAsFixed(1),
+    'fat': scaled.fat.toStringAsFixed(1),
+    'grams': result.portionGrams.toStringAsFixed(0),
+    'fiber': scaled.fiber.toStringAsFixed(1),
+    'sugar': scaled.sugar.toStringAsFixed(1),
+    'satFat': scaled.saturatedFat.toStringAsFixed(1),
+    if (n65 != null) ...{
+      'monoFat': f(s(n65.monoFat)),
+      'polyFat': f(s(n65.polyFat)),
+      'transFat': f(s(n65.transFat)),
+      'cholesterol': f(s(n65.cholesterol), 0),
+      'sodium': f(s(n65.sodium), 0),
+      'magnesium': f(s(n65.magnesium), 0),
+      'calcium': f(s(n65.calcium), 0),
+      'iron': f(s(n65.iron)),
+      'zinc': f(s(n65.zinc)),
+      'potassium': f(s(n65.potassium), 0),
+      'phosphorus': f(s(n65.phosphorus), 0),
+      'selenium': f(s(n65.selenium)),
+      'copper': f(s(n65.copper)),
+      'manganese': f(s(n65.manganese)),
+      'vitA': f(s(n65.vitA_RAE), 0),
+      'vitC': f(s(n65.vitC)),
+      'vitD': f(s(n65.vitD_mcg)),
+      'vitE': f(s(n65.vitE)),
+      'vitK': f(s(n65.vitK)),
+      'vitB12': f(s(n65.vitB12)),
+      'thiamine': f(s(n65.thiamine)),
+      'riboflavin': f(s(n65.riboflavin)),
+      'niacin': f(s(n65.niacin)),
+      'pantothenic': f(s(n65.pantothenic)),
+      'vitB6': f(s(n65.vitB6)),
+      'folate': f(s(n65.folate), 0),
+      'choline': f(s(n65.choline), 0),
+      'biotin': f(s(n65.biotin), 0),
+      'omega3': f(s(n65.omega3)),
+      'omega6': f(s(n65.omega6)),
+      'ala': f(s(n65.ala)),
+      'epa': f(s(n65.epa)),
+      'dha': f(s(n65.dha)),
+      'betaCarot': f(s(n65.betaCarot), 0),
+      'lycopene': f(s(n65.lycopene), 0),
+      'luteinZea': f(s(n65.luteinZea), 0),
+      'alphaCarot': f(s(n65.alphaCarot), 0),
+      'tryptophan': f(s(n65.tryptophan)),
+      'threonine': f(s(n65.threonine)),
+      'isoleucine': f(s(n65.isoleucine)),
+      'leucine': f(s(n65.leucine)),
+      'lysine': f(s(n65.lysine)),
+      'methionine': f(s(n65.methionine)),
+      'phenylalanine': f(s(n65.phenylalanine)),
+      'valine': f(s(n65.valine)),
+      'histidine': f(s(n65.histidine)),
+      'cystine': f(s(n65.cystine)),
+      'tyrosine': f(s(n65.tyrosine)),
+    }
+  };
 }
 
 /// Opens the manual entry sheet without launching the camera.
@@ -584,7 +686,6 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   void _onFeedbackEdit(FoodAnalysisResult result) {
-    final scaled = result.nutritionScaled;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -601,17 +702,7 @@ class _CameraScreenState extends State<CameraScreen>
           scrollCtrl: scrollCtrl,
           selectedMeal: _selectedMeal,
           isAnalysis: true,
-          prefill: {
-            'name': result.foodName,
-            'calories': scaled.calories.toStringAsFixed(0),
-            'protein': scaled.protein.toStringAsFixed(1),
-            'carbs': scaled.carbohydrates.toStringAsFixed(1),
-            'fat': scaled.fat.toStringAsFixed(1),
-            'grams': result.portionGrams.toStringAsFixed(0),
-            'fiber': (scaled.fiber).toStringAsFixed(1),
-            'sugar': (scaled.sugar).toStringAsFixed(1),
-            'satFat': (scaled.saturatedFat).toStringAsFixed(1),
-          },
+          prefill: buildPrefillMap(result),
           onSave: (entry) {
             _analysisService.saveCorrection(result.foodName, entry.nutritionData);
             context.read<NutritionProvider>().addFoodEntry(entry);
@@ -698,7 +789,7 @@ class _CameraScreenState extends State<CameraScreen>
         },
         onEdit: (result) {
           Navigator.pop(context); // Close Voice Sheet
-          _openManualEntry(prefill: result);
+          _openManualEntry(prefill: buildPrefillMap(result));
         },
       ),
     );
@@ -2646,7 +2737,7 @@ enum _VoiceSheetState { input, listening, analyzing, confirming }
 class _VoiceTextEntrySheet extends StatefulWidget {
   final String selectedMeal;
   final void Function(FoodEntry entry) onSave;
-  final void Function(Map<String, dynamic> result)? onEdit;
+  final void Function(FoodAnalysisResult result)? onEdit;
 
   const _VoiceTextEntrySheet({
     required this.selectedMeal,
@@ -2664,11 +2755,12 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
   final _textCtrl = TextEditingController();
   final _picker = ImagePicker();
   final _claudeService = ClaudeVisionService();
+  final _analysisService = FoodAnalysisService();
 
   _VoiceSheetState _sheetState = _VoiceSheetState.input;
   late String _meal;
 
-  Map<String, dynamic>? _result;
+  FoodAnalysisResult? _result;
   String? _errorMsg;
 
   // Iteratif iyileştirme: her turda kullanıcının girdiği metinler birikir
@@ -2756,14 +2848,14 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     });
 
     try {
-      final result = await _claudeService.analyzeFoodFromText(
+      final result = await _analysisService.analyzeText(
         _conversationHistory.join(' | ayrıca: '),
       );
       if (!mounted) return;
 
-      final score = (result['guven_skoru'] as num?)?.toInt() ?? 0;
-      final foodName = (result['yemek_adi'] as String?) ?? '';
-      final calories = (result['kalori'] as num?)?.toDouble() ?? 0;
+      final score = result.confidenceScore;
+      final foodName = result.foodName;
+      final calories = result.nutritionScaled.calories;
 
       // Insufficient result — ask for more detail
       if (score < 35 || foodName.isEmpty || calories < 5) {
@@ -2789,10 +2881,75 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     }
   }
 
+  String _translateForImageSearch(String name) {
+    final lower = name.toLowerCase().trim();
+    const trToEn = {
+      'haşlanmış': 'boiled', 'haslanmis': 'boiled',
+      'ızgara': 'grilled', 'izgara': 'grilled',
+      'kızartılmış': 'fried', 'kizartilmis': 'fried',
+      'kızartma': 'fried', 'kizartma': 'fried',
+      'fırında': 'baked', 'firinda': 'baked',
+      'fırın': 'baked', 'firin': 'baked',
+      'sahanda': 'fried',
+      'haşlama': 'boiled', 'hashlama': 'boiled',
+      'bütün': 'whole', 'butun': 'whole',
+      'yumurta': 'egg',
+      'tavuk': 'chicken',
+      'köfte': 'meatball', 'kofte': 'meatball',
+      'pilav': 'rice',
+      'makarna': 'pasta',
+      'salata': 'salad',
+      'çorba': 'soup', 'corba': 'soup',
+      'ekmek': 'bread',
+      'peynir': 'cheese',
+      'yoğurt': 'yogurt', 'yogurt': 'yogurt',
+      'süt': 'milk', 'sut': 'milk',
+      'et': 'meat',
+      'balık': 'fish', 'balik': 'fish',
+      'somon': 'salmon',
+      'ton balığı': 'tuna', 'ton baligi': 'tuna',
+      'patates': 'potato',
+      'domates': 'tomato',
+      'zeytin': 'olive',
+      'elma': 'apple',
+      'muz': 'banana',
+      'portakal': 'orange',
+      'salatalık': 'cucumber', 'salatalik': 'cucumber',
+      'soğan': 'onion', 'sogan': 'onion',
+      'biber': 'pepper',
+      'ıspanak': 'spinach', 'ispanak': 'spinach',
+      'çilek': 'strawberry', 'cilek': 'strawberry',
+      'üzüm': 'grape', 'uzum': 'grape',
+      'badem': 'almond',
+      'ceviz': 'walnut',
+      'avokado': 'avocado',
+      'pirinç': 'rice', 'pirinc': 'rice',
+      'mercimek': 'lentil',
+      'nohut': 'chickpea',
+      'fasulye': 'beans',
+      'bezelye': 'peas',
+      'mısır': 'corn', 'misir': 'corn',
+      'sucuk': 'sausage',
+      'salam': 'salami',
+      'sosis': 'sausage',
+      'pastırma': 'pastrami', 'pastirma': 'pastrami',
+      'bal': 'honey',
+      'tereyağı': 'butter', 'tereyagi': 'butter',
+      'zeytinyağı': 'olive oil', 'zeytinyagi': 'olive oil',
+    };
+
+    String result = lower;
+    for (final entry in trToEn.entries) {
+      result = result.replaceAll(entry.key, entry.value);
+    }
+    return result;
+  }
+
   Future<void> _searchFoodImage(String foodName) async {
     if (mounted) setState(() => _photoSearching = true);
     try {
-      final query = Uri.encodeComponent('$foodName food');
+      final translated = _translateForImageSearch(foodName);
+      final query = Uri.encodeComponent('$translated food');
       final response = await http.get(Uri.parse(
         'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
         '&format=json&piprop=thumbnail&pithumbsize=400'
@@ -2819,18 +2976,6 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
   Future<void> _saveResult() async {
     final r = _result;
     if (r == null) return;
-    final portion = (r['porsiyon_gram'] as num?)?.toDouble() ?? 100.0;
-    final calories = (r['kalori'] as num?)?.toDouble() ?? 0;
-    final protein = (r['protein'] as num?)?.toDouble() ?? 0;
-    final carbs = (r['karbonhidrat'] as num?)?.toDouble() ?? 0;
-    final fat = (r['yag'] as num?)?.toDouble() ?? 0;
-    final fiber = (r['lif'] as num?)?.toDouble() ?? 0;
-    final sodium = (r['sodyum'] as num?)?.toDouble();
-    final vitD = (r['vitamin_d'] as num?)?.toDouble();
-    final vitB12 = (r['vitamin_b12'] as num?)?.toDouble();
-    final calcium = (r['kalsiyum'] as num?)?.toDouble();
-    final iron = (r['demir'] as num?)?.toDouble();
-    final magnesium = (r['magnezyum'] as num?)?.toDouble();
 
     // Fotoğrafı indir (varsa ve kullanıcı kabul ettiyse)
     String? imagePath;
@@ -2847,25 +2992,12 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
       } catch (_) {}
     }
 
-    // Besin değerlerini 100g başına normalize et
-    final factor = portion > 0 ? 100.0 / portion : 1.0;
     final entry = FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: (r['yemek_adi'] as String?) ?? _conversationHistory.first,
-      portionSize: portion,
-      nutritionData: NutritionData(
-        calories: calories * factor,
-        protein: protein * factor,
-        carbohydrates: carbs * factor,
-        fat: fat * factor,
-        fiber: fiber * factor,
-        sodium: sodium != null ? sodium * factor : null,
-        vitaminD: vitD != null ? vitD * factor : null,
-        vitaminB12: vitB12 != null ? vitB12 * factor : null,
-        calcium: calcium != null ? calcium * factor : null,
-        iron: iron != null ? iron * factor : null,
-        magnesium: magnesium != null ? magnesium * factor : null,
-      ),
+      name: r.foodName,
+      portionSize: r.portionGrams,
+      nutritionData: r.nutritionPer100g,
+      nutrition65per100g: r.nutrition65per100g,
       timestamp: DateTime.now(),
       mealType: _meal,
       imagePath: imagePath,
@@ -2886,58 +3018,98 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 200),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF161B22) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              decoration: BoxDecoration(
-                color: cs.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldClose = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Kapatılsın mı?'),
+            content: const Text('Yapılan analiz veya girişler kaybolacaktır. Kapatmak istediğinize emin misiniz?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hayır'),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-              child: Row(
-                children: [
-                  Icon(Icons.restaurant_menu_rounded, color: cs.primary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Yemeği Tarif Et',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const Spacer(),
-                  if (_sheetState == _VoiceSheetState.confirming && widget.onEdit != null && _result != null)
-                    IconButton(
-                      icon: Icon(Icons.edit_rounded, color: cs.primary, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Düzenle',
-                      onPressed: () => widget.onEdit!(_result!),
-                    ),
-                ],
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Evet'),
               ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: _buildContent(cs, isDark),
+            ],
+          ),
+        );
+        if (shouldClose == true && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161B22) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Row(
+                  children: [
+                    if (_sheetState == _VoiceSheetState.input && _result != null) ...[
+                      IconButton(
+                        icon: Icon(Icons.arrow_back_rounded, color: cs.primary, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        onPressed: () {
+                          setState(() {
+                            _sheetState = _VoiceSheetState.confirming;
+                            _errorMsg = null;
+                          });
+                        },
+                      ),
+                    ] else ...[
+                      Icon(Icons.restaurant_menu_rounded, color: cs.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Yemeği Tarif Et',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (_sheetState == _VoiceSheetState.confirming && widget.onEdit != null && _result != null)
+                      IconButton(
+                        icon: Icon(Icons.edit_rounded, color: cs.primary, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        tooltip: 'Düzenle',
+                        onPressed: () => widget.onEdit!(_result!),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: _buildContent(cs, isDark),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3199,24 +3371,68 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
 
   Widget _buildConfirming(ColorScheme cs) {
     final r = _result!;
-    final name = (r['yemek_adi'] as String?) ?? '—';
-    final portion = (r['porsiyon_gram'] as num?)?.toDouble() ?? 0;
-    final calories = (r['kalori'] as num?)?.toDouble() ?? 0;
-    final protein = (r['protein'] as num?)?.toDouble() ?? 0;
-    final carbs = (r['karbonhidrat'] as num?)?.toDouble() ?? 0;
-    final fat = (r['yag'] as num?)?.toDouble() ?? 0;
-    final score = (r['guven_skoru'] as num?)?.toInt() ?? 0;
+    final name = r.foodName;
+    final portion = r.portionGrams;
+    final scaled = r.nutritionScaled;
+    final calories = scaled.calories;
+    final protein = scaled.protein;
+    final carbs = scaled.carbohydrates;
+    final fat = scaled.fat;
+    final fiber = scaled.fiber;
+    final score = r.confidenceScore;
     final displayedScore = score < 85 ? 85 : (score > 100 ? 100 : score);
-    final confReason = (r['guven_nedeni'] as String?) ?? '';
-    final minKcal = (r['alternatif_tahmin']?['min_kalori'] as num?)?.toInt() ?? 0;
-    final maxKcal = (r['alternatif_tahmin']?['max_kalori'] as num?)?.toInt() ?? 0;
-    final porsAcik = (r['porsiyon_aciklamasi'] as String?) ?? '';
+    final confReason = r.confidenceReason ?? '';
+    final minKcal = r.alternativeMin.toInt();
+    final maxKcal = r.alternativeMax.toInt();
+    final porsAcik = r.portionDescription ?? '';
 
     final confColor = displayedScore >= 75
         ? const Color(0xFF7EE787)
         : displayedScore >= 50
             ? const Color(0xFFF0A500)
             : const Color(0xFFF85149);
+
+    final detailsList = <Widget>[];
+    final n65 = r.nutrition65per100g;
+    final factor = r.portionGrams / 100.0;
+    if (n65 != null) {
+      void addIf(String label, double val, String unit, {int dec = 1}) {
+        final scaledVal = val * factor;
+        if (scaledVal > 0.01) {
+          detailsList.add(_infoRow(context, label, '${scaledVal.toStringAsFixed(dec)} $unit'));
+        }
+      }
+      addIf('Doymuş Yağ', n65.satFat, 'g');
+      addIf('Tekli Doymamış Yağ', n65.monoFat, 'g');
+      addIf('Çoklu Doymamış Yağ', n65.polyFat, 'g');
+      addIf('Kolesterol', n65.cholesterol, 'mg', dec: 0);
+      addIf('Sodyum', n65.sodium, 'mg', dec: 0);
+      addIf('Kalsiyum', n65.calcium, 'mg', dec: 0);
+      addIf('Demir', n65.iron, 'mg');
+      addIf('Magnezyum', n65.magnesium, 'mg', dec: 0);
+      addIf('Potasyum', n65.potassium, 'mg', dec: 0);
+      addIf('Çinko', n65.zinc, 'mg');
+      addIf('Fosfor', n65.phosphorus, 'mg', dec: 0);
+      addIf('Selenyum', n65.selenium, 'mcg');
+      addIf('Bakır', n65.copper, 'mg');
+      addIf('Manganez', n65.manganese, 'mg');
+      addIf('Vitamin A', n65.vitA_RAE, 'mcg RAE', dec: 0);
+      addIf('Vitamin C', n65.vitC, 'mg');
+      addIf('Vitamin D', n65.vitD_mcg, 'mcg');
+      addIf('Vitamin E', n65.vitE, 'mg');
+      addIf('Vitamin K', n65.vitK, 'mcg');
+      addIf('B1 (Tiamin)', n65.thiamine, 'mg');
+      addIf('B2 (Riboflavin)', n65.riboflavin, 'mg');
+      addIf('B3 (Niasin)', n65.niacin, 'mg');
+      addIf('B5 (Pantotenik)', n65.pantothenic, 'mg');
+      addIf('B6', n65.vitB6, 'mg');
+      addIf('Folat (B9)', n65.folate, 'mcg', dec: 0);
+      addIf('B12', n65.vitB12, 'mcg');
+      addIf('Biotin (B7)', n65.biotin, 'mcg');
+      addIf('Kolin', n65.choline, 'mg', dec: 0);
+      addIf('Omega-3', n65.omega3, 'g');
+      addIf('Omega-6', n65.omega6, 'g');
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3279,7 +3495,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
             const SizedBox(width: 8),
             _MacroPill(label: 'Yağ', value: '${fat.toStringAsFixed(1)}g', color: const Color(0xFFF0A500)),
             const SizedBox(width: 8),
-            _MacroPill(label: 'Lif', value: '${((r['lif'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}g', color: const Color(0xFFD2A8FF)),
+            _MacroPill(label: 'Lif', value: '${fiber.toStringAsFixed(1)}g', color: const Color(0xFFD2A8FF)),
           ],
         ),
         const SizedBox(height: 14),
@@ -3298,22 +3514,60 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
                 ),
                 child: Column(
-                  children: [
-                    if (r['sodyum'] != null) _infoRow(context, 'Sodyum', '${r['sodyum']} mg'),
-                    if (r['vitamin_d'] != null) _infoRow(context, 'D Vitamini', '${r['vitamin_d']} μg'),
-                    if (r['vitamin_b12'] != null) _infoRow(context, 'B12 Vitamini', '${r['vitamin_b12']} μg'),
-                    if (r['kalsiyum'] != null) _infoRow(context, 'Kalsiyum', '${r['kalsiyum']} mg'),
-                    if (r['demir'] != null) _infoRow(context, 'Demir', '${r['demir']} mg'),
-                    if (r['magnezyum'] != null) _infoRow(context, 'Magnezyum', '${r['magnezyum']} mg'),
-                    if (r['sodyum'] == null && r['kalsiyum'] == null && r['demir'] == null)
-                      Text('Mikro besin verisi bulunamadı.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-                  ],
+                  children: detailsList.isNotEmpty
+                      ? detailsList
+                      : [
+                          Text('Mikro besin verisi bulunamadı.',
+                              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))
+                        ],
                 ),
               ),
             ],
           ),
         ),
-        if (confReason.isNotEmpty) ...[
+        if (score < 75) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: confColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: confColor.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, color: confColor, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Daha Fazla Detay Eklenebilir',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: confColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        confReason.isNotEmpty
+                            ? confReason
+                            : 'Girdiğiniz tarif çok kısa veya yetersiz olduğu için ortalama değerler hesaplanmıştır. Daha kesin sonuçlar için pişirme yöntemi, miktar veya marka belirterek detay ekleyebilirsiniz.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else if (confReason.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
             confReason,

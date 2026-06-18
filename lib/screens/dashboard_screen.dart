@@ -1657,37 +1657,6 @@ class _DashboardPage1 extends StatefulWidget {
 }
 
 class _DashboardPage1State extends State<_DashboardPage1> {
-  bool _showStepsInCenter = false;
-  Timer? _resetTimer;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _resetTimer?.cancel();
-    super.dispose();
-  }
-
-  void _handleCenterTap() {
-    setState(() {
-      _showStepsInCenter = !_showStepsInCenter;
-    });
-
-    _resetTimer?.cancel();
-    if (_showStepsInCenter) {
-      _resetTimer = Timer(const Duration(seconds: 5), () {
-        if (mounted) {
-          setState(() {
-            _showStepsInCenter = false;
-          });
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final remaining = widget.remaining.clamp(0.0, double.infinity);
@@ -1726,7 +1695,6 @@ class _DashboardPage1State extends State<_DashboardPage1> {
         .toStringAsFixed(0)
         .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
 
-    final stepProgress = (widget.steps / widget.stepGoal).clamp(0.0, 1.0);
     // Burned progress relative to calorie goal (matching the intake ring's scale)
     final burnedProgress = widget.calorieGoal > 0
         ? widget.totalBurned / widget.calorieGoal
@@ -1735,77 +1703,31 @@ class _DashboardPage1State extends State<_DashboardPage1> {
     final hasBurnedLap = burnedProgress >= 1.0;
 
     // ── Ring centre content ────────────────────────────────────────────────
-    final ringCenter = GestureDetector(
-      onTap: _handleCenterTap,
-      behavior: HitTestBehavior.opaque,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: ScaleTransition(scale: anim, child: child),
-            ),
-            child: _showStepsInCenter
-                ? Column(
-                    key: const ValueKey('steps'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${widget.steps}',
-                        style: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF58A6FF), // Blue for steps
-                          height: 1.0,
-                          letterSpacing: -1.5,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'ATILAN ADIM',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: textSub,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    key: const ValueKey('calories'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        remainingStr,
-                        style: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                          color: textPrimary,
-                          height: 1.0,
-                          letterSpacing: -1.5,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'KALAN KCAL',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: textSub,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
+    final ringCenter = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          remainingStr,
+          style: TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.w800,
+            color: textPrimary,
+            height: 1.0,
+            letterSpacing: -1.5,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'KALAN KCAL',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: textSub,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
     );
 
     return Builder(
@@ -1843,7 +1765,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                   Text(
                                     widget.nutrition.calories.toStringAsFixed(0),
                                     style: TextStyle(
-                                      fontSize: 20,
+                                      fontSize: 24,
                                       fontWeight: FontWeight.w800,
                                       color: textPrimary,
                                     ),
@@ -1851,7 +1773,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                   Text(
                                     'ALINAN',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                       color: const Color(0xFF7EE787),
                                     ),
@@ -1862,7 +1784,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                           ),
                           // Circle (Center)
                           SizedBox(
-                            width: 175, // Increased as requested
+                            width: 155,
                             child: Center(
                               child: AspectRatio(
                                 aspectRatio: 1,
@@ -1906,7 +1828,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                     ),
                                     // Burned Ring (Middle)
                                     Padding(
-                                      padding: const EdgeInsets.all(16),
+                                      padding: const EdgeInsets.all(14),
                                       child: SizedBox.expand(
                                         child: Stack(
                                           children: [
@@ -1944,26 +1866,6 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                         ),
                                       ),
                                     ),
-                                    // Step Ring (Inner-most)
-                                    Padding(
-                                      padding: const EdgeInsets.all(30),
-                                      child: SizedBox.expand(
-                                        child: TweenAnimationBuilder<double>(
-                                          tween: Tween<double>(begin: 0, end: stepProgress),
-                                          duration: const Duration(milliseconds: 1200),
-                                          curve: Curves.easeOutCubic,
-                                          builder: (context, value, _) => CircularProgressIndicator(
-                                            value: value,
-                                            strokeWidth: 5, // Thinner as requested
-                                            backgroundColor: barBg,
-                                            valueColor: const AlwaysStoppedAnimation(
-                                              Color(0xFF58A6FF), // Blue
-                                            ),
-                                            strokeCap: StrokeCap.round,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
                                     ringCenter,
                                   ],
                                 ),
@@ -1980,7 +1882,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                   Text(
                                     widget.totalBurned.toStringAsFixed(0),
                                     style: TextStyle(
-                                      fontSize: 20,
+                                      fontSize: 24,
                                       fontWeight: FontWeight.w800,
                                       color: textPrimary,
                                     ),
@@ -1988,7 +1890,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                   Text(
                                     'YAKILAN',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                       color: const Color(0xFFFFA726), // Changed to orange/burned color
                                     ),
@@ -2553,8 +2455,9 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Başlık + Skor
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 'Mikro Besinler',
@@ -2565,7 +2468,6 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
                   letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 12),
               GestureDetector(
                 onTap: () => _showScoreExplanation(context, score, scoreColor),
                 child: Row(
@@ -2575,7 +2477,7 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
                     Text(
                       score.toInt().toString(),
                       style: TextStyle(
-                        fontSize: 38,
+                        fontSize: 56,
                         fontWeight: FontWeight.w900,
                         color: cs.onSurface,
                         letterSpacing: -1.0,
@@ -2585,28 +2487,11 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
                     Text(
                       '%',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: cs.onSurface,
                       ),
                     ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: scoreColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _getScoreStatus(score),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: scoreColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
                   ],
                 ),
               ),
