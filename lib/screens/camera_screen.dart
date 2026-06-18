@@ -53,37 +53,6 @@ void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı
         );
         onDone?.call();
       },
-      onEdit: (result) {
-        Navigator.pop(context); // Close Voice Sheet
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          useSafeArea: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (_) => DraggableScrollableSheet(
-            initialChildSize: 0.7,
-            minChildSize: 0.4,
-            maxChildSize: 0.95,
-            expand: false,
-            builder: (ctx, scrollCtrl) => _ManualEntryBottomSheet(
-              scrollCtrl: scrollCtrl,
-              selectedMeal: selectedMeal,
-              prefill: buildPrefillMap(result),
-              onSave: (entry) {
-                context.read<NutritionProvider>().addFoodEntry(entry);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('${entry.name} eklendi'),
-                      behavior: SnackBarBehavior.floating),
-                );
-                onDone?.call();
-              },
-            ),
-          ),
-        );
-      },
     ),
   );
 }
@@ -786,10 +755,6 @@ class _CameraScreenState extends State<CameraScreen>
           if (mounted && Navigator.canPop(context)) {
             Navigator.pop(context);
           }
-        },
-        onEdit: (result) {
-          Navigator.pop(context); // Close Voice Sheet
-          _openManualEntry(prefill: buildPrefillMap(result));
         },
       ),
     );
@@ -2737,12 +2702,10 @@ enum _VoiceSheetState { input, listening, analyzing, confirming }
 class _VoiceTextEntrySheet extends StatefulWidget {
   final String selectedMeal;
   final void Function(FoodEntry entry) onSave;
-  final void Function(FoodAnalysisResult result)? onEdit;
 
   const _VoiceTextEntrySheet({
     required this.selectedMeal,
     required this.onSave,
-    this.onEdit,
   });
 
   @override
@@ -2831,7 +2794,9 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
       final provider = context.read<NutritionProvider>();
       provider.analyzeAndAddImage(_selectedFoodImage!, _meal, extraContext: desc);
       provider.enableHomeResult();
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
       return;
     }
 
@@ -3002,7 +2967,9 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
       mealType: _meal,
       imagePath: imagePath,
     );
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+    }
     widget.onSave(entry);
   }
 
@@ -3013,105 +2980,189 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     });
   }
 
+  void _openEditSheet(FoodAnalysisResult result) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollCtrl) => _ManualEntryBottomSheet(
+          scrollCtrl: scrollCtrl,
+          selectedMeal: _meal,
+          isAnalysis: true,
+          prefill: buildPrefillMap(result),
+          onSave: (entry) {
+            setState(() {
+              _result = FoodAnalysisResult(
+                foodName: entry.name,
+                portionGrams: entry.portionSize,
+                nutritionPer100g: entry.nutritionData,
+                nutrition65per100g: NutritionData65(
+                  energy: entry.nutritionData.calories,
+                  protein: entry.nutritionData.protein,
+                  fat: entry.nutritionData.fat,
+                  carb: entry.nutritionData.carbohydrates,
+                  fiber: entry.nutritionData.fiber,
+                  sugar: entry.nutritionData.sugar,
+                  satFat: entry.nutritionData.saturatedFat,
+                  monoFat: entry.nutritionData.monoFat ?? 0,
+                  polyFat: entry.nutritionData.polyFat ?? 0,
+                  transFat: entry.nutritionData.transFat ?? 0,
+                  cholesterol: entry.nutritionData.cholesterol ?? 0,
+                  water: 0,
+                  calcium: entry.nutritionData.calcium ?? 0,
+                  iron: entry.nutritionData.iron ?? 0,
+                  magnesium: entry.nutritionData.magnesium ?? 0,
+                  phosphorus: entry.nutritionData.phosphorus ?? 0,
+                  potassium: entry.nutritionData.potassium ?? 0,
+                  sodium: entry.nutritionData.sodium ?? 0,
+                  zinc: entry.nutritionData.zinc ?? 0,
+                  copper: entry.nutritionData.copper ?? 0,
+                  manganese: entry.nutritionData.manganese ?? 0,
+                  selenium: entry.nutritionData.selenium ?? 0,
+                  vitC: entry.nutritionData.vitaminC ?? 0,
+                  vitD_mcg: entry.nutritionData.vitaminD ?? 0,
+                  vitE: entry.nutritionData.vitaminE ?? 0,
+                  vitK: entry.nutritionData.vitaminK ?? 0,
+                  vitA_RAE: entry.nutritionData.vitaminA ?? 0,
+                  thiamine: entry.nutritionData.thiamine ?? 0,
+                  riboflavin: entry.nutritionData.riboflavin ?? 0,
+                  niacin: entry.nutritionData.niacin ?? 0,
+                  pantothenic: entry.nutritionData.pantothenic ?? 0,
+                  vitB6: entry.nutritionData.vitaminB6 ?? 0,
+                  folate: entry.nutritionData.folate ?? 0,
+                  vitB12: entry.nutritionData.vitaminB12 ?? 0,
+                  choline: entry.nutritionData.choline ?? 0,
+                  biotin: entry.nutritionData.biotin ?? 0,
+                  omega3: entry.nutritionData.omega3 ?? 0,
+                  omega6: entry.nutritionData.omega6 ?? 0,
+                  ala: entry.nutritionData.ala ?? 0,
+                  epa: entry.nutritionData.epa ?? 0,
+                  dha: entry.nutritionData.dha ?? 0,
+                  tryptophan: entry.nutritionData.tryptophan ?? 0,
+                  threonine: entry.nutritionData.threonine ?? 0,
+                  isoleucine: entry.nutritionData.isoleucine ?? 0,
+                  leucine: entry.nutritionData.leucine ?? 0,
+                  lysine: entry.nutritionData.lysine ?? 0,
+                  methionine: entry.nutritionData.methionine ?? 0,
+                  phenylalanine: entry.nutritionData.phenylalanine ?? 0,
+                  valine: entry.nutritionData.valine ?? 0,
+                  histidine: entry.nutritionData.histidine ?? 0,
+                  dataSource: 'Düzenlendi',
+                ),
+                sources: const ['Düzenlendi'],
+                confidenceScore: 100,
+                confidenceReason: 'Kullanıcı tarafından elle düzenlendi.',
+                alternativeMin: FoodAnalysisService.calculateCalories(
+                  proteinG: entry.nutritionData.protein * entry.portionSize / 100,
+                  carbsG: entry.nutritionData.carbohydrates * entry.portionSize / 100,
+                  fatG: entry.nutritionData.fat * entry.portionSize / 100,
+                ) * 0.9,
+                alternativeMax: FoodAnalysisService.calculateCalories(
+                  proteinG: entry.nutritionData.protein * entry.portionSize / 100,
+                  carbsG: entry.nutritionData.carbohydrates * entry.portionSize / 100,
+                  fatG: entry.nutritionData.fat * entry.portionSize / 100,
+                ) * 1.1,
+              );
+              _sheetState = _VoiceSheetState.confirming;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final shouldClose = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Kapatılsın mı?'),
-            content: const Text('Yapılan analiz veya girişler kaybolacaktır. Kapatmak istediğinize emin misiniz?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Hayır'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Evet'),
-              ),
-            ],
-          ),
-        );
-        if (shouldClose == true && context.mounted) {
-          Navigator.pop(context);
-        }
-      },
-      child: AnimatedPadding(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
+    return DraggableScrollableSheet(
+      initialChildSize: _sheetState == _VoiceSheetState.analyzing ? 0.35 : 0.7,
+      minChildSize: 0.25,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (ctx, scrollCtrl) {
+        return Container(
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF161B22) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+              // ── Üst başlık ──
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    child: Row(
+                      children: [
+                        if (_sheetState == _VoiceSheetState.input && _result != null) ...[
+                          IconButton(
+                            icon: Icon(Icons.arrow_back_rounded, color: cs.primary, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            onPressed: () {
+                              setState(() {
+                                _sheetState = _VoiceSheetState.confirming;
+                                _errorMsg = null;
+                              });
+                            },
+                          ),
+                        ] else ...[
+                          Icon(Icons.restaurant_menu_rounded, color: cs.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Yemeği Tarif Et',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ],
+                        const Spacer(),
+                        if (_sheetState == _VoiceSheetState.confirming && _result != null)
+                          IconButton(
+                            icon: Icon(Icons.edit_rounded, color: cs.primary, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            tooltip: 'Düzenle',
+                            onPressed: () => _openEditSheet(_result!),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                child: Row(
-                  children: [
-                    if (_sheetState == _VoiceSheetState.input && _result != null) ...[
-                      IconButton(
-                        icon: Icon(Icons.arrow_back_rounded, color: cs.primary, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: () {
-                          setState(() {
-                            _sheetState = _VoiceSheetState.confirming;
-                            _errorMsg = null;
-                          });
-                        },
-                      ),
-                    ] else ...[
-                      Icon(Icons.restaurant_menu_rounded, color: cs.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Yemeği Tarif Et',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                    ],
-                    const Spacer(),
-                    if (_sheetState == _VoiceSheetState.confirming && widget.onEdit != null && _result != null)
-                      IconButton(
-                        icon: Icon(Icons.edit_rounded, color: cs.primary, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        tooltip: 'Düzenle',
-                        onPressed: () => widget.onEdit!(_result!),
-                      ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
+              // ── Kaydırılabilir içerik ──
+              Expanded(
                 child: SingleChildScrollView(
+                  controller: scrollCtrl,
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                   child: _buildContent(cs, isDark),
                 ),
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
