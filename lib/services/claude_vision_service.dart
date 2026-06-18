@@ -47,7 +47,7 @@ Sen bir uzman diyetisyen ve besin analisti olarak kullanıcının tarif ettiği 
 Kullanıcı tarifi: "$description"
 
 ADIM 1 — YEMEK TANIMI:
-- Tarife göre yemeğin tam adını belirle (Türkçe)
+- Tarife göre yemeğin tam adını belirle (Türkçe - yemek_adi, İngilizce - yemek_adi_en)
 - Pişirme yöntemini tahmin et (eğer belirtilmemişse en yaygın yöntemi kullan)
 - Malzemeleri tespit et
 
@@ -72,6 +72,7 @@ ADIM 5 — GÜVENİLİRLİK:
 SADECE JSON döndür, başka hiçbir şey yazma:
 {
   "yemek_adi": "",
+  "yemek_adi_en": "",
   "pişirme_yöntemi": "",
   "malzemeler": [],
   "porsiyon_gram": 0,
@@ -152,7 +153,7 @@ Sen bir uzman diyetisyen ve besin analisti olarak bu yemeği analiz et.
 ${hint != null && hint.isNotEmpty ? 'Kullanıcı notu: "$hint"' : ''}
 
 ADIM 1 — YEMEK TANIMI:
-- Yemeğin tam adı (Türkçe)
+- Yemeğin tam adı (Türkçe - yemek_adi, İngilizce - yemek_adi_en)
 - Tahmini pişirme yöntemi (ızgara/haşlama/kızartma/çiğ/fırın)
 - Tespit edilen malzemeler (virgülle listele)
 - Referans nesne varsa (tabak, çatal, bardak) boyut tahmini için kullan
@@ -179,6 +180,7 @@ ADIM 4 — GÜVENİLİRLİK SKORU:
 SADECE JSON döndür, başka hiçbir şey yazma:
 {
   "yemek_adi": "",
+  "yemek_adi_en": "",
   "pişirme_yöntemi": "",
   "malzemeler": [],
   "porsiyon_gram": 0,

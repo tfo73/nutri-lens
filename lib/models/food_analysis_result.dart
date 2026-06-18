@@ -5,6 +5,7 @@ import '../services/open_food_facts_service.dart';
 /// Çok kaynaklı analiz sonucu — NutritionData'ya metadata ekler
 class FoodAnalysisResult {
   final String foodName;
+  final String? foodNameEn;
   final String? cookingMethod;
   final double portionGrams;
   final double? volumeMl;
@@ -40,6 +41,7 @@ class FoodAnalysisResult {
 
   const FoodAnalysisResult({
     required this.foodName,
+    this.foodNameEn,
     this.cookingMethod,
     required this.portionGrams,
     this.volumeMl,
@@ -57,6 +59,7 @@ class FoodAnalysisResult {
 
   factory FoodAnalysisResult.empty() => const FoodAnalysisResult(
         foodName: 'Bilinmeyen',
+        foodNameEn: 'Unknown',
         portionGrams: 100,
         nutritionPer100g: NutritionData.empty,
         sources: [],
@@ -88,6 +91,7 @@ class FoodAnalysisResult {
 
     return FoodAnalysisResult(
       foodName: json['yemek_adi']?.toString() ?? 'Bilinmeyen',
+      foodNameEn: json['yemek_adi_en']?.toString(),
       cookingMethod: json['pişirme_yöntemi']?.toString(),
       portionGrams: portionGrams,
       volumeMl: gn('hacim_ml'),
@@ -129,6 +133,7 @@ class FoodAnalysisResult {
 
   FoodAnalysisResult copyWith({
     String? foodName,
+    String? foodNameEn,
     String? cookingMethod,
     double? portionGrams,
     NutritionData? nutritionPer100g,
@@ -140,6 +145,7 @@ class FoodAnalysisResult {
   }) {
     return FoodAnalysisResult(
       foodName: foodName ?? this.foodName,
+      foodNameEn: foodNameEn ?? this.foodNameEn,
       cookingMethod: cookingMethod ?? this.cookingMethod,
       portionGrams: portionGrams ?? this.portionGrams,
       volumeMl: volumeMl,

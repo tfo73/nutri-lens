@@ -8,6 +8,8 @@ import '../models/food_analysis_result.dart';
 import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class FoodAnalysisResultSheet extends StatefulWidget {
   final FoodAnalysisResult result;
@@ -116,7 +118,8 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       _fetchSuggestedImage(widget.result.foodName);
     }
 
-    _nameCtrl.text = widget.result.foodName;
+    final isTr = Provider.of<LanguageProvider>(context, listen: false).isTurkish;
+    _nameCtrl.text = isTr ? widget.result.foodName : (widget.result.foodNameEn ?? widget.result.foodName);
     _gramsCtrl.text = widget.result.portionGrams.toStringAsFixed(0);
     
     final scaled = widget.result.nutritionScaled;
@@ -243,6 +246,8 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
     final result = widget.result;
     final scaled = result.nutritionScaled;
     final cs = Theme.of(context).colorScheme;
+    final isTr = context.watch<LanguageProvider>().isTurkish;
+    final displayName = isTr ? result.foodName : (result.foodNameEn ?? result.foodName);
 
     Future<bool?> _showDeleteConfirmation() async {
       return await showDialog<bool?>(
@@ -412,14 +417,9 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _nameCtrl,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                  child: Text(
+                    displayName,
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: cs.onSurface),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -955,18 +955,21 @@ class MicroNutrientsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final n65 = result.nutrition65per100g;
+    final isTr = context.watch<LanguageProvider>().isTurkish;
+    final displayName = isTr ? result.foodName : (result.foodNameEn ?? result.foodName);
+
+    // Aktif bölümleri belirle (en az 1 besin değeri >= 0.01 olanlar)
     final factor = result.portionGrams / 100.0;
-
     final sections = n65 != null ? _buildSections(n65, factor) : <_NutriSection>[];
-    final activeSections = sections.where((s) => s.hasData).toList();
-
-    int totalCount = activeSections.fold(0, (sum, s) => sum + s.entries.where((e) => e.value >= 0.01).length);
+    final activeSections = sections.where((sec) => sec.entries.any((e) => e.value >= 0.01)).toList();
+    
+    // Toplam mineral + vitamin sayısı
+    final totalCount = activeSections.fold<int>(0, (sum, sec) => sum + sec.entries.where((e) => e.value >= 0.01).length);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B22) : Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0D1117) : const Color(0xFFF6F8FA),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -979,7 +982,7 @@ class MicroNutrientsSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Expanded(child: Text(result.foodName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(displayName, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: cs.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [

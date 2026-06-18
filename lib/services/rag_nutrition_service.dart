@@ -183,6 +183,7 @@ class RagNutritionService {
 
     return FoodAnalysisResult(
       foodName: originalQuery ?? food.name,
+      foodNameEn: originalQuery ?? food.name,
       cookingMethod: cookingMethod,
       portionGrams: portionGrams,
       nutritionPer100g: nd100,

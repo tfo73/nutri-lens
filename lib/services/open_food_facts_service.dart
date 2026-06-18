@@ -11,7 +11,7 @@ class OpenFoodFactsService {
     try {
       final uri = Uri.parse(
         '$_baseUrl/api/v2/product/$barcode'
-        '?fields=product_name,nutriments,nutriscore_grade,'
+        '?fields=product_name,product_name_en,nutriments,nutriscore_grade,'
         'nova_group,ecoscore_grade,allergens_tags,'
         'ingredients_text,labels_tags,quantity,'
         'serving_size,image_url,categories_tags',
@@ -34,7 +34,7 @@ class OpenFoodFactsService {
         '$_baseUrl/cgi/search.pl'
         '?search_terms=${Uri.encodeComponent(query)}'
         '&search_simple=1&action=process&json=1&page_size=5'
-        '&fields=product_name,nutriments,nutriscore_grade,'
+        '&fields=product_name,product_name_en,nutriments,nutriscore_grade,'
         'nova_group,allergens_tags,quantity,image_url',
       );
       final res = await http
@@ -78,6 +78,7 @@ class OpenFoodFactsService {
 
 class OFFProduct {
   final String name;
+  final String? nameEn;
   final String? barcode;
   final double calories;
   final double protein;
@@ -98,6 +99,7 @@ class OFFProduct {
 
   const OFFProduct({
     required this.name,
+    this.nameEn,
     this.barcode,
     required this.calories,
     required this.protein,
@@ -123,6 +125,7 @@ class OFFProduct {
 
     return OFFProduct(
       name: (j['product_name'] as String?) ?? '',
+      nameEn: (j['product_name_en'] as String?) ?? (j['product_name'] as String?),
       calories: g('energy-kcal'),
       protein: g('proteins'),
       carbs: g('carbohydrates'),

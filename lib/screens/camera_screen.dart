@@ -3002,6 +3002,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
             setState(() {
               _result = FoodAnalysisResult(
                 foodName: entry.name,
+                foodNameEn: entry.name,
                 portionGrams: entry.portionSize,
                 nutritionPer100g: entry.nutritionData,
                 nutrition65per100g: NutritionData65(
