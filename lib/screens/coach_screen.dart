@@ -10,6 +10,7 @@ import '../providers/coach_provider.dart';
 import '../providers/wellness_provider.dart';
 import '../services/config_service.dart';
 import '../widgets/wave_background.dart';
+import '../l10n/app_localizations.dart';
 
 class CoachScreen extends StatefulWidget {
   final bool isDialog;
@@ -29,10 +30,10 @@ class CoachScreen extends StatefulWidget {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Geçmiş Yok'),
-            content: const Text('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.'),
+            title: Text(context.tr('Geçmiş Yok')),
+            content: Text(context.tr('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.')),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Tamam'))),
             ],
           ),
         );
@@ -146,8 +147,8 @@ class CoachScreen extends StatefulWidget {
                               return Center(
                                 child: Text(
                                   selectedDate != null
-                                      ? 'Bu tarihte konuşma yok'
-                                      : 'Geçmiş bulunamadı',
+                                      ? context.tr('Bu tarihte konuşma yok')
+                                      : context.tr('Geçmiş bulunamadı'),
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                               );
@@ -196,7 +197,7 @@ class CoachScreen extends StatefulWidget {
                                     title: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
                                         style: const TextStyle(fontWeight: FontWeight.w600)),
                                     subtitle: Text('$preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    trailing: Text('${msgs.length} mesaj',
+                                    trailing: Text('${msgs.length} ${context.tr('mesaj')}',
                                         style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
                                     onTap: () {
                                       _showConversationDetailExternal(context, session);
@@ -325,10 +326,10 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Geçmiş Yok'),
-          content: const Text('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.'),
+          title: Text(context.tr('Geçmiş Yok')),
+          content: Text(context.tr('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.')),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Tamam'))),
           ],
         ),
       );
@@ -427,7 +428,7 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
                               title: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
                                   style: const TextStyle(fontWeight: FontWeight.w600)),
                               subtitle: Text('$preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
-                              trailing: Text('${msgs.length} mesaj',
+                              trailing: Text('${msgs.length} ${context.tr('mesaj')}',
                                   style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
                               onTap: () => _showConversationDetail(context, session),
                             ),
@@ -522,18 +523,25 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     final calorieGoal = context.read<ProfileProvider>().calorieGoal;
 
     if (profile == null) {
-      return 'Sen bir uzman beslenme koçusun. Kullanıcıya Türkçe, kısa ve pratik öneriler sun.';
+      return context.tr('coach_fallback_prompt');
     }
 
-    return '''Sen bir uzman beslenme koçusun. Kullanıcının profil bilgileri:
-İsim: ${profile.name}, ${profile.age} yaşında, ${profile.height.toStringAsFixed(0)}cm boy, ${profile.weight.toStringAsFixed(1)}kg kilo.
-Hedef: ${profile.goalLabel}, Aktivite: ${profile.activityLabel}.
-Bugünkü beslenme özeti: ${today.calories.toStringAsFixed(0)} kcal alındı, hedef ${calorieGoal.toStringAsFixed(0)} kcal.
-Protein: ${today.protein.toStringAsFixed(1)}g (hedef: ${profile.proteinGoal.toStringAsFixed(0)}g)
-Karbonhidrat: ${today.carbohydrates.toStringAsFixed(1)}g (hedef: ${profile.carbGoal.toStringAsFixed(0)}g)
-Yağ: ${today.fat.toStringAsFixed(1)}g (hedef: ${profile.fatGoal.toStringAsFixed(0)}g)
-
-Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. Yanıtının başına "Ahmet'in beslenme önerileri" gibi başlıklar koyma, direkt konuya gir.''';
+    return context.tr('coach_detailed_prompt')
+        .replaceFirst('{name}', profile.name)
+        .replaceFirst('{age}', profile.age.toString())
+        .replaceFirst('{height}', profile.height.toStringAsFixed(0))
+        .replaceFirst('{weight}', profile.weight.toStringAsFixed(1))
+        .replaceFirst('{goal}', profile.goalLabel)
+        .replaceFirst('{activity}', profile.activityLabel)
+        .replaceFirst('{calories}', today.calories.toStringAsFixed(0))
+        .replaceFirst('{calGoal}', calorieGoal.toStringAsFixed(0))
+        .replaceFirst('{protein}', today.protein.toStringAsFixed(1))
+        .replaceFirst('{proGoal}', profile.proteinGoal.toStringAsFixed(0))
+        .replaceFirst('{carb}', today.carbohydrates.toStringAsFixed(1))
+        .replaceFirst('{carbGoal}', profile.carbGoal.toStringAsFixed(0))
+        .replaceFirst('{fat}', today.fat.toStringAsFixed(1))
+        .replaceFirst('{fatGoal}', profile.fatGoal.toStringAsFixed(0))
+        .replaceFirst('{name}', profile.name);
   }
 
   Future<void> _sendMessage(String text, {String? displayText}) async {
@@ -612,10 +620,10 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
         _scrollToBottom(force: true);
         Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(force: true));
       } else {
-        _addErrorMessage('API hatası: ${response.statusCode}');
+        _addErrorMessage(context.tr('API hatası: {}').replaceFirst('{}', response.statusCode.toString()));
       }
     } catch (e) {
-      _addErrorMessage('Bağlantı hatası. Lütfen tekrar deneyin.');
+      _addErrorMessage(context.tr('Bağlantı hatası. Lütfen tekrar deneyin.'));
     }
     _scrollToBottom(force: true);
   }
@@ -702,7 +710,7 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
                           padding: EdgeInsets.zero,
                           icon: const Icon(Icons.history, size: 20),
                           color: const Color(0xFF58A6FF),
-                          tooltip: 'Geçmiş',
+                          tooltip: context.tr('Geçmiş'),
                           onPressed: () => _showHistory(context),
                         ),
                       ),
@@ -762,8 +770,8 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Beslenme Koçu',
+                      Text(
+                  context.tr('Beslenme Koçu'),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -784,7 +792,7 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
                   icon: Icon(Icons.history,
                       color: colorScheme.onSurfaceVariant),
                   iconSize: 20,
-                  tooltip: 'Geçmiş',
+                  tooltip: context.tr('Geçmiş'),
                   onPressed: () => _showHistory(context),
                 ),
                 IconButton(
@@ -848,7 +856,7 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
       final wellness = context.read<WellnessProvider>();
       final symptoms = wellness.today.symptoms;
       if (symptoms.isEmpty) return [];
-      return symptoms.take(2).map((s) => '🚨 $s ile beslenme bağlantısı?').toList();
+      return symptoms.take(2).map((s) => context.tr('🚨 {} ile beslenme bağlantısı?').replaceFirst('{}', s)).toList();
     } catch (_) {
       return [];
     }
@@ -867,52 +875,51 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
 
     // 1. Sabah soruları (06:00 - 12:00)
     if (hour >= 6 && hour < 12) {
-      questions.add('🍳 Kahvaltı önerisi?');
-      questions.add('🗓️ Bugün ne yemeliyim?');
+      questions.add(context.tr('🍳 Kahvaltı önerisi?'));
+      questions.add(context.tr('🗓️ Bugün ne yemeliyim?'));
     }
 
     // 2. Akşam/Gece soruları (19:00 - 06:00)
     if (hour >= 19 || hour < 6) {
-      questions.add('💤 Uyku dostu besinler?');
-      questions.add('📊 Günümü değerlendir');
+      questions.add(context.tr('💤 Uyku dostu besinler?'));
+      questions.add(context.tr('📊 Günümü değerlendir'));
     }
 
     // 3. Koşullu sorular
     if (nutrition.todayLog.exercises.isNotEmpty) {
-      questions.add('🏃‍♂️ Spor sonrası ne yemeliyim?');
+      questions.add(context.tr('🏃‍♂️ Spor sonrası ne yemeliyim?'));
     }
 
     if (waterIntakeMl < waterGoalMl * 0.8) {
-      questions.add('💧 Su içme tüyoları?');
+      questions.add(context.tr('💧 Su içme tüyoları?'));
     }
 
     if (calorieGoal > 0 && today.calories < calorieGoal * 0.7) {
-      questions.add('⚖️ Kalori açığı tavsiyesi?');
+      questions.add(context.tr('⚖️ Kalori açığı tavsiyesi?'));
     }
 
     if (profile != null) {
       if (profile.proteinGoal > 0 && today.protein < profile.proteinGoal * 0.7) {
-        questions.add('🍗 Protein hedefi?');
+        questions.add(context.tr('🍗 Protein hedefi?'));
       }
       if (profile.carbGoal > 0 && today.carbohydrates < profile.carbGoal * 0.7) {
-        questions.add('🥖 Karbonhidrat desteği?');
+        questions.add(context.tr('🥖 Karbonhidrat desteği?'));
       }
       if (profile.fatGoal > 0 && today.fat < profile.fatGoal * 0.7) {
-        questions.add('🥑 Sağlıklı yağlar?');
+        questions.add(context.tr('🥑 Sağlıklı yağlar?'));
       }
     }
 
     // Her zaman olan genel sorular
-    questions.add('🍎 Sağlıklı atıştırmalık?');
-    questions.add('⚡ Metabolizma hızlandırma?');
-    questions.add('🥗 Pratik öğle yemeği?');
+    questions.add(context.tr('🍎 Sağlıklı atıştırmalık?'));
+    questions.add(context.tr('⚡ Metabolizma hızlandırma?'));
+    questions.add(context.tr('🥗 Pratik öğle yemeği?'));
 
     questions.shuffle();
     return questions.take(4).toList();
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -941,26 +948,26 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ).createShader(bounds),
-                  child: const Text(
-                    'Merhaba!',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white),
+                  child: Text(
+                    context.tr('Merhaba!'),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Text(
-                  'Ben senin beslenme koçunum.',
+                Text(
+                  context.tr('Ben senin beslenme koçunum.'),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Profil bilgilerine ve bugünkü verilerine göre sana özel öneriler sunabilirim. Nereden başlayalım?',
+              context.tr('Profil bilgilerine ve bugünkü verilerine göre sana özel öneriler sunabilirim. Nereden başlayalım?'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ),
         ],
@@ -1114,39 +1121,38 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
 
                 // Symptom-specific prompt
                 if (isSymptom) {
-                  final symptomText = label.replaceAll('🚨 ', '').replaceAll(' ile beslenme bağlantısı?', '');
-                  prompt = "$symptomText semptomunu yaşıyorum. Bu semptomun beslenme ile bağlantısı ne olabilir? Hangi besinleri tüketmeli veya kaçınmalıyım? Somut öneriler verir misin?";
-                // Map short labels to detailed, expert prompts for ALL questions
-                } else if (label.contains('Kahvaltı')) {
-                  prompt = "Bana bugünkü profilime uygun, pratik ve sağlıklı bir kahvaltı tarifi verir misin?";
-                } else if (label.contains('Akşam')) {
-                  prompt = "Akşam yemeği için bugünkü makrolarımı dengeleyecek hafif ve doyurucu ne önerebilirsin?";
-                } else if (label.contains('Su içmeli') || label.contains('Su içme') || label.contains('💧')) {
-                  prompt = "Bugünkü su tüketimimi analiz edip bana su içme alışkanlığım hakkında tavsiye verir misin?";
-                } else if (label.contains('Adım') || label.contains('hedefi') || label.contains('🏃‍♂️')) {
-                  prompt = "Günlük adım hedefime ulaşmak için bugünkü verilerime göre bana motivasyonel bir tavsiye verir misin?";
-                } else if (label.contains('atıştırmalık') || label.contains('🍎')) {
-                  prompt = "Kan şekerimi dengede tutacak, kalorisi düşük ama tok tutan atıştırmalık fikirleri verebilir misin?";
-                } else if (label.contains('Enerjim') || label.contains('yorgun') || label.contains('⚡')) {
-                  prompt = "Şu an enerjim düşük hissediyorum, beni zinde tutacak sağlıklı besin önerilerin neler?";
-                } else if (label.contains('nasılım') || label.contains('değerlendir') || label.contains('Günümü') || label.contains('📊') || label.contains('Bugün')) {
-                  prompt = "Bugünkü yediklerime ve aktiviteme göre günümü genel olarak değerlendirip bana bir puan verir misin?";
-                } else if (label.contains('Spor') || label.contains('egzersiz')) {
-                  prompt = "Yaptığım egzersize göre kas gelişimimi destekleyecek en iyi spor sonrası öğün önerin nedir?";
+                  final symptomText = label.replaceAll('🚨 ', '').replaceAll(context.tr('🚨 {} ile beslenme bağlantısı?').replaceFirst('{}', ''), '');
+                  prompt = context.tr('prompt_symptom').replaceFirst('{symptom}', symptomText);
+                } else if (label.contains(context.tr('🍳 Kahvaltı önerisi?').replaceAll('🍳 ', ''))) {
+                  prompt = context.tr('prompt_breakfast');
+                } else if (label.contains(context.tr('Akşam Yemeği').replaceAll(' Yemeği', '')) || label.contains('Akşam')) { // Fallback for 'Akşam' logic
+                  prompt = context.tr('prompt_dinner');
+                } else if (label.contains('💧') || label.contains('Su')) {
+                  prompt = context.tr('prompt_water');
+                } else if (label.contains('🏃‍♂️') || label.contains('Spor') || label.contains('Adım')) {
+                  prompt = context.tr('prompt_steps');
+                } else if (label.contains('🍎') || label.contains('atıştırmalık')) {
+                  prompt = context.tr('prompt_snack');
+                } else if (label.contains('⚡') || label.contains('Enerjim')) {
+                  prompt = context.tr('prompt_energy');
+                } else if (label.contains('📊') || label.contains('değerlendir') || label.contains('Günümü')) {
+                  prompt = context.tr('prompt_eval_day');
+                } else if (label.contains('egzersiz')) { // extra fallback
+                  prompt = context.tr('prompt_post_workout');
                 } else if (label.contains('Metabolizma')) {
-                  prompt = "Metabolizmamı doğal yollarla hızlandıracak beslenme tüyoları verebilir misin?";
-                } else if (label.contains('Uyku') || label.contains('💤')) {
-                  prompt = "Daha kaliteli bir uyku için akşam saatlerinde tüketmemi veya kaçınmamı önerdiğin besinler nelerdir?";
-                } else if (label.contains('Kalori') || label.contains('⚖️')) {
-                  prompt = "Hedeflediğim kalori miktarına ulaşmak için sağlıklı ve dengeli bir şekilde kalori alımımı nasıl düzenleyebilirim?";
-                } else if (label.contains('Protein') || label.contains('🍗')) {
-                  prompt = "Bugünkü protein ihtiyacımı karşılamak için tüketebileceğim en kaliteli protein kaynakları nelerdir?";
-                } else if (label.contains('Karbonhidrat') || label.contains('🥖')) {
-                  prompt = "Vücudumun enerji ihtiyacını karşılayacak en sağlıklı ve kompleks karbonhidrat kaynakları hakkında bilgi verir misin?";
-                } else if (label.contains('yağlar') || label.contains('🥑')) {
-                  prompt = "Beslenme düzenime ekleyebileceğim kalp dostu ve sağlıklı yağ kaynakları hakkında öneri verir misin?";
-                } else if (label.contains('Öğle') || label.contains('🥗')) {
-                  prompt = "Öğle yemeği için beni akşama kadar tok tutacak, besleyici ve pratik bir menü önerir misin?";
+                  prompt = context.tr('prompt_metabolism');
+                } else if (label.contains('💤') || label.contains('Uyku')) {
+                  prompt = context.tr('prompt_sleep');
+                } else if (label.contains('⚖️') || label.contains('Kalori')) {
+                  prompt = context.tr('prompt_calorie');
+                } else if (label.contains('🍗') || label.contains('Protein')) {
+                  prompt = context.tr('prompt_protein');
+                } else if (label.contains('🥖') || label.contains('Karbonhidrat')) {
+                  prompt = context.tr('prompt_carb');
+                } else if (label.contains('🥑') || label.contains('yağlar')) {
+                  prompt = context.tr('prompt_fat');
+                } else if (label.contains('🥗') || label.contains('Öğle')) {
+                  prompt = context.tr('prompt_lunch');
                 }
                 
                 _sendMessage(prompt);
@@ -1183,7 +1189,7 @@ Türkçe yanıt ver. Kısa ve pratik öneriler sun. Maksimum 3-4 cümle kullan. 
               controller: _textController,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                hintText: 'Koçuna bir şey sor...',
+                hintText: context.tr('Koçuna bir şey sor...'),
                 hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                 filled: true,
                 fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -1245,13 +1251,13 @@ class _TypingStatusText extends StatefulWidget {
 }
 
 class _TypingStatusTextState extends State<_TypingStatusText> {
-  static const _messages = [
-    'Öğünlerin inceleniyor',
-    'Kalori alışına bakılıyor',
-    'Besin değerlerin hesaplanıyor',
-    'Hedeflerinle karşılaştırılıyor',
-    'Günlük ilerleme analiz ediliyor',
-    'Önerin hazırlanıyor',
+  List<String> get _messages => [
+    context.tr('Öğünlerin inceleniyor'),
+    context.tr('Kalori alışına bakılıyor'),
+    context.tr('Besin değerlerin hesaplanıyor'),
+    context.tr('Hedeflerinle karşılaştırılıyor'),
+    context.tr('Günlük ilerleme analiz ediliyor'),
+    context.tr('Önerin hazırlanıyor'),
   ];
 
   int _index = 0;

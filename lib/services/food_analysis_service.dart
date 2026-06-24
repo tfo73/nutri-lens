@@ -119,7 +119,7 @@ class FoodAnalysisService {
               'type': 'text',
               'text': '''
 You are an expert food analyst proficient in "Nutrition5k" and "USDA" data standards. Segment the plate in the image into its distinct components.
-1. Determine the exact name of the food in Turkish (for "yemek_adi") and English (for "yemek_adi_en").
+1. Determine the exact name of the food. Set "yemek_adi" to the language used in the user hint if provided (if the user hint is in English, "yemek_adi" MUST be in English; if Turkish, "yemek_adi" MUST be in Turkish; if no hint, default to Turkish). Set "yemek_adi_en" to English.
 2. Calculate the portion size based on the plate or a reference object (fork/spoon).
 3. Select an EXACT USDA standard entry for the main components (e.g., USDA 170456 Cooked Salmon) and calculate by weight while keeping micronutrient ratios constant.
 4. Always round segmentation ratios to the nearest 10% for stability.
@@ -140,7 +140,7 @@ Rules: If unknown, write 0. protein+carbs+fat ≤ 100. Sum of amino acids ≤ pr
           ],
         },
       ],
-      maxTokens: 1000,
+      maxTokens: 2000,
       model: 'claude-haiku-4-5-20251001',
     );
     return json;
@@ -264,7 +264,7 @@ Rules: If unknown, write 0. protein+carbs+fat ≤ 100. Sum of amino acids ≤ pr
               'type': 'text',
               'text': '''
 You are an expert nutrition coach and food analyst with deep knowledge of "Nutrition5k" and "USDA" data standards. Virtually segment the dish described by the user and analyze it with high precision: "$description"
-1. Determine the exact name of the food in Turkish (for "yemek_adi") and English (for "yemek_adi_en").
+1. Determine the exact name of the food. Set "yemek_adi" to the language of the user's description (if user describes it in English, "yemek_adi" MUST be in English. If user describes it in Turkish, "yemek_adi" MUST be in Turkish). Set "yemek_adi_en" to English.
 2. Calculate the portion weight in grams for the entire dish.
 3. Segment the dish into its main component ingredients.
 4. For each main component, select an EXACT USDA standard entry (e.g., USDA 170456 Cooked Salmon) and calculate the cumulative macro/micronutrients by weight.
@@ -284,10 +284,11 @@ Rule 5: If the description is extremely brief or ambiguous (e.g., just "egg", "y
   - Calculate portion size based on a standard single portion (e.g., 1 whole raw egg ≈ 50g, raw chicken breast ≈ 100g, meat portion ≈ 150g).
   - Set "guven_skoru" below 70 (e.g., 60 or 65) to indicate it's an estimate.
   - Write a helpful, specific recommendation in Turkish in "guven_nedeni" advising the user to specify cooking method, portion, or ingredients for higher accuracy (e.g., "Yumurtanın pişirilme şeklini (haşlanmış, sahanda vb.) ve miktarını yazarak daha kesin sonuçlar alabilirsiniz.").
+  - Write the same recommendation in English in "guven_nedeni_en" contextually and naturally (e.g., "For more accurate results, try specifying the cooking method (boiled, fried, etc.) and portion size.").
 ------------------------------------------------
 
 Return ONLY JSON, nothing else. All values must be per 100g:
-{"yemek_adi":"string","yemek_adi_en":"string","yemek_tipi":"soup|main_dish|salad|dessert|drink|breakfast|snack","pisirme":"raw|boiled|grilled|fried|baked|other","porsiyon_gram":number,"guven_skoru":number,"guven_nedeni":"string","protein":number,"karbonhidrat":number,"yag":number,"lif":number,"seker":number,"doymus_yag":number,"tekli_doymus_yag":number,"coklu_doymus_yag":number,"trans_yag":number,"kolesterol_mg":number,"su":number,"kalsiyum_mg":number,"demir_mg":number,"magnezyum_mg":number,"fosfor_mg":number,"potasyum_mg":number,"sodyum_mg":number,"cinko_mg":number,"bakir_mg":number,"manganez_mg":number,"selenyum_mcg":number,"iyot_mcg":number,"krom_mcg":number,"molibden_mcg":number,"c_vitamini_mg":number,"d_vitamini_mcg":number,"e_vitamini_mg":number,"k1_vitamini_mcg":number,"a_vitamini_mcg":number,"beta_karoten_mcg":number,"likopen_mcg":number,"lutein_zea_mcg":number,"b1_tiamin_mg":number,"b2_riboflavin_mg":number,"b3_niasin_mg":number,"b5_pantotenik_mg":number,"b6_mg":number,"folat_mcg":number,"b12_mcg":number,"kolin_mg":number,"biotin_mcg":number,"omega3_g":number,"omega6_g":number,"epa_g":number,"dha_g":number,"ala_g":number,"linoleik_g":number,"losin_g":number,"lizin_g":number,"valin_g":number,"izolosin_g":number,"treonin_g":number,"metionin_g":number,"fenilalanin_g":number,"triptofan_g":number,"histidin_g":number,"sistin_g":number,"tirozin_g":number}
+{"yemek_adi":"string","yemek_adi_en":"string","yemek_tipi":"soup|main_dish|salad|dessert|drink|breakfast|snack","pisirme":"raw|boiled|grilled|fried|baked|other","porsiyon_gram":number,"guven_skoru":number,"guven_nedeni":"string","guven_nedeni_en":"string","protein":number,"karbonhidrat":number,"yag":number,"lif":number,"seker":number,"doymus_yag":number,"tekli_doymus_yag":number,"coklu_doymus_yag":number,"trans_yag":number,"kolesterol_mg":number,"su":number,"kalsiyum_mg":number,"demir_mg":number,"magnezyum_mg":number,"fosfor_mg":number,"potasyum_mg":number,"sodyum_mg":number,"cinko_mg":number,"bakir_mg":number,"manganez_mg":number,"selenyum_mcg":number,"iyot_mcg":number,"krom_mcg":number,"molibden_mcg":number,"c_vitamini_mg":number,"d_vitamini_mcg":number,"e_vitamini_mg":number,"k1_vitamini_mcg":number,"a_vitamini_mcg":number,"beta_karoten_mcg":number,"likopen_mcg":number,"lutein_zea_mcg":number,"b1_tiamin_mg":number,"b2_riboflavin_mg":number,"b3_niasin_mg":number,"b5_pantotenik_mg":number,"b6_mg":number,"folat_mcg":number,"b12_mcg":number,"kolin_mg":number,"biotin_mcg":number,"omega3_g":number,"omega6_g":number,"epa_g":number,"dha_g":number,"ala_g":number,"linoleik_g":number,"losin_g":number,"lizin_g":number,"valin_g":number,"izolosin_g":number,"treonin_g":number,"metionin_g":number,"fenilalanin_g":number,"triptofan_g":number,"histidin_g":number,"sistin_g":number,"tirozin_g":number}
 
 Rules: If unknown, write 0. protein+karbonhidrat+yag ≤ 100. Sum of amino acids ≤ protein.
 ''',
@@ -295,7 +296,7 @@ Rules: If unknown, write 0. protein+karbonhidrat+yag ≤ 100. Sum of amino acids
           ],
         }
       ],
-      maxTokens: 1000,
+      maxTokens: 2000,
     );
 
     double g(String k) => (json[k] as num?)?.toDouble() ?? 0.0;
@@ -388,6 +389,7 @@ Rules: If unknown, write 0. protein+karbonhidrat+yag ≤ 100. Sum of amino acids
       sources: const ['Claude (Text)'],
       confidenceScore: (json['guven_skoru'] as num?)?.toInt() ?? 85,
       confidenceReason: (json['guven_nedeni'] as String?) ?? '',
+      confidenceReasonEn: (json['guven_nedeni_en'] as String?) ?? '',
       alternativeMin: portionCalories * 0.9,
       alternativeMax: portionCalories * 1.1,
     );
@@ -825,7 +827,7 @@ Rules: If unknown, write 0. protein+karbonhidrat+yag ≤ 100. Sum of amino acids
 
   Future<Map<String, dynamic>> _callClaude({
     required List<Map<String, dynamic>> messages,
-    int maxTokens = 1000,
+    int maxTokens = 2000,
     String model = 'claude-haiku-4-5-20251001',
   }) async {
     final response = await http.post(

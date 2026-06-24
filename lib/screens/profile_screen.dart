@@ -19,7 +19,7 @@ import '../services/health_service.dart';
 import 'settings_screen.dart';
 import 'image_crop_screen.dart';
 import '../providers/fasting_provider.dart';
-import 'friends_screen.dart';
+import '../l10n/app_localizations.dart';
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
@@ -54,15 +54,8 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: Text(context.tr('Profil')),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.people_outline),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const FriendsScreen()),
-          ),
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -90,15 +83,15 @@ class ProfileScreen extends StatelessWidget {
           const Icon(Icons.person_outline,
               size: 72, color: Color(0xFF58A6FF)),
           const SizedBox(height: 16),
-          const Text(
-            'Profil oluşturun',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          Text(
+            context.tr('Profil oluşturun'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Kalori ve makro hedeflerinizi takip etmek için\nbir profil oluşturun.',
+          Text(
+            context.tr('Kalori ve makro hedeflerinizi takip etmek için\nbir profil oluşturun.'),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Color(0xFF8B949E)),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF8B949E)),
           ),
           const SizedBox(height: 24),
           GestureDetector(
@@ -238,19 +231,19 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: _infoCell(
                             Icons.cake_outlined,
-                            'Yaş',
-                            '${profile.age} yaş'),
+                            context.tr('Yaş'),
+                            '${profile.age}'),
                       ),
                       Expanded(
                         child: _infoCell(
                             Icons.straighten_outlined,
-                            'Boy',
+                            context.tr('Boy'),
                             heightStr),
                       ),
                       Expanded(
                         child: _infoCell(
                             Icons.monitor_weight_outlined,
-                            'Kilo',
+                            context.tr('Kilo'),
                             weightStr),
                       ),
                     ],
@@ -261,24 +254,24 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: _infoCell(
                             Icons.flag_outlined,
-                            'Hedef',
-                            profile.goalLabel),
+                            context.tr('Hedef'),
+                            context.tr(profile.goalLabel)),
                       ),
                       Expanded(
                         child: _infoCell(
                             profile.gender == Gender.female 
                                 ? Icons.female 
                                 : (profile.gender == Gender.male ? Icons.male : Icons.person_outline),
-                            'Cinsiyet',
+                            context.tr('Cinsiyet'),
                             profile.gender == Gender.female 
-                                ? 'Kadın' 
-                                : (profile.gender == Gender.male ? 'Erkek' : 'Belirtilmemiş')),
+                                ? context.tr('Kadın') 
+                                : (profile.gender == Gender.male ? context.tr('Erkek') : context.tr('Belirtilmemiş'))),
                       ),
                       Expanded(
                         child: _infoCell(
                             Icons.directions_run_outlined,
-                            'Aktivite',
-                            profile.activityLabel),
+                            context.tr('Aktivite'),
+                            context.tr(profile.activityLabel)),
                       ),
                     ],
                   ),
@@ -319,16 +312,25 @@ class ProfileScreen extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: const Color(0xFF58A6FF)),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: Color(0xFF8B949E))),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
+              ),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -362,7 +364,7 @@ class ProfileScreen extends StatelessWidget {
                 Text(def.emoji, style: const TextStyle(fontSize: 14)),
                 const SizedBox(width: 6),
                 Text(
-                  def.name,
+                  context.tr(def.name),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -407,8 +409,8 @@ class ProfileScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('BMI Verileri',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
+                    Text(context.tr('BMI Verileri'),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -422,7 +424,7 @@ class ProfileScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                           ),
-                          child: Text(category,
+                          child: Text(context.tr(category),
                               style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
                         ),
                       ],
@@ -539,24 +541,24 @@ Widget _buildBMIProgressBar(double bmi) {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF161B22) : Colors.white,
-        title: Text('Vücut Kitle İndeksi (VKİ)',
+        title: Text(context.tr('Vücut Kitle İndeksi (VKİ)'),
             style: TextStyle(color: cs.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'VKİ, vücut ağırlığınızın (kg) boyunuzun (m) karesine bölünmesiyle hesaplanır.',
+              context.tr('VKİ, vücut ağırlığınızın (kg) boyunuzun (m) karesine bölünmesiyle hesaplanır.'),
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 16),
-            _bmiCategoryRow(context, 'Zayıf', '< 18.5', Colors.blueAccent),
-            _bmiCategoryRow(context, 'Normal', '18.5 - 24.9', const Color(0xFF58A6FF)),
-            _bmiCategoryRow(context, 'Fazla Kilolu', '25.0 - 29.9', Colors.orangeAccent),
-            _bmiCategoryRow(context, 'Obez', '≥ 30.0', Colors.redAccent),
+            _bmiCategoryRow(context, context.tr('Zayıf'), '< 18.5', Colors.blueAccent),
+            _bmiCategoryRow(context, context.tr('Normal'), '18.5 - 24.9', const Color(0xFF58A6FF)),
+            _bmiCategoryRow(context, context.tr('Fazla Kilolu'), '25.0 - 29.9', Colors.orangeAccent),
+            _bmiCategoryRow(context, context.tr('Obez'), '≥ 30.0', Colors.redAccent),
             const SizedBox(height: 12),
             Text(
-              '* VKİ, genel bir sağlık göstergesidir; yağ/kas oranı veya yaş gibi faktörleri dikkate almaz.',
+              context.tr('* VKİ, genel bir sağlık göstergesidir; yağ/kas oranı veya yaş gibi faktörleri dikkate almaz.'),
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11, fontStyle: FontStyle.italic),
             ),
           ],
@@ -564,7 +566,7 @@ Widget _buildBMIProgressBar(double bmi) {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Anladım', style: TextStyle(color: Color(0xFF58A6FF))),
+            child: Text(context.tr('Anladım'), style: const TextStyle(color: Color(0xFF58A6FF))),
           ),
         ],
       ),
@@ -610,11 +612,11 @@ Widget _buildBMIProgressBar(double bmi) {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Text(
-                'Profil Fotoğrafı',
-                style: TextStyle(
+                context.tr('Profil Fotoğrafı'),
+                style: const TextStyle(
                   color: Color(0xFFE6EDF3),
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -623,8 +625,8 @@ Widget _buildBMIProgressBar(double bmi) {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined, color: textSecond),
-              title: const Text('Kameradan Çek',
-                  style: TextStyle(color: textSecond)),
+              title: Text(context.tr('Kameradan Çek'),
+                  style: const TextStyle(color: textSecond)),
               onTap: () async {
                 Navigator.pop(ctx);
                 final image = await picker.pickImage(
@@ -639,8 +641,8 @@ Widget _buildBMIProgressBar(double bmi) {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: textSecond),
-              title: const Text('Galeriden Seç',
-                  style: TextStyle(color: textSecond)),
+              title: Text(context.tr('Galeriden Seç'),
+                  style: const TextStyle(color: textSecond)),
               onTap: () async {
                 Navigator.pop(ctx);
                 final image = await picker.pickImage(
@@ -658,8 +660,8 @@ Widget _buildBMIProgressBar(double bmi) {
               ListTile(
                 leading: const Icon(Icons.delete_outline,
                     color: Color(0xFFF85149)),
-                title: const Text('Fotoğrafı Kaldır',
-                    style: TextStyle(color: Color(0xFFF85149))),
+                title: Text(context.tr('Fotoğrafı Kaldır'),
+                    style: const TextStyle(color: Color(0xFFF85149))),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await provider.updateProfileImage(profile.id, null);
@@ -773,7 +775,7 @@ class _FriendsPopupState extends State<_FriendsPopup> with SingleTickerProviderS
                   const Icon(Icons.info_outline, color: Color(0xFF58A6FF), size: 20),
                   const SizedBox(width: 12),
                   Text(
-                    'Arkadaşlar yakında eklenecek',
+                    context.tr('Arkadaşlar yakında eklenecek'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -979,8 +981,8 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
               children: [
                 Text(
                   widget.existing != null
-                      ? 'Profili Düzenle'
-                      : 'Yeni Profil',
+                      ? context.tr('Profili Düzenle')
+                      : context.tr('Yeni Profil'),
                   style: theme.textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
@@ -1043,7 +1045,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: Text(_step == 0 ? 'İptal' : 'Geri'),
+                    child: Text(_step == 0 ? context.tr('İptal') : context.tr('Geri')),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1055,7 +1057,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
-                        _step == _totalSteps - 1 ? 'Tamamla' : 'İleri',
+                        _step == _totalSteps - 1 ? context.tr('Tamamla') : context.tr('İleri'),
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 15),
                       ),
@@ -1078,42 +1080,42 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepTitle('Temel Bilgiler', theme),
+          _stepTitle(context.tr('Temel Bilgiler'), theme),
           _stepSubtitle(
-              'Kalori ve makro hedefleriniz bu bilgilere göre hesaplanır.',
+              context.tr('Kalori ve makro hedefleriniz bu bilgilere göre hesaplanır.'),
               theme),
           const SizedBox(height: 20),
-          _field('Ad Soyad', _nameCtrl, theme,
-              hint: 'Adınız ve soyadınız',
+          _field(context.tr('Ad Soyad'), _nameCtrl, theme,
+              hint: context.tr('Adınız ve soyadınız'),
               action: TextInputAction.next),
           const SizedBox(height: 14),
           Row(children: [
             Expanded(
-                child: _field('Yaş', _ageCtrl, theme,
+                child: _field(context.tr('Yaş'), _ageCtrl, theme,
                     hint: '25',
                     keyboard: TextInputType.number,
                     action: TextInputAction.next)),
             const SizedBox(width: 10),
             Expanded(
-                child: _field('Boy (cm)', _heightCtrl, theme,
+                child: _field(context.tr('Boy (cm)'), _heightCtrl, theme,
                     hint: '170',
                     keyboard: TextInputType.number,
                     action: TextInputAction.next)),
             const SizedBox(width: 10),
             Expanded(
-                child: _field('Kilo (kg)', _weightCtrl, theme,
+                child: _field(context.tr('Kilo (kg)'), _weightCtrl, theme,
                     hint: '70', keyboard: TextInputType.number)),
           ]),
           const SizedBox(height: 20),
-          _stepLabel('Cinsiyet', theme),
+          _stepLabel(context.tr('Cinsiyet'), theme),
           const SizedBox(height: 8),
           Row(children: [
-            _genderBtn('Erkek', Gender.male, '♂', theme, primary),
+            _genderBtn(context.tr('Erkek'), Gender.male, '♂', theme, primary),
             const SizedBox(width: 10),
-            _genderBtn('Kadın', Gender.female, '♀', theme, primary),
+            _genderBtn(context.tr('Kadın'), Gender.female, '♀', theme, primary),
           ]),
           const SizedBox(height: 20),
-          _stepLabel('Aktivite Seviyesi', theme),
+          _stepLabel(context.tr('Aktivite Seviyesi'), theme),
           const SizedBox(height: 8),
           DropdownButtonFormField<ActivityLevel>(
             initialValue: _activityLevel,
@@ -1124,22 +1126,22 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
-            items: const [
+            items: [
               DropdownMenuItem(
                   value: ActivityLevel.sedentary,
-                  child: Text('Hareketsiz (masa başı)')),
+                  child: Text(context.tr('Hareketsiz (masa başı)'))),
               DropdownMenuItem(
                   value: ActivityLevel.light,
-                  child: Text('Az Hareketli (haftada 1-3)')),
+                  child: Text(context.tr('Az Hareketli (haftada 1-3)'))),
               DropdownMenuItem(
                   value: ActivityLevel.moderate,
-                  child: Text('Orta (haftada 3-5)')),
+                  child: Text(context.tr('Orta (haftada 3-5)'))),
               DropdownMenuItem(
                   value: ActivityLevel.active,
-                  child: Text('Çok Aktif (haftada 6-7)')),
+                  child: Text(context.tr('Çok Aktif (haftada 6-7)'))),
               DropdownMenuItem(
                   value: ActivityLevel.veryActive,
-                  child: Text('Sporcu (günde 2x antrenman)')),
+                  child: Text(context.tr('Sporcu (günde 2x antrenman)'))),
             ],
           ),
         ],
@@ -1155,14 +1157,14 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepTitle('Hedefiniz', theme),
+          _stepTitle(context.tr('Hedefiniz'), theme),
           _stepSubtitle(
-              'Makro dağılımı ve öneriler seçtiğiniz hedefe göre kişiselleşir.',
+              context.tr('Makro dağılımı ve öneriler seçtiğiniz hedefe göre kişiselleşir.'),
               theme),
           const SizedBox(height: 16),
-          _sectionLabel('Temel Hedefler', theme),
+          _sectionLabel(context.tr('Temel Hedefler'), theme),
           const SizedBox(height: 8),
-          _goalTile('🎯', 'Kilo Ver', false,
+          _goalTile('🎯', context.tr('Kilo Ver'), false,
               selected: _advancedGoal == null && _goal == Goal.lose,
               theme: theme, primary: primary, onTap: () {
             setState(() {
@@ -1170,7 +1172,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
               _advancedGoal = null;
             });
           }),
-          _goalTile('⚖️', 'Kilonu Koru', false,
+          _goalTile('⚖️', context.tr('Kilonu Koru'), false,
               selected: _advancedGoal == null && _goal == Goal.maintain,
               theme: theme, primary: primary, onTap: () {
             setState(() {
@@ -1178,7 +1180,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
               _advancedGoal = null;
             });
           }),
-          _goalTile('📈', 'Kilo Al', false,
+          _goalTile('📈', context.tr('Kilo Al'), false,
               selected: _advancedGoal == null && _goal == Goal.gain,
               theme: theme, primary: primary, onTap: () {
             setState(() {
@@ -1187,7 +1189,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
             });
           }),
           const SizedBox(height: 16),
-          _sectionLabel('Gelişmiş Hedefler', theme),
+          _sectionLabel(context.tr('Gelişmiş Hedefler'), theme),
           const SizedBox(height: 8),
           ...AdvancedGoals.all.map((ag) => _goalTile(
                 AdvancedGoals.emoji(ag),
@@ -1266,9 +1268,9 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepTitle('Sağlık Profili', theme),
+          _stepTitle(context.tr('Sağlık Profili'), theme),
           _stepSubtitle(
-              'Besin hedefleri ve öneriler sağlık durumunuza göre kişiselleşir. Uygulanabilecek olanları seçin.',
+              context.tr('Besin hedefleri ve öneriler sağlık durumunuza göre kişiselleşir. Uygulanabilecek olanları seçin.'),
               theme),
           const SizedBox(height: 16),
           ...categories.entries.map(
@@ -1339,9 +1341,9 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepTitle('Beslenme Tercihleri', theme),
+          _stepTitle(context.tr('Beslenme Tercihleri'), theme),
           _stepSubtitle(
-              'Öneriler ve uyarılar tercihlerinize göre filtrelenir.',
+              context.tr('Öneriler ve uyarılar tercihlerinize göre filtrelenir.'),
               theme),
           const SizedBox(height: 20),
           Wrap(
@@ -1442,8 +1444,8 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepTitle('Özet', theme),
-          _stepSubtitle('Her şey doğru görünüyor mu? Onaylayın.', theme),
+          _stepTitle(context.tr('Özet'), theme),
+          _stepSubtitle(context.tr('Her şey doğru görünüyor mu? Onaylayın.'), theme),
           const SizedBox(height: 20),
           Card(
             shape: RoundedRectangleBorder(
@@ -1452,14 +1454,14 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _summaryRow('Ad Soyad', name, theme),
+                  _summaryRow(context.tr('Ad Soyad'), name, theme),
                   _summaryRow(
-                      'Yaş / Boy / Kilo',
-                      '$age yaş / ${height.toStringAsFixed(0)} cm / ${weight.toStringAsFixed(1)} kg',
+                      context.tr('Yaş / Boy / Kilo'),
+                      '$age / ${height.toStringAsFixed(0)} cm / ${weight.toStringAsFixed(1)} kg',
                       theme),
-                  _summaryRow('Cinsiyet',
-                      _gender == Gender.male ? 'Erkek' : 'Kadın', theme),
-                  _summaryRow('Hedef', goalLabel, theme),
+                  _summaryRow(context.tr('Cinsiyet'),
+                      _gender == Gender.male ? context.tr('Erkek') : context.tr('Kadın'), theme),
+                  _summaryRow(context.tr('Hedef'), context.tr(goalLabel), theme),
                 ],
               ),
             ),
@@ -1481,7 +1483,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Günlük Kalori Hedefi',
+                      Text(context.tr('Günlük Kalori Hedefi'),
                           style: TextStyle(
                               fontSize: 12,
                               color: theme.colorScheme.onSurface
@@ -1510,7 +1512,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sağlık Koşulları',
+                    Text(context.tr('Sağlık Koşulları'),
                         style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.onSurface)),
@@ -1542,7 +1544,7 @@ class _ProfileWizardSheetState extends State<_ProfileWizardSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Beslenme Tercihleri',
+                    Text(context.tr('Beslenme Tercihleri'),
                         style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.onSurface)),
@@ -1818,7 +1820,7 @@ class _ProfileNutritionSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Beslenme Skoru',
+                    context.tr('Beslenme Skoru'),
                     style: Theme.of(context)
                         .textTheme
                         .titleSmall
@@ -1827,10 +1829,10 @@ class _ProfileNutritionSection extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     score >= 80
-                        ? 'Harika gidiyorsunuz!'
+                        ? context.tr('Harika gidiyorsunuz!')
                         : score >= 50
-                            ? 'Eksik besinleriniz var'
-                            : 'Beslenmenizi geliştirin',
+                            ? context.tr('Eksik besinleriniz var')
+                            : context.tr('Beslenmenizi geliştirin'),
                     style: TextStyle(
                       fontSize: 12,
                       color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -1851,19 +1853,19 @@ class _ProfileNutritionSection extends StatelessWidget {
     if (profile == null) return const SizedBox.shrink();
 
     final items = <_MicroItem>[
-      _MicroItem('Selenyum', n.selenium, profile.seleniumGoal, 'μg'),
-      _MicroItem('Magnezyum', n.magnesium, profile.magnesiumGoal, 'mg'),
-      _MicroItem('Omega-3', n.omega3, profile.omega3Goal, 'g'),
-      _MicroItem('Omega-6', n.omega6, profile.omega6Goal, 'g'),
-      _MicroItem('Demir', n.iron, profile.ironGoal, 'mg'),
-      _MicroItem('Çinko', n.zinc, profile.zincGoal, 'mg'),
-      _MicroItem('D Vitamini', n.vitaminD, profile.vitaminDGoal, 'μg'),
-      _MicroItem('B12 Vitamini', n.vitaminB12, profile.vitaminB12Goal, 'μg'),
-      _MicroItem('Kalsiyum', n.calcium, profile.calciumGoal, 'mg'),
-      _MicroItem('Potasyum', n.potassium, profile.potassiumGoal, 'mg'),
+      _MicroItem(context.tr('Selenyum'), n.selenium, profile.seleniumGoal, 'μg'),
+      _MicroItem(context.tr('Magnezyum'), n.magnesium, profile.magnesiumGoal, 'mg'),
+      _MicroItem(context.tr('Omega-3'), n.omega3, profile.omega3Goal, 'g'),
+      _MicroItem(context.tr('Omega-6'), n.omega6, profile.omega6Goal, 'g'),
+      _MicroItem(context.tr('Demir'), n.iron, profile.ironGoal, 'mg'),
+      _MicroItem(context.tr('Çinko'), n.zinc, profile.zincGoal, 'mg'),
+      _MicroItem(context.tr('D Vitamini'), n.vitaminD, profile.vitaminDGoal, 'μg'),
+      _MicroItem(context.tr('B12 Vitamini'), n.vitaminB12, profile.vitaminB12Goal, 'μg'),
+      _MicroItem(context.tr('Kalsiyum'), n.calcium, profile.calciumGoal, 'mg'),
+      _MicroItem(context.tr('Potasyum'), n.potassium, profile.potassiumGoal, 'mg'),
       if (profile.fiberGoal > 0)
-        _MicroItem('Lif', n.fiber, profile.fiberGoal, 'g'),
-      _MicroItem('Sodyum', n.sodium, profile.sodiumLimit, 'mg',
+        _MicroItem(context.tr('Lif'), n.fiber, profile.fiberGoal, 'g'),
+      _MicroItem(context.tr('Sodyum'), n.sodium, profile.sodiumLimit, 'mg',
           isMaxNutrient: true),
     ];
 
@@ -1879,7 +1881,7 @@ class _ProfileNutritionSection extends StatelessWidget {
               const Text('🧬', style: TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
               Text(
-                'Besin Karnesi',
+                context.tr('Besin Karnesi'),
                 style: Theme.of(context)
                     .textTheme
                     .titleSmall
@@ -2043,16 +2045,16 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Değişiklikler Kaydedilmedi'),
-        content: const Text('Değişikliklerinizi kaydetmek istiyor musunuz?'),
+        title: Text(context.tr('Değişiklikler Kaydedilmedi')),
+        content: Text(context.tr('Değişikliklerinizi kaydetmek istiyor musunuz?')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('İptal'),
+            child: Text(context.tr('İptal')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, 'save'),
-            child: const Text('Kaydet'),
+            child: Text(context.tr('Kaydet')),
           ),
         ],
       ),
@@ -2077,8 +2079,8 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profil güncellendi!'),
+        SnackBar(
+          content: Text(context.tr('Profil güncellendi!')),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -2128,7 +2130,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
               child: Row(
                 children: [
-                  Text('Hesabı Düzenle',
+                  Text(context.tr('Hesabı Düzenle'),
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const Spacer(),
@@ -2139,8 +2141,8 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                     ),
                     child: TextButton(
                       onPressed: _save,
-                      child: const Text('Kaydet',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(context.tr('Kaydet'),
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -2150,7 +2152,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
             // Field rows
             _buildFieldRow(
               context,
-              label: 'Ad Soyad',
+              label: context.tr('Ad Soyad'),
               child: _inlineTextField(_nameCtrl, TextInputType.name),
             ),
             const Divider(height: 1, indent: 20),
@@ -2159,7 +2161,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
               child: InkWell(
                 onTap: () => _showNumberPicker(
                   context,
-                  label: 'Mevcut Kilo',
+                  label: context.tr('Mevcut Kilo'),
                   unit: 'kg',
                   values: [for (double i = 40.0; i <= 200.0; i += 0.1) i],
                   initial: (double.tryParse(_weightCtrl.text) ?? 70).toDouble(),
@@ -2168,7 +2170,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 ),
                 child: _buildFieldRow(
                   context,
-                  label: 'Mevcut Kilo',
+                  label: context.tr('Mevcut Kilo'),
                   child: Text(
                     '${_weightCtrl.text} kg',
                     style: TextStyle(
@@ -2185,7 +2187,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
               child: InkWell(
                 onTap: () => _showNumberPicker(
                   context,
-                  label: 'Boy',
+                  label: context.tr('Boy'),
                   unit: 'cm',
                   values: [for (int i = 100; i <= 230; i++) i],
                   initial: (double.tryParse(_heightCtrl.text) ?? 170).round(),
@@ -2194,7 +2196,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 ),
                 child: _buildFieldRow(
                   context,
-                  label: 'Boy',
+                  label: context.tr('Boy'),
                   child: Text(
                     '${_heightCtrl.text} cm',
                     style: TextStyle(
@@ -2211,8 +2213,8 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
               child: InkWell(
                 onTap: () => _showNumberPicker(
                   context,
-                  label: 'Yaş',
-                  unit: 'yaş',
+                  label: context.tr('Yaş'),
+                  unit: context.tr('yaş'),
                   values: [for (int i = 10; i <= 100; i++) i],
                   initial: int.tryParse(_ageCtrl.text) ?? 25,
                   onSelected: (v) =>
@@ -2220,9 +2222,9 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 ),
                 child: _buildFieldRow(
                   context,
-                  label: 'Yaş',
+                  label: context.tr('Yaş'),
                   child: Text(
-                    '${_ageCtrl.text} yaş',
+                    _ageCtrl.text,
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -2234,7 +2236,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
             const Divider(height: 1, indent: 20),
             _buildFieldRow(
               context,
-              label: 'Cinsiyet',
+              label: context.tr('Cinsiyet'),
               showEditIcon: false,
               child: _GenderToggle(
                 value: _gender,
@@ -2244,7 +2246,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
             const Divider(height: 1, indent: 20),
             _buildFieldRow(
               context,
-              label: 'Hedef',
+              label: context.tr('Hedef'),
               showEditIcon: false,
               child: _GoalSelector(
                 value: _goal,
@@ -2324,7 +2326,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                     onSelected(picked);
                     Navigator.pop(context);
                   },
-                  child: const Text('Tamam'),
+                  child: Text(context.tr('Tamam')),
                 ),
               ),
             ),
@@ -2386,11 +2388,11 @@ class _GenderToggle extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _chip(context, 'Erkek', Gender.male, cs),
+        _chip(context, context.tr('Erkek'), Gender.male, cs),
         const SizedBox(width: 6),
-        _chip(context, 'Kadın', Gender.female, cs),
+        _chip(context, context.tr('Kadın'), Gender.female, cs),
         const SizedBox(width: 6),
-        _chip(context, 'Belirtmek İstemiyorum', Gender.other, cs),
+        _chip(context, context.tr('Belirtmek İstemiyorum'), Gender.other, cs),
       ],
     );
   }
@@ -2424,10 +2426,10 @@ class _GoalSelector extends StatelessWidget {
   final ValueChanged<Goal> onChanged;
   const _GoalSelector({required this.value, required this.onChanged});
 
-  static const _labels = {
-    Goal.lose: 'Kilo Ver',
-    Goal.maintain: 'Koru',
-    Goal.gain: 'Kilo Al',
+  static Map<Goal, String> _labels(BuildContext context) => {
+    Goal.lose: context.tr('Kilo Ver'),
+    Goal.maintain: context.tr('Koru'),
+    Goal.gain: context.tr('Kilo Al'),
   };
 
   @override
@@ -2449,7 +2451,7 @@ class _GoalSelector extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                _labels[g]!,
+                _labels(context)[g]!,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -2505,7 +2507,7 @@ class _GoalsCard extends StatelessWidget {
                 const Icon(Icons.local_fire_department_outlined,
                     size: 18, color: Color(0xFF58A6FF)),
                 const SizedBox(width: 8),
-                Text('Günlük Hedefler',
+                Text(context.tr('Günlük Hedefler'),
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -2514,21 +2516,21 @@ class _GoalsCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Divider(height: 1),
-            goalRow('Kalori',
+            goalRow(context.tr('Kalori'),
                 '${pp.calorieGoal.toStringAsFixed(0)} kcal',
                 const Color(0xFFFF6B35)), // Orange
             const Divider(height: 1),
-            goalRow('Protein', '${pp.proteinGoal.toStringAsFixed(0)} g',
+            goalRow(context.tr('Protein'), '${pp.proteinGoal.toStringAsFixed(0)} g',
                 const Color(0xFF7EE787)), // Green
             const Divider(height: 1),
-            goalRow('Karbonhidrat',
+            goalRow(context.tr('Karbonhidrat'),
                 '${pp.carbGoal.toStringAsFixed(0)} g',
                 const Color(0xFF58A6FF)),
             const Divider(height: 1),
-            goalRow('Yağ', '${pp.fatGoal.toStringAsFixed(0)} g',
+            goalRow(context.tr('Yağ'), '${pp.fatGoal.toStringAsFixed(0)} g',
                 const Color(0xFFFFA726)),
             const Divider(height: 1),
-            goalRow('Lif', '${pp.fiberGoal.toStringAsFixed(0)} g',
+            goalRow(context.tr('Lif'), '${pp.fiberGoal.toStringAsFixed(0)} g',
                 const Color(0xFF9B59B6)),
           ],
         ),
@@ -2597,29 +2599,29 @@ class _BesinKarnesiCard extends StatelessWidget {
     final items = <Object>[];
 
     // ── MAKROLAR ─────────────────────────────────────────────────────────────
-    items.add(const _SectionHeader('⚡ Makrolar'));
-    items.add(row('🔥', 'Kalori', fmtKcal(nutrition.calories),
+    items.add(_SectionHeader(context.tr('⚡ Makrolar')));
+    items.add(row('🔥', context.tr('Kalori'), fmtKcal(nutrition.calories),
         pct(nutrition.calories, pp.calorieGoal), const Color(0xFFFF6B35)));
-    items.add(row('🍗', 'Protein', fmtG(nutrition.protein),
+    items.add(row('🍗', context.tr('Protein'), fmtG(nutrition.protein),
         pct(nutrition.protein, pp.proteinGoal), const Color(0xFF7EE787)));
-    items.add(row('🌾', 'Karbonhidrat', fmtG(nutrition.carbohydrates),
+    items.add(row('🌾', context.tr('Karbonhidrat'), fmtG(nutrition.carbohydrates),
         pct(nutrition.carbohydrates, pp.carbGoal), const Color(0xFF58A6FF)));
-    items.add(row('🧈', 'Yağ', fmtG(nutrition.fat),
+    items.add(row('🧈', context.tr('Yağ'), fmtG(nutrition.fat),
         pct(nutrition.fat, pp.fatGoal), const Color(0xFFFFA726)));
     if (profile != null) {
-      items.add(row('🫁', 'Lif', fmtG(nutrition.fiber),
+      items.add(row('🫁', context.tr('Lif'), fmtG(nutrition.fiber),
           pct(nutrition.fiber, profile.fiberGoal), const Color(0xFF9B59B6)));
     }
     if (n65 != null) {
-      items.add(row('🐓', 'Kolesterol', fmtMg(n65.cholesterol),
+      items.add(row('🐓', context.tr('Kolesterol'), fmtMg(n65.cholesterol),
           pct(n65.cholesterol, 300.0), const Color(0xFFFF9F0A)));
-      items.add(row('💧', 'Su', fmtG(n65.water),
+      items.add(row('💧', context.tr('Su'), fmtG(n65.water),
           pct(n65.water, 50.0), const Color(0xFF64D2FF)));
     }
 
     // ── MİNERALLER ───────────────────────────────────────────────────────────
     if (n65 != null) {
-      items.add(const _SectionHeader('💎 Mineraller'));
+      items.add(_SectionHeader(context.tr('💎 Mineraller')));
       final caG  = profile?.calciumGoal   ?? 1000.0;
       final feG  = profile?.ironGoal      ?? 14.0;
       final mgG  = profile?.magnesiumGoal ?? 350.0;
@@ -2627,108 +2629,108 @@ class _BesinKarnesiCard extends StatelessWidget {
       final kG   = profile?.potassiumGoal ?? 4700.0;
       final naL  = profile?.sodiumLimit   ?? 2300.0;
       final seG  = profile?.seleniumGoal  ?? 55.0;
-      items.add(row('🦴', 'Kalsiyum',   fmtMg(n65.calcium),    pct(n65.calcium,    caG),  const Color(0xFF1ABC9C)));
-      items.add(row('🩸', 'Demir',      fmtMg(n65.iron),       pct(n65.iron,       feG),  const Color(0xFFE74C3C)));
-      items.add(row('⚡', 'Magnezyum',  fmtMg(n65.magnesium),  pct(n65.magnesium,  mgG),  const Color(0xFF0A84FF)));
-      items.add(row('🔵', 'Fosfor',     fmtMg(n65.phosphorus), pct(n65.phosphorus, 700.0),const Color(0xFF5856D6)));
-      items.add(row('🫀', 'Potasyum',   fmtMg(n65.potassium),  pct(n65.potassium,  kG),   const Color(0xFFFF9F0A)));
-      items.add(row('🧂', 'Sodyum',     fmtMg(n65.sodium),     pct(n65.sodium,  naL),  const Color(0xFFD4A017)));
-      items.add(row('🔩', 'Çinko',      fmtMg(n65.zinc),       pct(n65.zinc,       znG),  const Color(0xFF64D2FF)));
-      items.add(row('🔶', 'Bakır',      fmtMg(n65.copper),     pct(n65.copper,     0.9),  const Color(0xFFBF5AF2)));
-      items.add(row('🔘', 'Manganez',   fmtMg(n65.manganese),  pct(n65.manganese,  2.3),  const Color(0xFF8E8E93)));
-      items.add(row('🌟', 'Selenyum',   fmtMcg(n65.selenium),  pct(n65.selenium,   seG),  const Color(0xFFFFCC00)));
+      items.add(row('🦴', context.tr('Kalsiyum'),   fmtMg(n65.calcium),    pct(n65.calcium,    caG),  const Color(0xFF1ABC9C)));
+      items.add(row('🩸', context.tr('Demir'),      fmtMg(n65.iron),       pct(n65.iron,       feG),  const Color(0xFFE74C3C)));
+      items.add(row('⚡', context.tr('Magnezyum'),  fmtMg(n65.magnesium),  pct(n65.magnesium,  mgG),  const Color(0xFF0A84FF)));
+      items.add(row('🔵', context.tr('Fosfor'),     fmtMg(n65.phosphorus), pct(n65.phosphorus, 700.0),const Color(0xFF5856D6)));
+      items.add(row('🫀', context.tr('Potasyum'),   fmtMg(n65.potassium),  pct(n65.potassium,  kG),   const Color(0xFFFF9F0A)));
+      items.add(row('🧂', context.tr('Sodyum'),     fmtMg(n65.sodium),     pct(n65.sodium,  naL),  const Color(0xFFD4A017)));
+      items.add(row('🔩', context.tr('Çinko'),      fmtMg(n65.zinc),       pct(n65.zinc,       znG),  const Color(0xFF64D2FF)));
+      items.add(row('🔶', context.tr('Bakır'),      fmtMg(n65.copper),     pct(n65.copper,     0.9),  const Color(0xFFBF5AF2)));
+      items.add(row('🔘', context.tr('Manganez'),   fmtMg(n65.manganese),  pct(n65.manganese,  2.3),  const Color(0xFF8E8E93)));
+      items.add(row('🌟', context.tr('Selenyum'),   fmtMcg(n65.selenium),  pct(n65.selenium,   seG),  const Color(0xFFFFCC00)));
       if (n65.iodine > 0)
-        items.add(row('💧', 'İyot',     fmtMcg(n65.iodine),    pct(n65.iodine,     150.0),const Color(0xFF30B0C7)));
+        items.add(row('💧', context.tr('İyot'),     fmtMcg(n65.iodine),    pct(n65.iodine,     150.0),const Color(0xFF30B0C7)));
       if (n65.chromium > 0)
-        items.add(row('🔷', 'Krom',     fmtMcg(n65.chromium),  pct(n65.chromium,   35.0), const Color(0xFF636366)));
+        items.add(row('🔷', context.tr('Krom'),     fmtMcg(n65.chromium),  pct(n65.chromium,   35.0), const Color(0xFF636366)));
       if (n65.molybdenum > 0)
-        items.add(row('⚙️', 'Molibden', fmtMcg(n65.molybdenum),pct(n65.molybdenum, 45.0), const Color(0xFF8E8E93)));
+        items.add(row('⚙️', context.tr('Molibden'), fmtMcg(n65.molybdenum),pct(n65.molybdenum, 45.0), const Color(0xFF8E8E93)));
 
       // ── VİTAMİNLER ─────────────────────────────────────────────────────────
-      items.add(const _SectionHeader('🌈 Vitaminler'));
+      items.add(_SectionHeader(context.tr('🌈 Vitaminler')));
       final vdG   = profile?.vitaminDGoal  ?? 15.0;
       final vb12G = profile?.vitaminB12Goal ?? 2.4;
-      items.add(row('🍊', 'C Vitamini',        fmtMg(n65.vitC),      pct(n65.vitC,      90.0),  const Color(0xFFFF9F0A)));
-      items.add(row('☀️', 'D Vitamini',        fmtMcg(n65.vitD_mcg), pct(n65.vitD_mcg,  vdG),   const Color(0xFFF39C12)));
-      items.add(row('🥑', 'E Vitamini',        fmtMg(n65.vitE),      pct(n65.vitE,      15.0),  const Color(0xFF58A6FF)));
-      items.add(row('🥬', 'K Vitamini',        fmtMcg(n65.vitK),     pct(n65.vitK,      120.0), const Color(0xFF34C759)));
-      items.add(row('🥕', 'A Vitamini (RAE)',  fmtMcg(n65.vitA_RAE), pct(n65.vitA_RAE,  900.0), const Color(0xFFFF6B35)));
-      items.add(row('🌾', 'B1 (Tiamin)',       fmtMg(n65.thiamine),  pct(n65.thiamine,  1.2),   const Color(0xFFBF5AF2)));
-      items.add(row('🥛', 'B2 (Riboflavin)',   fmtMg(n65.riboflavin),pct(n65.riboflavin,1.3),   const Color(0xFFFF2D55)));
-      items.add(row('🐟', 'B3 (Niasin)',       fmtMg(n65.niacin),    pct(n65.niacin,    16.0),  const Color(0xFF0A84FF)));
-      items.add(row('🥦', 'B5 (Pantotenik)',   fmtMg(n65.pantothenic),pct(n65.pantothenic,5.0), const Color(0xFF5856D6)));
-      items.add(row('🐔', 'B6 Vitamini',       fmtMg(n65.vitB6),     pct(n65.vitB6,     1.7),   const Color(0xFF64D2FF)));
-      items.add(row('🌿', 'Folat',             fmtMcg(n65.folate),   pct(n65.folate,    400.0), const Color(0xFF58A6FF)));
-      items.add(row('🥩', 'B12 Vitamini',      fmtMcg(n65.vitB12),   pct(n65.vitB12,    vb12G), const Color(0xFFE74C3C)));
+      items.add(row('🍊', context.tr('C Vitamini'),        fmtMg(n65.vitC),      pct(n65.vitC,      90.0),  const Color(0xFFFF9F0A)));
+      items.add(row('☀️', context.tr('D Vitamini'),        fmtMcg(n65.vitD_mcg), pct(n65.vitD_mcg,  vdG),   const Color(0xFFF39C12)));
+      items.add(row('🥑', context.tr('E Vitamini'),        fmtMg(n65.vitE),      pct(n65.vitE,      15.0),  const Color(0xFF58A6FF)));
+      items.add(row('🥬', context.tr('K Vitamini'),        fmtMcg(n65.vitK),     pct(n65.vitK,      120.0), const Color(0xFF34C759)));
+      items.add(row('🥕', context.tr('A Vitamini (RAE)'),  fmtMcg(n65.vitA_RAE), pct(n65.vitA_RAE,  900.0), const Color(0xFFFF6B35)));
+      items.add(row('🌾', context.tr('B1 (Tiamin)'),       fmtMg(n65.thiamine),  pct(n65.thiamine,  1.2),   const Color(0xFFBF5AF2)));
+      items.add(row('🥛', context.tr('B2 (Riboflavin)'),   fmtMg(n65.riboflavin),pct(n65.riboflavin,1.3),   const Color(0xFFFF2D55)));
+      items.add(row('🐟', context.tr('B3 (Niasin)'),       fmtMg(n65.niacin),    pct(n65.niacin,    16.0),  const Color(0xFF0A84FF)));
+      items.add(row('🥦', context.tr('B5 (Pantotenik)'),   fmtMg(n65.pantothenic),pct(n65.pantothenic,5.0), const Color(0xFF5856D6)));
+      items.add(row('🐔', context.tr('B6 Vitamini'),       fmtMg(n65.vitB6),     pct(n65.vitB6,     1.7),   const Color(0xFF64D2FF)));
+      items.add(row('🌿', context.tr('Folat'),             fmtMcg(n65.folate),   pct(n65.folate,    400.0), const Color(0xFF58A6FF)));
+      items.add(row('🥩', context.tr('B12 Vitamini'),      fmtMcg(n65.vitB12),   pct(n65.vitB12,    vb12G), const Color(0xFFE74C3C)));
       if (n65.choline > 0)
-        items.add(row('🧠', 'Kolin',  fmtMg(n65.choline),  pct(n65.choline,  550.0), const Color(0xFFFF9F0A)));
+        items.add(row('🧠', context.tr('Kolin'),  fmtMg(n65.choline),  pct(n65.choline,  550.0), const Color(0xFFFF9F0A)));
       if (n65.biotin > 0)
-        items.add(row('💊', 'Biotin', fmtMcg(n65.biotin),  pct(n65.biotin,   30.0),  const Color(0xFFBF5AF2)));
+        items.add(row('💊', context.tr('Biotin'), fmtMcg(n65.biotin),  pct(n65.biotin,   30.0),  const Color(0xFFBF5AF2)));
 
       // ── YAĞ ASİTLERİ ───────────────────────────────────────────────────────
-      items.add(const _SectionHeader('🐠 Yağ Asitleri'));
+      items.add(_SectionHeader(context.tr('🐠 Yağ Asitleri')));
       final o3G = profile?.omega3Goal ?? 1.6;
       final o6G = profile?.omega6Goal ?? 17.0;
-      items.add(row('🐟', 'Omega-3',         fmtG(n65.omega3), pct(n65.omega3,  o3G),  const Color(0xFF0A84FF)));
-      items.add(row('🌻', 'Omega-6',         fmtG(n65.omega6), pct(n65.omega6,  o6G),  const Color(0xFFFF9F0A)));
+      items.add(row('🐟', context.tr('Omega-3'),         fmtG(n65.omega3), pct(n65.omega3,  o3G),  const Color(0xFF0A84FF)));
+      items.add(row('🌻', context.tr('Omega-6'),         fmtG(n65.omega6), pct(n65.omega6,  o6G),  const Color(0xFFFF9F0A)));
       if (n65.epa > 0)
-        items.add(row('🦈', 'EPA',           fmtG(n65.epa, 2), pct(n65.epa,    0.25), const Color(0xFF30B0C7)));
+        items.add(row('🦈', context.tr('EPA'),           fmtG(n65.epa, 2), pct(n65.epa,    0.25), const Color(0xFF30B0C7)));
       if (n65.dha > 0)
-        items.add(row('🐬', 'DHA',           fmtG(n65.dha, 2), pct(n65.dha,    0.25), const Color(0xFF5856D6)));
-      items.add(row('🥑', 'ALA',             fmtG(n65.ala, 2), pct(n65.ala,    1.6),  const Color(0xFF58A6FF)));
-      items.add(row('🍳', 'Doymuş Yağ',      fmtG(n65.satFat), pct(n65.satFat, 20.0), const Color(0xFFFF6B35)));
-      items.add(row('🫒', 'Tekli Doymamış',  fmtG(n65.monoFat),pct(n65.monoFat, 25.0), const Color(0xFF34C759)));
+        items.add(row('🐬', context.tr('DHA'),           fmtG(n65.dha, 2), pct(n65.dha,    0.25), const Color(0xFF5856D6)));
+      items.add(row('🥑', context.tr('ALA'),             fmtG(n65.ala, 2), pct(n65.ala,    1.6),  const Color(0xFF58A6FF)));
+      items.add(row('🍳', context.tr('Doymuş Yağ'),      fmtG(n65.satFat), pct(n65.satFat, 20.0), const Color(0xFFFF6B35)));
+      items.add(row('🫒', context.tr('Tekli Doymamış'),  fmtG(n65.monoFat),pct(n65.monoFat, 25.0), const Color(0xFF34C759)));
 
       // ── AMİNO ASİTLER ──────────────────────────────────────────────────────
       if (n65.leucine > 0 || n65.lysine > 0) {
-        items.add(const _SectionHeader('🧬 Amino Asitler'));
+        items.add(_SectionHeader(context.tr('🧬 Amino Asitler')));
         void aa(String i, String l, double v, double ref, Color c) {
           if (v > 0) items.add(row(i, l, fmtG(v, 2), pct(v, ref), c));
         }
-        aa('💪', 'Lösin',       n65.leucine,      2.7,  const Color(0xFF58A6FF));
-        aa('🔗', 'Lizin',       n65.lysine,       2.1,  const Color(0xFF0A84FF));
-        aa('🏃', 'Valin',       n65.valine,       1.8,  const Color(0xFFFF9F0A));
-        aa('⚡', 'İzolösin',    n65.isoleucine,   1.4,  const Color(0xFFBF5AF2));
-        aa('🌱', 'Treonin',     n65.threonine,    1.0,  const Color(0xFF5856D6));
-        aa('🔸', 'Metionin',    n65.methionine,   0.7,  const Color(0xFFFF6B35));
-        aa('🔹', 'Fenilalanin', n65.phenylalanine,1.4,  const Color(0xFF64D2FF));
-        aa('😴', 'Triptofan',   n65.tryptophan,   0.28, const Color(0xFFFF2D55));
-        aa('🔬', 'Histidin',    n65.histidine,    0.7,  const Color(0xFFD4A017));
-        aa('🧪', 'Sistin',      n65.cystine,      0.5,  const Color(0xFF636366));
-        aa('🌀', 'Tirozin',     n65.tyrosine,     1.1,  const Color(0xFF8E8E93));
+        aa('💪', context.tr('Lösin'),       n65.leucine,      2.7,  const Color(0xFF58A6FF));
+        aa('🔗', context.tr('Lizin'),       n65.lysine,       2.1,  const Color(0xFF0A84FF));
+        aa('🏃', context.tr('Valin'),       n65.valine,       1.8,  const Color(0xFFFF9F0A));
+        aa('⚡', context.tr('İzolösin'),    n65.isoleucine,   1.4,  const Color(0xFFBF5AF2));
+        aa('🌱', context.tr('Treonin'),     n65.threonine,    1.0,  const Color(0xFF5856D6));
+        aa('🔸', context.tr('Metionin'),    n65.methionine,   0.7,  const Color(0xFFFF6B35));
+        aa('🔹', context.tr('Fenilalanin'), n65.phenylalanine,1.4,  const Color(0xFF64D2FF));
+        aa('😴', context.tr('Triptofan'),   n65.tryptophan,   0.28, const Color(0xFFFF2D55));
+        aa('🔬', context.tr('Histidin'),    n65.histidine,    0.7,  const Color(0xFFD4A017));
+        aa('🧪', context.tr('Sistin'),      n65.cystine,      0.5,  const Color(0xFF636366));
+        aa('🌀', context.tr('Tirozin'),     n65.tyrosine,     1.1,  const Color(0xFF8E8E93));
       }
     } else {
       // Fallback: show what NutritionData has
       if (profile != null) {
-        items.add(const _SectionHeader('💊 Mikro Besinler'));
-        items.add(row('🩸', 'Demir',      fmtMg(nutrition.iron ?? 0),
+        items.add(_SectionHeader(context.tr('💊 Mikro Besinler')));
+        items.add(row('🩸', context.tr('Demir'),      fmtMg(nutrition.iron ?? 0),
             pct(nutrition.iron ?? 0, profile.ironGoal), const Color(0xFFE74C3C)));
-        items.add(row('☀️', 'D Vitamini', fmtMcg(nutrition.vitaminD ?? 0),
+        items.add(row('☀️', context.tr('D Vitamini'), fmtMcg(nutrition.vitaminD ?? 0),
             pct(nutrition.vitaminD ?? 0, profile.vitaminDGoal), const Color(0xFFF39C12)));
-        items.add(row('🦴', 'Kalsiyum',   fmtMg(nutrition.calcium ?? 0),
+        items.add(row('🦴', context.tr('Kalsiyum'),   fmtMg(nutrition.calcium ?? 0),
             pct(nutrition.calcium ?? 0, profile.calciumGoal), const Color(0xFF1ABC9C)));
-        items.add(row('🧂', 'Sodyum',     fmtMg(nutrition.sodium ?? 0),
+        items.add(row('🧂', context.tr('Sodyum'),     fmtMg(nutrition.sodium ?? 0),
             pct(nutrition.sodium ?? 0, profile.sodiumLimit), const Color(0xFFD4A017)));
         if (nutrition.magnesium != null)
-          items.add(row('⚡', 'Magnezyum', fmtMg(nutrition.magnesium!),
+          items.add(row('⚡', context.tr('Magnezyum'), fmtMg(nutrition.magnesium!),
               pct(nutrition.magnesium!, profile.magnesiumGoal), const Color(0xFF0A84FF)));
         if (nutrition.zinc != null)
-          items.add(row('🔩', 'Çinko',    fmtMg(nutrition.zinc!),
+          items.add(row('🔩', context.tr('Çinko'),    fmtMg(nutrition.zinc!),
               pct(nutrition.zinc!, profile.zincGoal), const Color(0xFF64D2FF)));
         if (nutrition.vitaminC != null)
-          items.add(row('🍊', 'C Vitamini', fmtMg(nutrition.vitaminC!),
+          items.add(row('🍊', context.tr('C Vitamini'), fmtMg(nutrition.vitaminC!),
               pct(nutrition.vitaminC!, 90.0), const Color(0xFFFF9F0A)));
         if (nutrition.vitaminB12 != null)
-          items.add(row('🥩', 'B12 Vitamini', fmtMcg(nutrition.vitaminB12!),
+          items.add(row('🥩', context.tr('B12 Vitamini'), fmtMcg(nutrition.vitaminB12!),
               pct(nutrition.vitaminB12!, profile.vitaminB12Goal), const Color(0xFFE74C3C)));
         if (nutrition.potassium != null)
-          items.add(row('🫀', 'Potasyum',  fmtMg(nutrition.potassium!),
+          items.add(row('🫀', context.tr('Potasyum'),  fmtMg(nutrition.potassium!),
               pct(nutrition.potassium!, profile.potassiumGoal), const Color(0xFFFF9F0A)));
         if (nutrition.omega3 != null)
-          items.add(row('🐟', 'Omega-3',   fmtG(nutrition.omega3!),
+          items.add(row('🐟', context.tr('Omega-3'),   fmtG(nutrition.omega3!),
               pct(nutrition.omega3!, profile.omega3Goal), const Color(0xFF0A84FF)));
         if (nutrition.selenium != null)
-          items.add(row('🌟', 'Selenyum',  fmtMcg(nutrition.selenium!),
+          items.add(row('🌟', context.tr('Selenyum'),  fmtMcg(nutrition.selenium!),
               pct(nutrition.selenium!, profile.seleniumGoal), const Color(0xFFFFCC00)));
       }
     }
@@ -2786,13 +2788,13 @@ class _BesinKarnesiCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Değer Karnesi',
+                        Text(context.tr('Değer Karnesi'),
                             style: Theme.of(ctx)
                                 .textTheme
                                 .titleMedium
                                 ?.copyWith(fontWeight: FontWeight.bold)),
                         if (n65 != null)
-                          Text('${items.whereType<_NutrientItem>().length} besin',
+                          Text('${items.whereType<_NutrientItem>().length} ${context.tr('besin')}',
                               style: TextStyle(
                                   fontSize: 11,
                                   color: cs.onSurface.withValues(alpha: 0.5))),
@@ -2929,7 +2931,7 @@ class _BesinKarnesiCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Değer Karnesi',
+                    Text(context.tr('Değer Karnesi'),
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -2947,10 +2949,10 @@ class _BesinKarnesiCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       score >= 80
-                          ? 'Harika gidiyorsunuz!'
+                          ? context.tr('Harika gidiyorsunuz!')
                           : score >= 50
-                              ? 'Eksik besinleriniz var'
-                              : 'Beslenmenizi geliştirin',
+                              ? context.tr('Eksik besinleriniz var')
+                              : context.tr('Beslenmenizi geliştirin'),
                       style: TextStyle(
                           fontSize: 11,
                           color: cs.onSurface
@@ -2996,58 +2998,58 @@ class NutrientKarneWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      _nutrientGroup('🥩 Makrolar', [
-        _nutrientRow('Protein',       data.protein,                'g',   50),
-        _nutrientRow('Karbonhidrat',  data.carbohydrates,          'g',   260),
-        _nutrientRow('Yağ',           data.fat,                    'g',   65),
-        _nutrientRow('Lif',           data.fiber,                  'g',   28),
-        _nutrientRow('Şeker',         data65?.sugar ?? 0,          'g',   50),
-        _nutrientRow('Doymuş Yağ',    data65?.satFat ?? 0,         'g',   20),
-        _nutrientRow('Kolesterol',    data65?.cholesterol ?? 0,    'mg',  300),
+      _nutrientGroup(context.tr('🥩 Makrolar'), [
+        _nutrientRow(context.tr('Protein'),       data.protein,                'g',   50),
+        _nutrientRow(context.tr('Karbonhidrat'),  data.carbohydrates,          'g',   260),
+        _nutrientRow(context.tr('Yağ'),           data.fat,                    'g',   65),
+        _nutrientRow(context.tr('Lif'),           data.fiber,                  'g',   28),
+        _nutrientRow(context.tr('Şeker'),         data65?.sugar ?? 0,          'g',   50),
+        _nutrientRow(context.tr('Doymuş Yağ'),    data65?.satFat ?? 0,         'g',   20),
+        _nutrientRow(context.tr('Kolesterol'),    data65?.cholesterol ?? 0,    'mg',  300),
       ]),
-      _nutrientGroup('🔬 Mineraller', [
-        _nutrientRow('Kalsiyum',   data65?.calcium ?? 0,    'mg',  1000),
-        _nutrientRow('Demir',      data65?.iron ?? 0,       'mg',  18),
-        _nutrientRow('Magnezyum',  data65?.magnesium ?? 0,  'mg',  420),
-        _nutrientRow('Fosfor',     data65?.phosphorus ?? 0, 'mg',  700),
-        _nutrientRow('Potasyum',   data65?.potassium ?? 0,  'mg',  4700),
-        _nutrientRow('Sodyum',     data65?.sodium ?? 0,     'mg',  2300),
-        _nutrientRow('Çinko',      data65?.zinc ?? 0,       'mg',  11),
-        _nutrientRow('Selenyum',   data65?.selenium ?? 0,   'mcg', 55),
-        _nutrientRow('Bakır',      data65?.copper ?? 0,     'mg',  0.9),
-        _nutrientRow('Manganez',   data65?.manganese ?? 0,  'mg',  2.3),
-        _nutrientRow('İyot',       data65?.iodine ?? 0,     'mcg', 150),
+      _nutrientGroup(context.tr('🔬 Mineraller'), [
+        _nutrientRow(context.tr('Kalsiyum'),   data65?.calcium ?? 0,    'mg',  1000),
+        _nutrientRow(context.tr('Demir'),      data65?.iron ?? 0,       'mg',  18),
+        _nutrientRow(context.tr('Magnezyum'),  data65?.magnesium ?? 0,  'mg',  420),
+        _nutrientRow(context.tr('Fosfor'),     data65?.phosphorus ?? 0, 'mg',  700),
+        _nutrientRow(context.tr('Potasyum'),   data65?.potassium ?? 0,  'mg',  4700),
+        _nutrientRow(context.tr('Sodyum'),     data65?.sodium ?? 0,     'mg',  2300),
+        _nutrientRow(context.tr('Çinko'),      data65?.zinc ?? 0,       'mg',  11),
+        _nutrientRow(context.tr('Selenyum'),   data65?.selenium ?? 0,   'mcg', 55),
+        _nutrientRow(context.tr('Bakır'),      data65?.copper ?? 0,     'mg',  0.9),
+        _nutrientRow(context.tr('Manganez'),   data65?.manganese ?? 0,  'mg',  2.3),
+        _nutrientRow(context.tr('İyot'),       data65?.iodine ?? 0,     'mcg', 150),
       ]),
-      _nutrientGroup('☀️ Vitaminler', [
-        _nutrientRow('Vitamin A',  data65?.vitA_RAE ?? 0,   'mcg', 900),
-        _nutrientRow('Vitamin C',  data65?.vitC ?? 0,       'mg',  90),
-        _nutrientRow('Vitamin D',  data65?.vitD_mcg ?? 0,   'mcg', 20),
-        _nutrientRow('Vitamin E',  data65?.vitE ?? 0,       'mg',  15),
-        _nutrientRow('Vitamin K',  data65?.vitK ?? 0,       'mcg', 120),
-        _nutrientRow('B1',         data65?.thiamine ?? 0,   'mg',  1.2),
-        _nutrientRow('B2',         data65?.riboflavin ?? 0, 'mg',  1.3),
-        _nutrientRow('B3',         data65?.niacin ?? 0,     'mg',  16),
-        _nutrientRow('B6',         data65?.vitB6 ?? 0,      'mg',  1.7),
-        _nutrientRow('B12',        data65?.vitB12 ?? 0,     'mcg', 2.4),
-        _nutrientRow('Folat',      data65?.folate ?? 0,     'mcg', 400),
-        _nutrientRow('Kolin',      data65?.choline ?? 0,    'mg',  550),
+      _nutrientGroup(context.tr('☀️ Vitaminler'), [
+        _nutrientRow(context.tr('Vitamin A'),  data65?.vitA_RAE ?? 0,   'mcg', 900),
+        _nutrientRow(context.tr('Vitamin C'),  data65?.vitC ?? 0,       'mg',  90),
+        _nutrientRow(context.tr('Vitamin D'),  data65?.vitD_mcg ?? 0,   'mcg', 20),
+        _nutrientRow(context.tr('Vitamin E'),  data65?.vitE ?? 0,       'mg',  15),
+        _nutrientRow(context.tr('Vitamin K'),  data65?.vitK ?? 0,       'mcg', 120),
+        _nutrientRow(context.tr('B1'),         data65?.thiamine ?? 0,   'mg',  1.2),
+        _nutrientRow(context.tr('B2'),         data65?.riboflavin ?? 0, 'mg',  1.3),
+        _nutrientRow(context.tr('B3'),         data65?.niacin ?? 0,     'mg',  16),
+        _nutrientRow(context.tr('B6'),         data65?.vitB6 ?? 0,      'mg',  1.7),
+        _nutrientRow(context.tr('B12'),        data65?.vitB12 ?? 0,     'mcg', 2.4),
+        _nutrientRow(context.tr('Folat'),      data65?.folate ?? 0,     'mcg', 400),
+        _nutrientRow(context.tr('Kolin'),      data65?.choline ?? 0,    'mg',  550),
       ]),
-      _nutrientGroup('🫀 Yağ Asitleri', [
-        _nutrientRow('Omega-3',  data65?.omega3 ?? 0, 'g',  1.6),
-        _nutrientRow('Omega-6',  data65?.omega6 ?? 0, 'g',  17),
-        _nutrientRow('EPA',      data65?.epa ?? 0,    'g',  0.25),
-        _nutrientRow('DHA',      data65?.dha ?? 0,    'g',  0.25),
+      _nutrientGroup(context.tr('🫀 Yağ Asitleri'), [
+        _nutrientRow(context.tr('Omega-3'),  data65?.omega3 ?? 0, 'g',  1.6),
+        _nutrientRow(context.tr('Omega-6'),  data65?.omega6 ?? 0, 'g',  17),
+        _nutrientRow(context.tr('EPA'),      data65?.epa ?? 0,    'g',  0.25),
+        _nutrientRow(context.tr('DHA'),      data65?.dha ?? 0,    'g',  0.25),
       ]),
-      _nutrientGroup('🧬 Amino Asitler', [
-        _nutrientRow('Lösin',       data65?.leucine ?? 0,      'g', 2.7),
-        _nutrientRow('Lizin',       data65?.lysine ?? 0,       'g', 2.1),
-        _nutrientRow('Valin',       data65?.valine ?? 0,       'g', 1.8),
-        _nutrientRow('İzolösin',    data65?.isoleucine ?? 0,   'g', 1.4),
-        _nutrientRow('Triptofan',   data65?.tryptophan ?? 0,   'g', 0.28),
-        _nutrientRow('Metionin',    data65?.methionine ?? 0,   'g', 0.73),
-        _nutrientRow('Histidin',    data65?.histidine ?? 0,    'g', 0.7),
-        _nutrientRow('Fenilalanin', data65?.phenylalanine ?? 0,'g', 1.3),
-        _nutrientRow('Treonin',     data65?.threonine ?? 0,    'g', 1.0),
+      _nutrientGroup(context.tr('🧬 Amino Asitler'), [
+        _nutrientRow(context.tr('Lösin'),       data65?.leucine ?? 0,      'g', 2.7),
+        _nutrientRow(context.tr('Lizin'),       data65?.lysine ?? 0,       'g', 2.1),
+        _nutrientRow(context.tr('Valin'),       data65?.valine ?? 0,       'g', 1.8),
+        _nutrientRow(context.tr('İzolösin'),    data65?.isoleucine ?? 0,   'g', 1.4),
+        _nutrientRow(context.tr('Triptofan'),   data65?.tryptophan ?? 0,   'g', 0.28),
+        _nutrientRow(context.tr('Metionin'),    data65?.methionine ?? 0,   'g', 0.73),
+        _nutrientRow(context.tr('Histidin'),    data65?.histidine ?? 0,    'g', 0.7),
+        _nutrientRow(context.tr('Fenilalanin'), data65?.phenylalanine ?? 0,'g', 1.3),
+        _nutrientRow(context.tr('Treonin'),     data65?.threonine ?? 0,    'g', 1.0),
       ]),
     ]);
   }
@@ -3159,14 +3161,14 @@ class _EmailReportCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Bilgilerimi Mail ile Gönder',
+                    Text(context.tr('Bilgilerimi Mail ile Gönder'),
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurface)),
                     const SizedBox(height: 2),
                     Text(
-                        'Kalori, besin ve adım verilerini e-posta ile al',
+                        context.tr('Kalori, besin ve adım verilerini e-posta ile al'),
                         style: TextStyle(
                             fontSize: 12,
                             color:
@@ -3189,28 +3191,28 @@ class _EmailReportCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.email_outlined, color: Color(0xFF58A6FF)),
-            SizedBox(width: 10),
-            Text('Rapor Gönder'),
+            const Icon(Icons.email_outlined, color: Color(0xFF58A6FF)),
+            const SizedBox(width: 10),
+            Text(context.tr('Rapor Gönder')),
           ],
         ),
-        content: const Text(
-          'Kalori, besin değerleri ve adım verileriniz kayıtlı e-posta adresinize gönderilecek. Devam etmek istiyor musunuz?',
-          style: TextStyle(fontSize: 13, height: 1.5),
+        content: Text(
+          context.tr('Kalori, besin değerleri ve adım verileriniz kayıtlı e-posta adresinize gönderilecek. Devam etmek istiyor musunuz?'),
+          style: const TextStyle(fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(context.tr('İptal')),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               _showPasswordStep(context);
             },
-            child: const Text('Devam'),
+            child: Text(context.tr('Devam Et')),
           ),
         ],
       ),
@@ -3226,20 +3228,20 @@ class _EmailReportCard extends StatelessWidget {
         builder: (ctx, setState) => AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
-          title: const Text('Şifre Doğrulama'),
+          title: Text(context.tr('Şifre Doğrulama')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Güvenlik için hesap şifrenizi girin',
-                  style: TextStyle(fontSize: 13)),
+              Text(context.tr('Güvenlik için hesap şifrenizi girin'),
+                  style: const TextStyle(fontSize: 13)),
               const SizedBox(height: 16),
               TextField(
                 controller: ctrl,
                 obscureText: obscure,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Şifre',
+                  hintText: context.tr('Şifre'),
                   filled: true,
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -3260,20 +3262,20 @@ class _EmailReportCard extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('İptal'),
+              child: Text(context.tr('İptal')),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
-                        'Rapor gönderildi! (Yakında aktif olacak)'),
+                        context.tr('Rapor gönderildi! (Yakında aktif olacak)')),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               },
-              child: const Text('Gönder'),
+              child: Text(context.tr('Gönder')),
             ),
           ],
         ),
@@ -3328,9 +3330,9 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
       });
       labels = List.generate(7, (i) {
         final d = now.subtract(Duration(days: 6 - i));
-        if (i == 6) return 'Bugün';
+        if (i == 6) return context.tr('Bugün');
         const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-        return days[d.weekday - 1];
+        return context.tr(days[d.weekday - 1]);
       });
     } else if (_period == _SleepPeriod.month) {
       // Son 30 gün, bugün dahil
@@ -3357,7 +3359,7 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
       final now = DateTime.now();
       labels = List.generate(12, (i) {
         final monthIndex = (now.month - 12 + i) % 12;
-        return monthLabels[monthIndex < 0 ? monthIndex + 12 : monthIndex];
+        return context.tr(monthLabels[monthIndex < 0 ? monthIndex + 12 : monthIndex]);
       });
       todayIndex = 11;
     }
@@ -3383,10 +3385,10 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Uyku Puanı Grafiği',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  context.tr('Uyku Puanı Grafiği'),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
               ),
               _PeriodChip(label: '7G', selected: _period == _SleepPeriod.week, onTap: () => setState(() => _period = _SleepPeriod.week), cs: cs),
@@ -3401,7 +3403,7 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text('Henüz uyku verisi yok', style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
+                child: Text(context.tr('Henüz uyku verisi yok'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
               ),
             )
           else
@@ -3639,7 +3641,7 @@ class _WeightChartState extends State<_WeightChart> {
         children: [
           Row(
             children: [
-              const Expanded(child: Text('Kilo Grafiği', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+              Expanded(child: Text(context.tr('Kilo Grafiği'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
               _PeriodChip(label: '8H', selected: _period == _WeightPeriod.weeks, onTap: () => setState(() => _period = _WeightPeriod.weeks), cs: cs),
               const SizedBox(width: 6),
               _PeriodChip(label: '1Y', selected: _period == _WeightPeriod.year, onTap: () => setState(() => _period = _WeightPeriod.year), cs: cs),
@@ -3653,7 +3655,7 @@ class _WeightChartState extends State<_WeightChart> {
                   const SizedBox(height: 16),
                   Icon(Icons.monitor_weight_outlined, size: 36, color: cs.onSurface.withValues(alpha: 0.3)),
                   const SizedBox(height: 8),
-                  Text('Henüz kilo girişi yok', style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
+                  Text(context.tr('Henüz kilo girişi yok'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -3754,8 +3756,8 @@ class _WeightChartState extends State<_WeightChart> {
               onPressed: () => _showWeightPicker(context),
               icon: const Icon(Icons.monitor_weight_outlined, size: 16),
               label: Text(widget.wellness.weightEnteredThisWeek
-                  ? 'Bu haftaki kilo: ${widget.wellness.thisWeekWeight!.toStringAsFixed(1)} kg'
-                  : 'Bu haftanın kilosunu gir'),
+                  ? '${context.tr('Bu haftaki kilo:')} ${widget.wellness.thisWeekWeight!.toStringAsFixed(1)} kg'
+                  : context.tr('Bu haftanın kilosunu gir')),
               style: FilledButton.styleFrom(
                 backgroundColor: widget.wellness.weightEnteredThisWeek
                     ? cs.primary.withValues(alpha: 0.12)
@@ -3793,7 +3795,7 @@ class _WeightChartState extends State<_WeightChart> {
             children: [
               Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 20),
-              Text('Bu Haftanın Kilosu', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: cs.onSurface)),
+              Text(context.tr('Bu Haftanın Kilosu'), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: cs.onSurface)),
               const SizedBox(height: 20),
               SizedBox(
                 height: 180,
@@ -3837,7 +3839,7 @@ class _WeightChartState extends State<_WeightChart> {
                     if (context.mounted) Navigator.pop(context);
                   },
                   style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  child: Text('${selected.toStringAsFixed(1)} kg Kaydet', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  child: Text('${selected.toStringAsFixed(1)} kg ${context.tr('Kaydet')}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -3888,16 +3890,16 @@ class _WeeklyFlowCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Haftalık Oruç",
-                  style: TextStyle(
+                Text(
+                  context.tr("Haftalık Oruç"),
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
                   ),
                 ),
                 Text(
-                  "Son 7 günde tamamlanan toplam süre",
+                  context.tr("Son 7 günde tamamlanan toplam süre"),
                   style: TextStyle(
                     fontSize: 13,
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -3908,9 +3910,9 @@ class _WeeklyFlowCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text(
-                  "TOPLAM",
-                  style: TextStyle(
+                Text(
+                  context.tr("TOPLAM"),
+                  style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1,
@@ -3918,7 +3920,7 @@ class _WeeklyFlowCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  "${weeklyHours.toStringAsFixed(0)} sa",
+                  "${weeklyHours.toStringAsFixed(0)} ${context.tr('sa')}",
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,

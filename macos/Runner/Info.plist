@@ -28,5 +28,11 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Yemek barkodlarını taramak ve yemek fotoğrafları analiz etmek için kameranıza erişmemiz gerekiyor.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sesli yemek girişi yapabilmeniz için mikrofonunuza erişmemiz gerekiyor.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Yemek fotoğraflarını galeriden seçip analiz edebilmeniz için galerinize erişmemiz gerekiyor.</string>
 </dict>
 </plist>

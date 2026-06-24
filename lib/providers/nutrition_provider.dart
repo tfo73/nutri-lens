@@ -533,11 +533,12 @@ class NutritionProvider extends ChangeNotifier {
     return result;
   }
 
-  List<NutritionConflict> getConflicts(UserProfile? profile, {DailyLog? log}) {
+  List<NutritionConflict> getConflicts(UserProfile? profile, {DailyLog? log, bool isTurkish = true}) {
     if (profile == null) return [];
     return ConflictDetectionService.detect(
       consumed: log?.totalNutrition ?? totalNutrition,
       profile: profile,
+      isTurkish: isTurkish,
     );
   }
 

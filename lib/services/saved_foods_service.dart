@@ -5,20 +5,24 @@ import '../models/nutrition_data.dart';
 class SavedFood {
   final String id;
   final String name;
+  final String? brand;
   final double portionGrams;
   final NutritionData nutritionPer100g;
   final List<String> sources;
   final DateTime savedAt;
   final String? imagePath;
+  final String? imageUrl;
 
   const SavedFood({
     required this.id,
     required this.name,
+    this.brand,
     required this.portionGrams,
     required this.nutritionPer100g,
     required this.sources,
     required this.savedAt,
     this.imagePath,
+    this.imageUrl,
   });
 
   NutritionData get nutritionScaled => nutritionPer100g.scaleBy(portionGrams / 100.0);
@@ -26,21 +30,25 @@ class SavedFood {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        if (brand != null) 'brand': brand,
         'portionGrams': portionGrams,
         'nutritionPer100g': nutritionPer100g.toJson(),
         'sources': sources,
         'savedAt': savedAt.toIso8601String(),
         if (imagePath != null) 'imagePath': imagePath,
+        if (imageUrl != null) 'imageUrl': imageUrl,
       };
 
   factory SavedFood.fromJson(Map<String, dynamic> j) => SavedFood(
         id: j['id'] as String,
         name: j['name'] as String,
+        brand: j['brand'] as String?,
         portionGrams: (j['portionGrams'] as num).toDouble(),
         nutritionPer100g: NutritionData.fromJson(j['nutritionPer100g'] as Map<String, dynamic>),
         sources: (j['sources'] as List<dynamic>).cast<String>(),
         savedAt: DateTime.parse(j['savedAt'] as String),
         imagePath: j['imagePath'] as String?,
+        imageUrl: j['imageUrl'] as String?,
       );
 }
 

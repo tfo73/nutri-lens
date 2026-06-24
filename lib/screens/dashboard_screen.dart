@@ -192,7 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final waterLogs = selectedLog.waterEntries;
     if (waterLogs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bugün henüz su girişi yapmadınız')),
+        SnackBar(content: Text(context.tr('Bugün henüz su girişi yapmadınız'))),
       );
       return;
     }
@@ -228,7 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Su Geçmişi',
+                  context.tr('Su Geçmişi'),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -391,7 +391,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Bu Haftanın Kilosu',
+                context.tr('Bu Haftanın Kilosu'),
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
@@ -448,7 +448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   child: Text(
-                    '${selected.toStringAsFixed(1)} kg Kaydet',
+                    '${selected.toStringAsFixed(1)} kg ${context.tr('Kaydet')}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -801,7 +801,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    'Bu haftalık kilo kaydınızı henüz yapmadınız. Eklemek için dokunun.',
+                                    context.tr('Bu haftalık kilo kaydınızı henüz yapmadınız. Eklemek için dokunun.'),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -1024,9 +1024,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'Kasım',
       'Aralık',
     ];
-    final monthName = (l10n.isTurkish
-        ? trMonths
-        : trMonths)[now.month - 1]; // Simplified
+    final monthName = l10n.tr(trMonths[now.month - 1]);
     final dateStr = '${now.day} $monthName';
 
     showModalBottomSheet(
@@ -1091,9 +1089,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: liveEntries.isEmpty
                           ? Center(
                               child: Text(
-                                l10n.isTurkish
-                                    ? 'Bu öğünde henüz yemek yok'
-                                    : 'No food yet',
+                                l10n.tr('Bu öğünde henüz yemek yok'),
                               ),
                             )
                           : ListView(
@@ -1232,7 +1228,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ProfileProvider pp,
     DailyLog log,
   ) {
-    final conflicts = provider.getConflicts(pp.activeProfile, log: log);
+    final isTurkish = context.read<LanguageProvider>().isTurkish;
+    final conflicts = provider.getConflicts(pp.activeProfile, log: log, isTurkish: isTurkish);
     if (conflicts.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const redBg = Color(0xFFFF3B30);
@@ -1491,7 +1488,7 @@ class _MealSectionState extends State<_MealSection> {
                               )
                             else
                               Text(
-                                'Henüz eklenmedi',
+                                context.tr('Henüz eklenmedi'),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: widget.cs.onSurface
@@ -1703,7 +1700,8 @@ class _DashboardPage1State extends State<_DashboardPage1> {
         ),
         const SizedBox(height: 4),
         Text(
-          'KALAN KCAL',
+          context.tr('KALAN KCAL'),
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -1755,7 +1753,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                     ),
                                   ),
                                   Text(
-                                    'ALINAN',
+                                    context.tr('ALINAN'),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
@@ -1872,7 +1870,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                                     ),
                                   ),
                                   Text(
-                                    'YAKILAN',
+                                    context.tr('Yakılan').toUpperCase(),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
@@ -1895,7 +1893,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _MacroBar(
-                          label: 'PROTEİN',
+                          label: context.tr('Protein').toUpperCase(),
                           consumed: widget.nutrition.protein,
                           goal: widget.proteinGoal,
                           pct: proteinPct,
@@ -1905,7 +1903,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                           barBg: barBg,
                         ),
                         _MacroBar(
-                          label: 'KARBONHİDRAT',
+                          label: context.tr('Karbonhidrat').toUpperCase(),
                           consumed: widget.nutrition.carbohydrates,
                           goal: widget.carbGoal,
                           pct: carbPct,
@@ -1915,7 +1913,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                           barBg: barBg,
                         ),
                         _MacroBar(
-                          label: 'YAĞ',
+                          label: context.tr('Yağ').toUpperCase(),
                           consumed: widget.nutrition.fat,
                           goal: widget.fatGoal,
                           pct: fatPct,
@@ -1925,7 +1923,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                           barBg: barBg,
                         ),
                         _MacroBar(
-                          label: 'LİF',
+                          label: context.tr('Lif').toUpperCase(),
                           consumed: widget.nutrition.fiber,
                           goal: widget.fiberGoal,
                           pct: fiberPct,
@@ -2182,11 +2180,11 @@ class _NutrientLandscapeCard extends StatefulWidget {
 }
 
 class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
-  String _getScoreStatus(double score) {
-    if (score >= 90) return 'Kusursuz';
-    if (score >= 70) return 'Çok İyi';
-    if (score >= 40) return 'Orta';
-    return 'Geliştirilmeli';
+  String _getScoreStatus(BuildContext context, double score) {
+    if (score >= 90) return context.tr('Kusursuz');
+    if (score >= 70) return context.tr('Çok İyi');
+    if (score >= 40) return context.tr('Orta');
+    return context.tr('Geliştirilmeli');
   }
 
   void _showScoreExplanation(
@@ -2234,52 +2232,52 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Mikro Besin Skoru Nasıl Hesaplanır?',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              Text(
+                context.tr('Mikro Besin Skoru Nasıl Hesaplanır?'),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Bu skor, tükettiğiniz mikro besinlerin (vitaminler, mineraller, yağ asitleri ve amino asitler) günlük hedeflerinize oranına göre hesaplanır. Makro besinler bu skora dahil edilmez.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
+              Text(
+                context.tr('Bu skor, tükettiğiniz mikro besinlerin (vitaminler, mineraller, yağ asitleri ve amino asitler) günlük hedeflerinize oranına göre hesaplanır. Makro besinler bu skora dahil edilmez.'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E)),
               ),
               const SizedBox(height: 12),
               _scoreRow(
                 '🍊',
-                'Vitamin Dengesi',
-                'Temel vitaminlerin (A, C, D, E, K, B grubu) ortalaması (%30)',
+                context.tr('Vitamin Dengesi'),
+                context.tr('Temel vitaminlerin (A, C, D, E, K, B grubu) ortalaması (%30)'),
               ),
               _scoreRow(
                 '🧂',
-                'Mineral Dengesi',
-                'Kalsiyum, demir, magnezyum, iyot, krom vb. mineraller (%30)',
+                context.tr('Mineral Dengesi'),
+                context.tr('Kalsiyum, demir, magnezyum, iyot, krom vb. mineraller (%30)'),
               ),
               _scoreRow(
                 '🧬',
-                'Esansiyel Besinler',
-                'Omega-3, Omega-6 ve temel amino asitlerin karşılanma oranı (%25)',
+                context.tr('Esansiyel Besinler'),
+                context.tr('Omega-3, Omega-6 ve temel amino asitlerin karşılanma oranı (%25)'),
               ),
               _scoreRow(
                 '🥕',
-                'Karotenoidler & Antioksidanlar',
-                'Likopen, Beta-karoten, Lutein gibi koruyucu bileşenler (%15)',
+                context.tr('Karotenoidler & Antioksidanlar'),
+                context.tr('Likopen, Beta-karoten, Lutein gibi koruyucu bileşenler (%15)'),
               ),
               const SizedBox(height: 16),
               Column(
                 children: [
                   Row(
                     children: [
-                      _scoreBadge('90+', const Color(0xFF7EE787), 'Kusursuz'),
+                      _scoreBadge('90+', const Color(0xFF7EE787), context.tr('Kusursuz')),
                       const SizedBox(width: 8),
-                      _scoreBadge('70-89', const Color(0xFF3FB950), 'Çok İyi'),
+                      _scoreBadge('70-89', const Color(0xFF3FB950), context.tr('Çok İyi')),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _scoreBadge('40-69', const Color(0xFFF0A500), 'Orta'),
+                      _scoreBadge('40-69', const Color(0xFFF0A500), context.tr('Orta')),
                       const SizedBox(width: 8),
-                      _scoreBadge('0-39', const Color(0xFFF85149), 'Geliştir.'),
+                      _scoreBadge('0-39', const Color(0xFFF85149), context.tr('Geliştir.')),
                     ],
                   ),
                 ],
@@ -2444,7 +2442,7 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'Mikro Besinler',
+                context.tr('Mikro Besinler'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -2483,7 +2481,7 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
           ),
           const SizedBox(height: 14),
           // Vitaminler grubu
-          _GroupLabel('VİTAMİNLER', cs),
+          _GroupLabel(context.tr('VİTAMİNLER'), cs),
           const SizedBox(height: 8),
           _NutrientGrid(
             items: vitamins,
@@ -2494,7 +2492,7 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
           ),
           const SizedBox(height: 12),
           // Mineraller grubu
-          _GroupLabel('MİNERALLER', cs),
+          _GroupLabel(context.tr('MİNERALLER'), cs),
           const SizedBox(height: 8),
           _NutrientGrid(
             items: minerals,
@@ -2514,9 +2512,7 @@ class _NutrientLandscapeCardState extends State<_NutrientLandscapeCard> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  hasData
-                      ? 'Tüm besin değerlerini gör'
-                      : 'Tüm besin değerlerini gör',
+                  context.tr('Tüm besin değerlerini gör'),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -2675,7 +2671,7 @@ class _LandscapeItemCardState extends State<_LandscapeItemCard> {
               children: [
                 Expanded(
                   child: Text(
-                    item.label.toUpperCase(),
+                    context.tr(item.label).toUpperCase(),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -3325,7 +3321,7 @@ class _WaterSummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'SU',
+                      context.tr('SU'),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -4059,7 +4055,7 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Tamam'),
+                child: Text(AppLocalizations.of(context).tr('Tamam')),
               ),
             ],
           ),
@@ -4383,7 +4379,7 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                     Column(
                       children: [
                         Text(
-                          'Premium Özellikleri Aç',
+                          context.tr('Premium Özellikleri Aç'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 32,
@@ -4395,7 +4391,7 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Sağlığınızı hassas araçlarla geliştirin.',
+                          context.tr('Sağlığınızı hassas araçlarla geliştirin.'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
@@ -4412,37 +4408,37 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                       context,
                       icon: Icons.biotech_outlined,
                       color: const Color(0xFF006e28),
-                      title: '65+ Besin Analizi',
-                      subtitle: 'Mikro besinleri ve mineralleri takip edin',
+                      title: context.tr('65+ Besin Analizi'),
+                      subtitle: context.tr('Mikro besinleri ve mineralleri takip edin'),
                     ),
                     _buildFeatureItem(
                       context,
                       icon: Icons.camera_alt_outlined,
                       color: const Color(0xFF006687),
-                      title: 'AI Fotoğraf Tarama',
-                      subtitle: 'Gelişmiş vizyon AI ile anında günlük kaydı',
+                      title: context.tr('AI Fotoğraf Tarama'),
+                      subtitle: context.tr('Gelişmiş vizyon AI ile anında günlük kaydı'),
                     ),
                     _buildFeatureItem(
                       context,
                       icon: Icons.auto_awesome_outlined,
                       color: const Color(0xFF8c5000),
-                      title: 'Gelişmiş Sağlık Takibi',
+                      title: context.tr('Gelişmiş Sağlık Takibi'),
                       subtitle:
-                          'Ruh hali, uyku ve vücut kompozisyonunu senkronize edin',
+                          context.tr('Ruh hali, uyku ve vücut kompozisyonunu senkronize edin'),
                     ),
                     _buildFeatureItem(
                       context,
                       icon: Icons.restaurant_menu_outlined,
                       color: const Color(0xFF34c759),
-                      title: 'Kişiselleştirilmiş Öğünler',
-                      subtitle: 'Biyolojinize göre kürate edilmiş tarifler',
+                      title: context.tr('Kişiselleştirilmiş Öğünler'),
+                      subtitle: context.tr('Biyolojinize göre kürate edilmiş tarifler'),
                     ),
                     _buildFeatureItem(
                       context,
                       icon: Icons.block_outlined,
                       color: cs.onSurfaceVariant,
-                      title: 'Reklamsız Deneyim',
-                      subtitle: 'Odaklanmış ve dikkat dağıtmayan bir alan',
+                      title: context.tr('Reklamsız Deneyim'),
+                      subtitle: context.tr('Odaklanmış ve dikkat dağıtmayan bir alan'),
                     ),
 
                     const SizedBox(height: 40),
@@ -4450,18 +4446,18 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                     // Pricing Section
                     _buildPricingCard(
                       index: 0,
-                      label: 'Haftalık',
+                      label: context.tr('Haftalık'),
                       price: '₺169,99',
-                      period: 'Her hafta faturalandırılır',
+                      period: context.tr('Her hafta faturalandırılır'),
                       cardColor: cardColor,
                       cs: cs,
                     ),
                     const SizedBox(height: 12),
                     _buildPricingCard(
                       index: 1,
-                      label: 'Yıllık',
+                      label: context.tr('Yıllık'),
                       price: '₺1.699,99',
-                      period: '₺8.800 yerine — %80 Tasarruf',
+                      period: context.tr('₺8.800 yerine — %80 Tasarruf'),
                       isPopular: true,
                       cardColor: cardColor,
                       cs: cs,
@@ -4470,9 +4466,9 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                     const SizedBox(height: 12),
                     _buildPricingCard(
                       index: 2,
-                      label: 'Ömür Boyu',
+                      label: context.tr('Ömür Boyu'),
                       price: '₺6.999,99',
-                      period: 'Bir kez öde, sınırsız kullan',
+                      period: context.tr('Bir kez öde, sınırsız kullan'),
                       isLimited: true,
                       cardColor: cardColor,
                       cs: cs,
@@ -4501,9 +4497,9 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                         child: InkWell(
                           onTap: () {},
                           borderRadius: BorderRadius.circular(32),
-                          child: const Center(
+                          child: Center(
                             child: Text(
-                              'Devam Et',
+                              context.tr('Devam Et'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -4521,11 +4517,11 @@ class _PremiumPlaceholderScreenState extends State<_PremiumPlaceholderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildFooterLink('Geri Yükle'),
+                        _buildFooterLink(context.tr('Geri Yükle')),
                         _buildDivider(),
-                        _buildFooterLink('Gizlilik'),
+                        _buildFooterLink(context.tr('Gizlilik')),
                         _buildDivider(),
-                        _buildFooterLink('Kullanım'),
+                        _buildFooterLink(context.tr('Kullanım')),
                       ],
                     ),
                     const SizedBox(height: 100),
@@ -4835,7 +4831,7 @@ class _StreakBottomSheet extends StatelessWidget {
                     Icon(Icons.info_outline, color: cs.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Nasıl Streak Yapılır?',
+                      context.tr('Nasıl Streak Yapılır?'),
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -4846,7 +4842,7 @@ class _StreakBottomSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Seriyi (streak) korumak ve artırmak için günlük kalori, makro, su ve adım hedeflerinize her gün ulaşmanız gerekmektedir. Tüm hedeflerinize ulaştığınız her gün serinize eklenir.',
+                  context.tr('Seriyi (streak) korumak ve artırmak için günlük kalori, makro, su ve adım hedeflerinize her gün ulaşmanız gerekmektedir. Tüm hedeflerinize ulaştığınız her gün serinize eklenir.'),
                   style: TextStyle(
                     fontSize: 14,
                     color: cs.onSurfaceVariant,
@@ -4949,7 +4945,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
     final diff = openTime.difference(now);
     final h = diff.inHours;
     final m = diff.inMinutes % 60;
-    return h > 0 ? '${h}s ${m}dk' : '${m}dk';
+    return h > 0 ? '$h${context.tr('s')} $m${context.tr('dk')}' : '$m${context.tr('dk')}';
   }
 
   Color _sleepColor(int score) {
@@ -5066,13 +5062,13 @@ class _WellnessSectionState extends State<_WellnessSection> {
     );
 
     return card(
-      title: 'Günlük Sağlık',
+      title: context.tr('Günlük Sağlık'),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Ruh Hali Takibi ────────────────────────────────────────────────
           subCard(
-            title: 'RUH HALİ TAKİBİ',
+            title: context.tr('RUH HALİ TAKİBİ'),
             body: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: _slots.map((s) {
@@ -5085,7 +5081,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                 final cd = status == 'future' ? _countdown(openH) : null;
                 return Expanded(
                   child: _MoodSlotButton(
-                    label: label,
+                    label: context.tr('mood_$slot'),
                     mood: current,
                     status: status,
                     countdown: cd,
@@ -5094,7 +5090,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              '${cd ?? ""} sonra ruh hali girişi yapabilirsiniz',
+                              context.tr('{} sonra ruh hali girişi yapabilirsiniz').replaceFirst('{}', cd ?? ""),
                             ),
                             behavior: SnackBarBehavior.floating,
                             duration: const Duration(seconds: 2),
@@ -5111,7 +5107,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
           ),
           // ── Tuvalet Takibi ─────────────────────────────────────────────────
           subCard(
-            title: 'TUVALET TAKİBİ',
+            title: context.tr('TUVALET TAKİBİ'),
             onHistoryTap: () => _showWcHistorySheet(context, wellness),
             body: Row(
               children: [
@@ -5124,8 +5120,8 @@ class _WellnessSectionState extends State<_WellnessSection> {
                       children: [
                         Text(
                           wellness.today.wcCount > 0
-                              ? 'Bugün ${wellness.today.wcCount} tane girdi yaptınız'
-                              : 'Bugün hiç girdi yapmadınız',
+                              ? context.tr('Bugün {} tane girdi yaptınız').replaceFirst('{}', wellness.today.wcCount.toString())
+                              : context.tr('Bugün hiç girdi yapmadınız'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -5157,7 +5153,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
           ),
           // ── Uyku Kalitesi Takibi ───────────────────────────────────────────
           subCard(
-            title: 'UYKU KALİTESİ TAKİBİ',
+            title: context.tr('UYKU KALİTESİ TAKİBİ'),
             body: Column(
               children: [
                 Row(
@@ -5204,14 +5200,14 @@ class _WellnessSectionState extends State<_WellnessSection> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Kötü',
+                      context.tr('Kötü'),
                       style: TextStyle(
                         fontSize: 11,
                         color: _sleepColor(1).withValues(alpha: 0.8),
                       ),
                     ),
                     Text(
-                      'Harika',
+                      context.tr('Harika'),
                       style: TextStyle(
                         fontSize: 11,
                         color: _sleepColor(5).withValues(alpha: 0.8),
@@ -5224,7 +5220,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
           ),
           // ── Semptom Takibi ────────────────────────────────────────────────
           subCard(
-            title: 'SEMPTOM TAKİBİ',
+            title: context.tr('SEMPTOM TAKİBİ'),
             body: Row(
               children: [
                 Expanded(
@@ -5232,7 +5228,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                     controller: _symptomCtrl,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: 'Semptom girin...',
+                      hintText: context.tr('Semptom girin...'),
                       hintStyle: TextStyle(
                         fontSize: 13,
                         color: cs.onSurface.withValues(alpha: 0.4),
@@ -5257,9 +5253,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                       if (trimmed.isEmpty) return;
                       if (!_isValidSymptom(trimmed)) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)'),
-                            duration: Duration(seconds: 3),
+                          SnackBar(
+                            content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
+                            duration: const Duration(seconds: 3),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -5268,9 +5264,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                       wellness.addSymptom(trimmed);
                       _symptomCtrl.clear();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Semptom kaydedildi'),
-                          duration: Duration(seconds: 2),
+                        SnackBar(
+                          content: Text(context.tr('Semptom kaydedildi')),
+                          duration: const Duration(seconds: 2),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -5284,9 +5280,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                     if (val.isEmpty) return;
                     if (!_isValidSymptom(val)) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)'),
-                          duration: Duration(seconds: 3),
+                        SnackBar(
+                          content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
+                          duration: const Duration(seconds: 3),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -5295,9 +5291,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                     wellness.addSymptom(val);
                     _symptomCtrl.clear();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Semptom kaydedildi'),
-                        duration: Duration(seconds: 2),
+                      SnackBar(
+                        content: Text(context.tr('Semptom kaydedildi')),
+                        duration: const Duration(seconds: 2),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -5328,7 +5324,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
     final logs = wellness.today.wcEntries;
     if (logs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bugün hiç girdi yapmadınız')),
+        SnackBar(content: Text(context.tr('Bugün hiç girdi yapmadınız'))),
       );
       return;
     }
@@ -5364,7 +5360,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Giriş Detayları',
+                  context.tr('Giriş Detayları'),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -5422,9 +5418,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                               padding: const EdgeInsets.only(left: 12),
                               child: Column(
                                 children: entries.map((log) {
-                                  final type = wcStoolTypes.firstWhere(
+                                  final type = wcStoolTypes(context).firstWhere(
                                     (t) => t.value == log.stoolType,
-                                    orElse: () => wcStoolTypes[3],
+                                    orElse: () => wcStoolTypes(context)[3],
                                   );
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 8),
@@ -5480,7 +5476,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                                                 ),
                                               ),
                                               Text(
-                                                '${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')} — ${log.stoolType == 0 ? 'Normal' : (log.stoolType < 0 ? 'Kabızlık' : 'İshal')}',
+                                                '${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')} — ${log.stoolType == 0 ? context.tr('Normal') : (log.stoolType < 0 ? context.tr('Kabızlık') : context.tr('İshal'))}',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: isDark ? Colors.white70 : Colors.black54,
@@ -5669,7 +5665,7 @@ class _MoodPickerSheet extends StatelessWidget {
             children: [
               const SizedBox(width: 32),
               Text(
-                'Nasıl hissediyorsun?',
+                context.tr('Nasıl hissediyorsun?'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -5715,7 +5711,7 @@ class _MoodPickerSheet extends StatelessWidget {
                       Text(mood.emoji, style: const TextStyle(fontSize: 18)),
                       const SizedBox(width: 8),
                       Text(
-                        mood.label,
+                        context.tr(mood.label),
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -6119,8 +6115,8 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
                                           visualDensity: VisualDensity.compact,
                                           padding: EdgeInsets.zero,
                                         ),
-                                        child: const Text(
-                                          'Daha Fazla',
+                                        child: Text(
+                                          context.tr('Daha Fazla'),
                                           style: TextStyle(
                                             color: Color(0xFF58A6FF),
                                             fontSize: 13,
@@ -6240,7 +6236,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
         Widget section(String title, Color color) => Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 2),
           child: Text(
-            title,
+            ctx.tr(title),
             style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 13,
@@ -6449,7 +6445,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            label,
+            context.tr(label),
             style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
           ),
           Text(
@@ -6476,7 +6472,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            label,
+            context.tr(label),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -6562,12 +6558,41 @@ class _CalendarStripState extends State<_CalendarStrip> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _maxWeeksBack);
     final now = DateTime.now();
     final weekStartDay = context.read<ProfileProvider>().weekStartDay;
     int diff = now.weekday - weekStartDay;
     if (diff < 0) diff += 7;
     _currentWeekStart = DateTime(now.year, now.month, now.day).subtract(Duration(days: diff));
+
+    // Calculate initial page based on widget.selectedDate
+    int selDiff = widget.selectedDate.weekday - weekStartDay;
+    if (selDiff < 0) selDiff += 7;
+    final selectedWeekStart = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day).subtract(Duration(days: selDiff));
+    final weekOffset = selectedWeekStart.difference(_currentWeekStart).inDays ~/ 7;
+    final initialPage = (_maxWeeksBack + weekOffset).clamp(0, _maxWeeksBack);
+
+    _pageController = PageController(initialPage: initialPage);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CalendarStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedDate != widget.selectedDate) {
+      final weekStartDay = context.read<ProfileProvider>().weekStartDay;
+      int selDiff = widget.selectedDate.weekday - weekStartDay;
+      if (selDiff < 0) selDiff += 7;
+      final selectedWeekStart = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day).subtract(Duration(days: selDiff));
+      final weekOffset = selectedWeekStart.difference(_currentWeekStart).inDays ~/ 7;
+      final targetPage = (_maxWeeksBack + weekOffset).clamp(0, _maxWeeksBack);
+
+      if (_pageController.hasClients && _pageController.page?.round() != targetPage) {
+        _pageController.animateToPage(
+          targetPage,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
   }
 
   @override
@@ -6635,7 +6660,7 @@ class _CalendarStripState extends State<_CalendarStrip> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        DateFormat('E', 'tr_TR').format(date).toUpperCase(),
+                        DateFormat('E', AppLocalizations.of(context).isTurkish ? 'tr_TR' : 'en_US').format(date).toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           color: isSelected ? Colors.black54 : Colors.grey.shade500,

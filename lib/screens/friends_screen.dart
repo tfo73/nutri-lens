@@ -4,6 +4,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
 import '../services/device_id_service.dart';
+import '../l10n/app_localizations.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -46,7 +47,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Arkadaş Ekle'),
+        title: Text(context.tr('Arkadaş Ekle')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -59,11 +60,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
             Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             Text('ID: ${user.id}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
             const SizedBox(height: 12),
-            const Text('Bu kişiyi arkadaş olarak eklemek istiyor musunuz?', textAlign: TextAlign.center),
+            Text(context.tr('Bu kişiyi arkadaş olarak eklemek istiyor musunuz?'), textAlign: TextAlign.center),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Vazgeç'))),
           ElevatedButton(
             onPressed: () {
               context.read<ProfileProvider>().addFriend(user);
@@ -71,7 +72,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               _addFriendCtrl.clear();
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Arkadaş eklendi!')));
             },
-            child: const Text('Evet, Ekle'),
+            child: Text(context.tr('Evet, Ekle')),
           ),
         ],
       ),
@@ -82,16 +83,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Arkadaşı Sil'),
-        content: Text('$name arkadaşlıktan çıkarılsın mı?'),
+        title: Text(context.tr('Arkadaşı Sil')),
+        content: Text(context.tr('{} arkadaşlıktan çıkarılsın mı?').replaceFirst('{}', name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Vazgeç'))),
           TextButton(
             onPressed: () {
               context.read<ProfileProvider>().removeFriend(id);
               Navigator.pop(ctx);
             },
-            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+            child: Text(context.tr('Sil'), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -105,7 +106,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       if (user != null) {
         if (mounted) _confirmAddFriend(user);
       } else {
-        if (mounted) _showCenterError('Böyle bir ID bulunamadı.');
+        if (mounted) _showCenterError(context.tr('Böyle bir ID bulunamadı.'));
       }
     }
   }
@@ -149,7 +150,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Tamam'),
+                    child: Text(context.tr('Tamam')),
                   ),
                 ),
               ],
@@ -174,7 +175,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Arkadaşlar'),
+        title: Text(context.tr('Arkadaşlar')),
         centerTitle: true,
       ),
       body: Column(
@@ -185,7 +186,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Ara...',
+                hintText: context.tr('Ara...'),
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
@@ -204,7 +205,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         Icon(Icons.people_outline, size: 64, color: cs.primary.withValues(alpha: 0.5)),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isEmpty ? 'Arkadaşlarını ekle' : 'Sonuç bulunamadı',
+                          _searchQuery.isEmpty ? context.tr('Arkadaşlarını ekle') : context.tr('Sonuç bulunamadı'),
                           style: const TextStyle(fontSize: 16, color: Colors.grey),
                         ),
                       ],
@@ -227,7 +228,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 backgroundColor: Colors.orange,
                                 foregroundColor: Colors.white,
                                 icon: friend.isFavorite ? Icons.star : Icons.star_border,
-                                label: friend.isFavorite ? 'Sabitlendi' : 'Favori',
+                                label: friend.isFavorite ? context.tr('Sabitlendi') : context.tr('Favori'),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ],
@@ -240,7 +241,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 backgroundColor: Colors.red,
                                 foregroundColor: Colors.white,
                                 icon: Icons.delete,
-                                label: 'Sil',
+                                label: context.tr('Sil'),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ],
@@ -268,7 +269,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Senin arkadaş ID: ',
+                      context.tr('Senin arkadaş ID: '),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -320,7 +321,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       child: TextField(
                         controller: _addFriendCtrl,
                         decoration: InputDecoration(
-                          hintText: 'Arkadaş ID girin...',
+                          hintText: context.tr('Arkadaş ID girin...'),
                           filled: true,
                           fillColor: isDark ? Colors.black26 : Colors.grey[100],
                           border: OutlineInputBorder(
@@ -398,17 +399,17 @@ class _FriendCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _infoCell(Icons.cake_outlined, 'Yaş', '${friend.age} yaş')),
-                Expanded(child: _infoCell(Icons.straighten_outlined, 'Boy', '${friend.height.toStringAsFixed(0)} cm')),
-                Expanded(child: _infoCell(Icons.monitor_weight_outlined, 'Kilo', '${friend.weight.toStringAsFixed(1)} kg')),
+                Expanded(child: _infoCell(Icons.cake_outlined, context.tr('Yaş'), friend.age.toString())),
+                Expanded(child: _infoCell(Icons.straighten_outlined, context.tr('Boy'), context.tr('{} cm').replaceFirst('{}', friend.height.toStringAsFixed(0)))),
+                Expanded(child: _infoCell(Icons.monitor_weight_outlined, context.tr('Kilo'), context.tr('{} kg').replaceFirst('{}', friend.weight.toStringAsFixed(1)))),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _infoCell(Icons.flag_outlined, 'Hedef', friend.goalLabel)),
-                Expanded(child: _infoCell(friend.gender == Gender.female ? Icons.female : Icons.male, 'Cinsiyet', friend.gender == Gender.female ? 'Kadın' : 'Erkek')),
-                Expanded(child: _infoCell(Icons.directions_run_outlined, 'Aktivite', friend.activityLabel)),
+                Expanded(child: _infoCell(Icons.flag_outlined, context.tr('Hedef'), context.tr(friend.goalLabel))),
+                Expanded(child: _infoCell(friend.gender == Gender.female ? Icons.female : Icons.male, context.tr('Cinsiyet'), friend.gender == Gender.female ? context.tr('Kadın') : context.tr('Erkek'))),
+                Expanded(child: _infoCell(Icons.directions_run_outlined, context.tr('Aktivite'), context.tr(friend.activityLabel))),
               ],
             ),
           ],

@@ -7,6 +7,7 @@ import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
 import '../providers/nutrition_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class ManualEntryScreen extends StatefulWidget {
   final String? selectedMeal;
@@ -48,8 +49,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   final Map<String, TextEditingController> _microCtrls = {};
   
-  // Groups for UI rendering with section headers
-  static const _nutrientGroups = <(String, List<(String, String, String)>)>[
+  static const List<(String, List<(String, String, String)>)> _rawNutrientGroups = [
     ('MİNERALLER', [
       ('calcium',    'Kalsiyum',  'mg'),
       ('iron',       'Demir',     'mg'),
@@ -117,17 +117,25 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     ]),
   ];
 
-  // Flat list derived from groups — used by initState and _buildNutrition65
-  static final _nutrientKeys = [
-    for (final g in _nutrientGroups) ...g.$2,
-  ];
+  List<(String, List<(String, String, String)>)> get _nutrientGroups =>
+      _rawNutrientGroups.map((g) => (
+            context.tr(g.$1),
+            g.$2.map((item) => (item.$1, context.tr(item.$2), item.$3)).toList(),
+          )).toList();
 
-  static const _meals = <(String, IconData, String)>[
+  List<(String, String, String)> get _nutrientKeys => [
+        for (final g in _rawNutrientGroups) ...g.$2,
+      ];
+
+  static const List<(String, IconData, String)> _rawMeals = [
     ('kahvaltı', Icons.wb_sunny_outlined, 'Kahvaltı'),
     ('öğle', Icons.wb_cloudy_outlined, 'Öğle'),
     ('akşam', Icons.nights_stay_outlined, 'Akşam'),
     ('ara öğün', Icons.coffee_outlined, 'Ara Öğün'),
   ];
+
+  List<(String, IconData, String)> get _meals =>
+      _rawMeals.map((m) => (m.$1, m.$2, context.tr(m.$3))).toList();
 
   @override
   void initState() {
@@ -273,7 +281,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(isUpdate ? '${entry.name} güncellendi' : '${entry.name} eklendi'),
+        content: Text(isUpdate ? context.tr('{} güncellendi').replaceFirst('{}', entry.name) : context.tr('{} eklendi').replaceFirst('{}', entry.name)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -286,17 +294,17 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Yemeği Sil', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: Text('${widget.existingEntry!.name} silinsin mi?'),
+        title: Text(context.tr('Yemeği Sil'), style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(context.tr('{} silinsin mi?').replaceFirst('{}', widget.existingEntry!.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('İptal'),
+            child: Text(context.tr('İptal')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sil'),
+            child: Text(context.tr('Sil')),
           ),
         ],
       ),
@@ -394,13 +402,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingEntry != null ? 'Yemeği Düzenle' : 'Manuel Giriş'),
+        title: Text(widget.existingEntry != null ? context.tr('Yemeği Düzenle') : context.tr('Manuel Giriş')),
         centerTitle: true,
         actions: widget.existingEntry != null
             ? [
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  tooltip: 'Sil',
+                  tooltip: context.tr('Sil'),
                   onPressed: _confirmDelete,
                 ),
               ]
@@ -440,8 +448,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 onPressed: _pickImage,
                 icon: const Icon(Icons.add_photo_alternate_outlined),
                 label: Text(_selectedImage != null
-                    ? 'Fotoğrafı Değiştir'
-                    : 'Fotoğraf Ekle (İsteğe Bağlı)'),
+                    ? context.tr('Fotoğrafı Değiştir')
+                    : context.tr('Fotoğraf Ekle (İsteğe Bağlı)')),
               ),
               const SizedBox(height: 20),
 
@@ -449,12 +457,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               TextFormField(
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Yiyecek Adı *',
+                decoration: InputDecoration(
+                  labelText: context.tr('Yiyecek Adı *'),
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Yiyecek adı gerekli' : null,
+                    v == null || v.trim().isEmpty ? context.tr('Yiyecek adı gerekli') : null,
               ),
               const SizedBox(height: 16),
 
@@ -469,13 +477,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 onChanged: (v) {
                    _isCalorieManuallyEdited = true;
                 },
-                decoration: const InputDecoration(
-                  labelText: 'Kalori (kcal) *',
+                decoration: InputDecoration(
+                  labelText: context.tr('Kalori (kcal) *'),
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'Kalori gerekli';
-                  if (double.tryParse(v) == null) return 'Geçerli sayı girin';
+                  if (v == null || v.isEmpty) return context.tr('Kalori gerekli');
+                  if (double.tryParse(v) == null) return context.tr('Geçerli sayı girin');
                   return null;
                 },
               ),
@@ -485,13 +493,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               TextFormField(
                 controller: _portionCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Porsiyon Miktarı (g) *',
+                decoration: InputDecoration(
+                  labelText: context.tr('Porsiyon Miktarı (g) *'),
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'Porsiyon gerekli';
-                  if (double.tryParse(v) == null) return 'Geçerli sayı girin';
+                  if (v == null || v.isEmpty) return context.tr('Porsiyon gerekli');
+                  if (double.tryParse(v) == null) return context.tr('Geçerli sayı girin');
                   return null;
                 },
               ),
@@ -505,8 +513,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     child: TextFormField(
                       controller: _proteinCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Protein (g)',
+                      decoration: InputDecoration(
+                        labelText: context.tr('Protein (g)'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -516,8 +524,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     child: TextFormField(
                       controller: _carbCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Karb. (g)',
+                      decoration: InputDecoration(
+                        labelText: context.tr('Karb. (g)'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -532,8 +540,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     child: TextFormField(
                       controller: _fatCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Yağ (g)',
+                      decoration: InputDecoration(
+                        labelText: context.tr('Yağ (g)'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -543,8 +551,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     child: TextFormField(
                       controller: _fiberCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Lif (g)',
+                      decoration: InputDecoration(
+                        labelText: context.tr('Lif (g)'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -557,7 +565,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
-                  title: const Text('Mikro Besinler (Daha Fazla)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  title: Text(context.tr('Mikro Besinler (Daha Fazla)'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: const EdgeInsets.only(bottom: 20),
                   children: [
@@ -607,7 +615,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
               if (widget.showMealSelection) ...[
                 // Öğün seçimi
-                Text('Öğün', style: Theme.of(context).textTheme.labelLarge),
+                Text(context.tr('Öğün'), style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -641,7 +649,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               FilledButton.icon(
                 onPressed: _isSaving ? null : _save,
                 icon: const Icon(Icons.save),
-                label: Text(widget.existingEntry != null ? 'Güncelle' : 'Kaydet'),
+                label: Text(widget.existingEntry != null ? context.tr('Güncelle') : context.tr('Kaydet')),
               ),
             ],
           ),

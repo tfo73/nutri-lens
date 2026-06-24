@@ -24,6 +24,7 @@ import 'achievements_screen.dart';
 import 'onboarding_screen.dart';
 import 'profile_screen.dart' show openProfileEditSheet;
 import 'package:device_info_plus/device_info_plus.dart';
+import '../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -85,12 +86,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       _feedbackController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geri bildiriminiz iletildi. Teşekkürler!')),
+        SnackBar(content: Text(context.tr('Geri bildiriminiz iletildi. Teşekkürler!'))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata oluştu: $e')),
+        SnackBar(content: Text('${context.tr('Hata oluştu')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _isSendingFeedback = false);
@@ -444,7 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ayarlar'),
+        title: Text(context.tr('Ayarlar')),
         centerTitle: true,
       ),
       body: WaveBackground(child: Stack(
@@ -455,7 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
 
               // ── Kişiselleştirme ───────────────────────────────────────
-              _SectionLabel(label: 'Kişiselleştirme'),
+              _SectionLabel(label: context.tr('Kişiselleştirme')),
               _SettingsCard(
                 children: [
                   // Hesabı Düzenle
@@ -475,7 +476,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: Color(0xFF58A6FF), size: 22),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: Text('Hesabı Düzenle',
+                            child: Text(context.tr('Hesabı Düzenle'),
                                 style: TextStyle(
                                     color: cs.onSurface,
                                     fontSize: 15,
@@ -495,14 +496,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Color(0xFF58A6FF), size: 22),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Text('Ölçü Birimi',
+                        child: Text(context.tr('Ölçü Birimi'),
                             style: TextStyle(
                                 color: cs.onSurface,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500)),
                       ),
                       _SegmentedToggle(
-                        options: const ['Metrik', 'Imperial'],
+                        options: [context.tr('Metrik'), context.tr('Imperial')],
                         selectedIndex:
                             profileProvider.useMetricUnits ? 0 : 1,
                         onChanged: (i) =>
@@ -518,14 +519,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Color(0xFF58A6FF), size: 22),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Text('Mikro Besin Birimi',
+                        child: Text(context.tr('Mikro Besin Birimi'),
                             style: TextStyle(
                                 color: cs.onSurface,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500)),
                       ),
                       _SegmentedToggle(
-                        options: const ['Değer', '%'],
+                        options: [context.tr('Değer'), '%'],
                         selectedIndex: profileProvider.showMicroPercentage ? 1 : 0,
                         onChanged: (i) =>
                             profileProvider.setShowMicroPercentage(i == 1),
@@ -540,14 +541,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Color(0xFF58A6FF), size: 22),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Text('Hafta Başlangıcı',
+                        child: Text(context.tr('Hafta Başlangıcı'),
                             style: TextStyle(
                                 color: cs.onSurface,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500)),
                       ),
                       _SegmentedToggle(
-                        options: const ['Pazartesi', 'Pazar'],
+                        options: [context.tr('Pazartesi'), context.tr('Pazar')],
                         selectedIndex: profileProvider.weekStartDay == 1 ? 0 : 1,
                         onChanged: (i) =>
                             profileProvider.setWeekStartDay(i == 0 ? 1 : 7),
@@ -561,7 +562,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
 
               // ── Hedefler ──────────────────────────────────────────────
-              _SectionLabel(label: 'Hedefler'),
+              _SectionLabel(label: context.tr('Hedefler')),
               _SettingsCard(
                 children: [
                   // Besin hedefi
@@ -574,7 +575,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Color(0xFF58A6FF), size: 22),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: Text('Günlük Besin',
+                          child: Text(context.tr('Günlük Besin'),
                               style: TextStyle(
                                   color: cs.onSurface,
                                   fontSize: 15,
@@ -596,7 +597,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Color(0xFF58A6FF), size: 22),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: Text('Günlük Su',
+                          child: Text(context.tr('Günlük Su'),
                               style: TextStyle(
                                   color: cs.onSurface,
                                   fontSize: 15,
@@ -626,7 +627,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Color(0xFF58A6FF), size: 22),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: Text('Günlük Adım',
+                          child: Text(context.tr('Günlük Adım'),
                               style: TextStyle(
                                   color: cs.onSurface,
                                   fontSize: 15,
@@ -652,7 +653,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
 
               // ── Rozetler ──────────────────────────────────────────────
-              _SectionLabel(label: 'Rozetler'),
+              _SectionLabel(label: context.tr('Rozetler')),
               Consumer<AchievementProvider>(
                 builder: (ctx, achieveProvider, _) {
                   final earned = achieveProvider.earned;
@@ -675,7 +676,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${earned.length} / $total rozet kazanıldı',
+                                    langProvider.isTurkish
+                                        ? '${earned.length} / $total rozet kazanıldı'
+                                        : '${earned.length} / $total badges earned',
                                     style: TextStyle(
                                         color: cs.onSurface,
                                         fontSize: 15,
@@ -721,7 +724,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
 
               // ── Özel Ayarlar (Tema + Dil) ─────────────────────────────
-              _SectionLabel(label: 'Özel Ayarlar'),
+              _SectionLabel(label: context.tr('Özel Ayarlar')),
               _SettingsCard(
                 children: [
                   // Tema
@@ -736,14 +739,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Text('Tema',
+                        child: Text(context.tr('Tema'),
                             style: TextStyle(
                                 color: cs.onSurface,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500)),
                       ),
                       _SegmentedToggle(
-                        options: const ['Karanlık', 'Aydınlık'],
+                        options: [context.tr('Karanlık'), context.tr('Aydınlık')],
                         selectedIndex: themeProvider.isDarkMode ? 0 : 1,
                         onChanged: (i) {
                           if ((i == 0) != themeProvider.isDarkMode) {
@@ -761,14 +764,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Color(0xFF58A6FF), size: 22),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Text('Dil',
+                        child: Text(context.tr('Dil'),
                             style: TextStyle(
                                 color: cs.onSurface,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500)),
                       ),
                       _SegmentedToggle(
-                        options: const ['Türkçe', 'English'],
+                        options: [context.tr('Türkçe'), context.tr('English')],
                         selectedIndex: langProvider.isTurkish ? 0 : 1,
                         onChanged: (i) {
                           if ((i == 0) != langProvider.isTurkish) {
@@ -785,14 +788,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
 
               // ── Entegrasyonlar ──────────────────────────────────────────
-              _SectionLabel(label: 'Entegrasyonlar'),
+              _SectionLabel(label: context.tr('Entegrasyonlar')),
               _SettingsCard(
                 children: [
                   Row(
                     children: [
                       Icon(
                         Platform.isAndroid ? Icons.health_and_safety_outlined : Icons.favorite_border,
-                        color: const Color(0xFFFAFBFC),
+                        color: const Color(0xFF58A6FF),
                         size: 22,
                       ),
                       const SizedBox(width: 14),
@@ -801,14 +804,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Sağlık Verilerini Senkronize Et',
+                              context.tr('Sağlık Verilerini Senkronize Et'),
                               style: TextStyle(
                                   color: cs.onSurface,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500),
                             ),
                             Text(
-                              'Adım, yakılan kalori vb. verileri telefonunuzdan otomatik olarak aktarır.',
+                              context.tr('Adım, yakılan kalori vb. verileri telefonunuzdan otomatik olarak aktarır.'),
                               style: TextStyle(
                                   color: cs.onSurfaceVariant,
                                   fontSize: 11,
@@ -828,7 +831,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             } else {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Sağlık erişimi izni verilmedi.')),
+                                  SnackBar(content: Text(context.tr('Sağlık erişimi izni verilmedi.'))),
                                 );
                               }
                             }
@@ -847,7 +850,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
 
               // ── Geri Bildirim ──────────────────────────────────────────
-              _SectionLabel(label: 'Geri Bildirim'),
+              _SectionLabel(label: context.tr('Geri Bildirim')),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -862,7 +865,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       maxLines: 3,
                       style: TextStyle(color: cs.onSurface, fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: 'Uygulama hakkındaki düşüncelerinizi buraya yazabilirsiniz...',
+                        hintText: context.tr('Uygulama hakkındaki düşüncelerinizi buraya yazabilirsiniz...'),
                         hintStyle: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5), fontSize: 13),
                         border: InputBorder.none,
                       ),
@@ -879,7 +882,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         child: _isSendingFeedback 
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Gönder', style: TextStyle(fontWeight: FontWeight.w600)),
+                          : Text(context.tr('Gönder'), style: const TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
@@ -888,7 +891,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // ── Yasal ───────────────────────────────────────────────────
-              _SectionLabel(label: 'Yasal'),
+              _SectionLabel(label: context.tr('Yasal')),
               _SettingsCard(
                 children: [
                   GestureDetector(
@@ -899,7 +902,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text('Kullanım Koşulları', 
+                            child: Text(context.tr('Kullanım Koşulları'), 
                                 style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
                           ),
                           Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 16),
@@ -916,7 +919,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text('Gizlilik Politikası', 
+                            child: Text(context.tr('Gizlilik Politikası'), 
                                 style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
                           ),
                           Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 16),
@@ -931,7 +934,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
 
               // ── Hesap ─────────────────────────────────────────────────
-              _SectionLabel(label: 'Hesap'),
+              _SectionLabel(label: context.tr('Hesap')),
               if (FirebaseAuth.instance.currentUser == null ||
                   FirebaseAuth.instance.currentUser!.isAnonymous) ...[
                 SizedBox(
@@ -947,8 +950,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                     icon: const Icon(Icons.link, color: Colors.white, size: 20),
-                    label: const Text('Hesap Bağla',
-                        style: TextStyle(
+                    label: Text(context.tr('Hesap Bağla'),
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
@@ -968,8 +971,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _isDeleting ? null : _handleSignOut,
                   icon: const Icon(Icons.logout,
                       color: Color(0xFF58A6FF), size: 20),
-                  label: const Text('Hesaptan Çık',
-                      style: TextStyle(
+                  label: Text(context.tr('Hesaptan Çık'),
+                      style: const TextStyle(
                           color: Color(0xFF58A6FF),
                           fontSize: 15,
                           fontWeight: FontWeight.w600)),
@@ -1000,14 +1003,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (_isDeleting)
             Container(
               color: Colors.black45,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Color(0xFF58A6FF)),
-                    SizedBox(height: 16),
-                    Text('Hesap siliniyor...',
-                        style: TextStyle(
+                    const CircularProgressIndicator(color: Color(0xFF58A6FF)),
+                    const SizedBox(height: 16),
+                    Text(context.tr('Hesap siliniyor...'),
+                        style: const TextStyle(
                             color: Color(0xFFE6EDF3), fontSize: 15)),
                   ],
                 ),
@@ -1348,12 +1351,12 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: cs.surface,
-        title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text(context.tr(title), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Yeni hedef değerini girin ($unit):', style: TextStyle(color: cs.onSurface, fontSize: 13)),
+            Text(context.tr('Yeni hedef değerini girin ($unit):'), style: TextStyle(color: cs.onSurface, fontSize: 13)),
             const SizedBox(height: 12),
             TextField(
               controller: textCtrl,
@@ -1370,7 +1373,7 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(context.tr('İptal'))),
           FilledButton(
             onPressed: () {
               final val = double.tryParse(textCtrl.text);
@@ -1379,7 +1382,7 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                 Navigator.pop(context);
               }
             },
-            child: const Text('Kaydet'),
+            child: Text(context.tr('Kaydet')),
           ),
         ],
       ),
@@ -1510,9 +1513,9 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                     child: Icon(Icons.arrow_back, color: cs.onSurface),
                   ),
                   const SizedBox(width: 16),
-                  const Text(
-                    'Besin Hedeflerini Düzenle',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(
+                    context.tr('Besin Hedeflerini Düzenle'),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -1530,31 +1533,31 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                         animation: _animCtrl,
                         builder: (context, _) => Column(
                           children: [
-                            _buildRow('Kalori hedefi', '🔥', '${_displayCal.toInt()}', const Color(0xFFFF6B35), () {
+                            _buildRow(context.tr('Kalori hedefi'), '🔥', '${_displayCal.toInt()}', const Color(0xFFFF6B35), () {
                               _editValue('Kalori', 'kcal', pp.calorieGoal, (val) {
                                 pp.setCustomCalorieGoal(val.toInt());
                                 setState(() { _displayCal = val; });
                               });
                             }),
-                            _buildRow('Protein hedefi', '🍗', '${_displayProt.toInt()}', const Color(0xFF7EE787), () {
+                            _buildRow(context.tr('Protein hedefi'), '🍗', '${_displayProt.toInt()}', const Color(0xFF7EE787), () {
                               _editValue('Protein', 'g', pp.proteinGoal, (val) {
                                 pp.setCustomProteinGoal(val.toInt());
                                 setState(() { _displayProt = val; });
                               });
                             }),
-                            _buildRow('Karbohidrat hedefi', '🌾', '${_displayCarb.toInt()}', const Color(0xFF58A6FF), () {
+                            _buildRow(context.tr('Karbohidrat hedefi'), '🌾', '${_displayCarb.toInt()}', const Color(0xFF58A6FF), () {
                               _editValue('Karbonhidrat', 'g', pp.carbGoal, (val) {
                                 pp.setCustomCarbGoal(val.toInt());
                                 setState(() { _displayCarb = val; });
                               });
                             }),
-                            _buildRow('Yağ hedefi', '🥑', '${_displayFat.toInt()}', const Color(0xFFFFA726), () {
+                            _buildRow(context.tr('Yağ hedefi'), '🥑', '${_displayFat.toInt()}', const Color(0xFFFFA726), () {
                               _editValue('Yağ', 'g', pp.fatGoal, (val) {
                                 pp.setCustomFatGoal(val.toInt());
                                 setState(() { _displayFat = val; });
                               });
                             }),
-                            _buildRow('Lif hedefi', '🍎', '${_displayFiber.toInt()}', const Color(0xFF9B59B6), () {
+                            _buildRow(context.tr('Lif hedefi'), '🍎', '${_displayFiber.toInt()}', const Color(0xFF9B59B6), () {
                               _editValue('Lif', 'g', _displayFiber, (val) {
                                 pp.setCustomMicroGoal('fiber', val);
                                 setState(() { _displayFiber = val; });
@@ -1569,10 +1572,10 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                           child: ExpansionTile(
                             tilePadding: EdgeInsets.zero,
-                            title: const Center(
+                            title: Center(
                               child: Text(
-                                'Daha Fazla',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                context.tr('Daha Fazla'),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                               ),
                             ),
                             children: [
@@ -1612,7 +1615,7 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                                       children: [
                                         const CircularProgressIndicator(),
                                         const SizedBox(height: 16),
-                                        Text('Hesaplanıyor...', 
+                                        Text(context.tr('Hesaplanıyor...'), 
                                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
                                       ],
                                     ),
@@ -1637,9 +1640,9 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text(
-                    'Tekrardan Hesapla',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  child: Text(
+                    context.tr('Tekrardan Hesapla'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -1665,12 +1668,14 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
         ('iodine', 'İyot', 'mcg', 150.0, const Color(0xFF30B0C7)),
         ('chromium', 'Krom', 'mcg', 35.0, const Color(0xFF636366)),
         ('molybdenum', 'Molibden', 'mcg', 45.0, const Color(0xFF8F8F8F)),
+        ('fluoride', 'Florür', 'mcg', 4000.0, const Color(0xFF34C759)),
       ],
       'Vitaminler': [
         ('vitC', 'C Vitamini', 'mg', 90.0, const Color(0xFFFF9F0A)),
         ('vitD', 'D Vitamini', 'mcg', profile?.vitaminDGoal ?? 15.0, const Color(0xFFF39C12)),
         ('vitE', 'E Vitamini', 'mg', 15.0, const Color(0xFF58A6FF)),
         ('vitK', 'K Vitamini', 'mcg', 120.0, const Color(0xFF34C759)),
+        ('vitK_Mena', 'K2 Vitamini', 'mcg', 180.0, const Color(0xFF30B0C7)),
         ('vitA', 'A Vitamini', 'mcg', 900.0, const Color(0xFFFF6B35)),
         ('thiamine', 'B1 (Tiamin)', 'mg', 1.2, const Color(0xFFBF5AF2)),
         ('riboflavin', 'B2 (Riboflavin)', 'mg', 1.3, const Color(0xFFFF2D55)),
@@ -1681,18 +1686,42 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
         ('vitB12', 'B12 Vitamini', 'mcg', profile?.vitaminB12Goal ?? 2.4, const Color(0xFFE74C3C)),
         ('choline', 'Kolin', 'mg', 550.0, const Color(0xFFFF9F0A)),
         ('biotin', 'Biotin', 'mcg', 30.0, const Color(0xFFBF5AF2)),
+        ('betaine', 'Betain', 'mg', 1500.0, const Color(0xFFD4A017)),
+      ],
+      'Karotenoidler': [
+        ('betaCarotene', 'Beta-Karoten', 'mcg', 6000.0, const Color(0xFFFF9F0A)),
+        ('lycopene', 'Likopen', 'mcg', 10000.0, const Color(0xFFFF2D55)),
+        ('luteinZeaxanthin', 'Lutein+Zeaksantin', 'mcg', 6000.0, const Color(0xFF34C759)),
+        ('alphaCarotene', 'Alfa-Karoten', 'mcg', 1000.0, const Color(0xFFFF6B35)),
       ],
       'Yağ Asitleri': [
+        ('monoFat', 'Tekli Doymamış Yağ', 'g', 30.0, const Color(0xFFBF5AF2)),
+        ('polyFat', 'Çoklu Doymamış Yağ', 'g', 20.0, const Color(0xFF64D2FF)),
+        ('transFat', 'Trans Yağ', 'g', 0.0, const Color(0xFFFF2D55)),
+        ('cholesterol', 'Kolesterol', 'mg', 300.0, const Color(0xFFFF9F0A)),
         ('omega3', 'Omega-3', 'g', profile?.omega3Goal ?? 1.6, const Color(0xFF0A84FF)),
         ('omega6', 'Omega-6', 'g', profile?.omega6Goal ?? 17.0, const Color(0xFFFF9F0A)),
+        ('ala', 'ALA', 'g', 1.6, const Color(0xFF58A6FF)),
         ('epa', 'EPA', 'g', 0.25, const Color(0xFF30B0C7)),
         ('dha', 'DHA', 'g', 0.25, const Color(0xFF5856D6)),
-        ('ala', 'ALA', 'g', 1.6, const Color(0xFF58A6FF)),
+        ('linoleic', 'Linoleik', 'g', 15.0, const Color(0xFFFFCC00)),
         ('satFat', 'Doymuş Yağ', 'g', 20.0, const Color(0xFFFF6B35)),
+      ],
+      'Amino Asitler': [
+        ('leucine', 'Lösin', 'g', 2.73, const Color(0xFFFF6B35)),
+        ('lysine', 'Lizin', 'g', 2.1, const Color(0xFFBF5AF2)),
+        ('isoleucine', 'İzolösin', 'g', 1.4, const Color(0xFF0A84FF)),
+        ('valine', 'Valin', 'g', 1.82, const Color(0xFFFF9F0A)),
+        ('threonine', 'Treonin', 'g', 1.05, const Color(0xFF34C759)),
+        ('methionine', 'Metionin', 'g', 1.05, const Color(0xFFFF2D55)),
+        ('phenylalanine', 'Fenilalanin', 'g', 1.75, const Color(0xFF64D2FF)),
+        ('tryptophan', 'Triptofan', 'g', 0.28, const Color(0xFF5856D6)),
+        ('histidine', 'Histidin', 'g', 0.7, const Color(0xFF30B0C7)),
+        ('cystine', 'Sistein', 'g', 0.28, const Color(0xFFFFCC00)),
+        ('tyrosine', 'Tirozin', 'g', 0.88, const Color(0xFFD4A017)),
       ],
       'Diğer': [
         ('sugar', 'Şeker', 'g', 50.0, const Color(0xFFFF2D55)),
-        ('cholesterol', 'Kolesterol', 'mg', 300.0, const Color(0xFFFF9F0A)),
       ],
     };
 
@@ -1723,7 +1752,7 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      title.toUpperCase(),
+                      context.tr(title).toUpperCase(),
                       style: TextStyle(
                         fontSize: 12, 
                         fontWeight: FontWeight.w900, 
@@ -1747,8 +1776,8 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                 itemBuilder: (context, index) {
                   final m = items[index];
                   final currentVal = pp.getMicroGoal(m.$1, m.$4);
-                  return _buildMicroGridItem(m.$2, '${currentVal.toStringAsFixed(m.$3 == 'g' ? 2 : 1)} ${m.$3}', m.$5, () {
-                    _editValue(m.$2, m.$3, currentVal, (val) {
+                  return _buildMicroGridItem(context.tr(m.$2), '${currentVal.toStringAsFixed(m.$3 == 'g' ? 2 : 1)} ${m.$3}', m.$5, () {
+                    _editValue(context.tr(m.$2), m.$3, currentVal, (val) {
                       pp.setCustomMicroGoal(m.$1, val);
                       setState(() {});
                     });

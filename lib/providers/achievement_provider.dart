@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/notification_service.dart' as notif_svc;
 
 class AchievementDef {
   final String id;
@@ -478,12 +477,7 @@ class AchievementProvider extends ChangeNotifier {
   }
 
   Future<void> _sendNotification(AchievementDef ach) async {
-    try {
-      await notif_svc.NotificationService.showAchievementNotification(
-        title: '🎉 Yeni rozet kazandın!',
-        body: '${ach.emoji} ${ach.name}',
-      );
-    } catch (_) {}
+    // Achievement notifications are disabled as requested by the user
   }
 
   void reset() {

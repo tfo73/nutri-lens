@@ -77,7 +77,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Kazanılan Rozetler',
+                              l10n.tr('Kazanılan Rozetler'),
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -85,7 +85,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '$earnedCount / $total rozet',
+                              '$earnedCount / $total ${l10n.tr('rozet')}',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -215,6 +215,7 @@ class _AchievementCardState extends State<_AchievementCard>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final clampedProgress = widget.progress.clamp(0, widget.ach.requirement);
     final progressFraction = widget.ach.requirement > 0
@@ -296,7 +297,7 @@ class _AchievementCardState extends State<_AchievementCard>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.ach.name,
+                    l10n.tr(widget.ach.name),
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: textColor,
                           fontWeight: FontWeight.bold,
@@ -307,7 +308,7 @@ class _AchievementCardState extends State<_AchievementCard>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.ach.description,
+                    l10n.tr(widget.ach.description),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: textColor.withOpacity(0.7),
                         ),
@@ -331,7 +332,7 @@ class _AchievementCardState extends State<_AchievementCard>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '$clampedProgress/${widget.ach.requirement} ${widget.ach.unit}',
+                    '$clampedProgress/${widget.ach.requirement} ${l10n.tr(widget.ach.unit)}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: textColor,
                           fontWeight: FontWeight.w600,

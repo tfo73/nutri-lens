@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/food_entry.dart';
 import '../providers/nutrition_provider.dart';
 import '../services/saved_foods_service.dart';
+import '../l10n/app_localizations.dart';
 
 class SavedFoodsScreen extends StatefulWidget {
   final String? selectedMeal;
@@ -34,14 +36,14 @@ class _SavedFoodsScreenState extends State<SavedFoodsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Emin misin?'),
-        content: Text('"${food.name}" favorilerden silinecek.'),
+        title: Text(context.tr('Emin misin?')),
+        content: Text(context.tr('"{}" kayıtlı yiyeceklerden silinecek.').replaceFirst('{}', food.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.tr('İptal'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF85149)),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sil'),
+            child: Text(context.tr('Sil')),
           ),
         ],
       ),
@@ -51,7 +53,7 @@ class _SavedFoodsScreenState extends State<SavedFoodsScreen> {
     setState(() => _foods.removeWhere((f) => f.id == food.id));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Favorilerden kaldırıldı'), duration: Duration(seconds: 2)),
+        SnackBar(content: Text(context.tr('Kayıtlı yiyeceklerden kaldırıldı')), duration: const Duration(seconds: 2)),
       );
     }
   }
@@ -75,7 +77,7 @@ class _SavedFoodsScreenState extends State<SavedFoodsScreen> {
           Navigator.pop(ctx);
           if (widget.pickMode) Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${food.name} eklendi'), duration: const Duration(seconds: 2)),
+            SnackBar(content: Text(context.tr('{} eklendi').replaceFirst('{}', food.name)), duration: const Duration(seconds: 2)),
           );
         },
       ),
@@ -89,7 +91,7 @@ class _SavedFoodsScreenState extends State<SavedFoodsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kayıtlı Yiyecekler'),
+        title: Text(context.tr('Kayıtlı Yiyecekler')),
         centerTitle: true,
       ),
       body: _loading
@@ -115,15 +117,15 @@ class _SavedFoodsScreenState extends State<SavedFoodsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.star_outline_rounded, size: 64, color: cs.primary.withValues(alpha: 0.4)),
+          Icon(Icons.bookmark_border_rounded, size: 64, color: cs.primary.withValues(alpha: 0.4)),
           const SizedBox(height: 16),
-          const Text(
-            'Kayıtlı yiyecek yok',
+          Text(
+            context.tr('Kayıtlı yiyecek yok'),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'Görsel analiz ekranında ★ simgesine\ntıklayarak yiyecek kaydedebilirsiniz.',
+            context.tr('Görsel analiz ekranındaki kaydet simgesine tıklayarak yiyecek kaydedebilirsiniz.'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.55)),
           ),
@@ -175,14 +177,41 @@ class _FoodCard extends StatelessWidget {
                   fit: BoxFit.cover,
                 ),
               )
-            : Container(
-                width: 52, height: 52,
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.fastfood_rounded, color: cs.primary.withValues(alpha: 0.5), size: 26),
-              ),
+            : (food.imageUrl != null && food.imageUrl!.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: food.imageUrl!,
+                      width: 52, height: 52,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        width: 52, height: 52,
+                        color: cs.primary.withValues(alpha: 0.1),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        width: 52, height: 52,
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.fastfood_rounded, color: cs.primary.withValues(alpha: 0.5), size: 26),
+                      ),
+                    ),
+                  )
+                : Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.fastfood_rounded, color: cs.primary.withValues(alpha: 0.5), size: 26),
+                  )),
         title: Text(food.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: Text(
           '${scaled.calories.round()} kcal · ${food.portionGrams.round()}g  |  P: ${scaled.protein.toStringAsFixed(1)}g  K: ${scaled.carbohydrates.toStringAsFixed(1)}g  Y: ${scaled.fat.toStringAsFixed(1)}g',
@@ -194,12 +223,12 @@ class _FoodCard extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.add_circle_outline_rounded, color: cs.primary),
               onPressed: onAdd,
-              tooltip: 'Öğüne Ekle',
+              tooltip: context.tr('Öğüne Ekle'),
             ),
             IconButton(
               icon: Icon(Icons.delete_outline_rounded, color: cs.error.withValues(alpha: 0.7)),
               onPressed: onDelete,
-              tooltip: 'Kaldır',
+              tooltip: context.tr('Kaldır'),
             ),
           ],
         ),
@@ -223,7 +252,7 @@ class _MealPickerSheetState extends State<_MealPickerSheet> {
   late String _selected;
 
   static const _meals = ['kahvaltı', 'öğle yemeği', 'akşam yemeği', 'atıştırmalık'];
-  static const _mealLabels = ['Kahvaltı', 'Öğle Yemeği', 'Akşam Yemeği', 'Atıştırmalık'];
+  List<String> get _mealLabels => [context.tr('kahvaltı'), context.tr('öğle'), context.tr('akşam'), context.tr('ara öğün')];
 
   @override
   void initState() {
@@ -247,11 +276,11 @@ class _MealPickerSheetState extends State<_MealPickerSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              '${widget.food.nutritionScaled.calories.round()} kcal · ${widget.food.portionGrams.round()}g porsiyon',
+              '${widget.food.nutritionScaled.calories.round()} kcal · ${widget.food.portionGrams.round()}g ${context.tr('porsiyon')}',
               style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
             ),
             const SizedBox(height: 16),
-            const Text('Öğün seç:', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text(context.tr('Öğün seç:'), style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -283,7 +312,7 @@ class _MealPickerSheetState extends State<_MealPickerSheet> {
             FilledButton.icon(
               onPressed: () => widget.onConfirm(_selected),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Öğüne Ekle'),
+              label: Text(context.tr('Öğüne Ekle')),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
             ),
           ],

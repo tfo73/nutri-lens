@@ -6,6 +6,7 @@ import '../providers/fasting_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/achievement_provider.dart';
 import '../services/notification_service.dart';
+import '../l10n/app_localizations.dart';
 
 class FastingScreen extends StatefulWidget {
   const FastingScreen({super.key});
@@ -146,13 +147,13 @@ class _FastingScreenState extends State<FastingScreen>
         backgroundColor: Theme.of(ctx).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          completed ? 'Tebrikler! 🎉' : 'Orucu Sonlandır',
+          completed ? context.tr('Tebrikler! 🎉') : context.tr('Orucu Sonlandır'),
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         content: Text(
           completed
-              ? 'Hedefinize ulaştınız! Orucu kaydetmek istiyor musunuz?'
-              : 'Henüz hedefinize ulaşmadınız.',
+              ? context.tr('Hedefinize ulaştınız! Orucu kaydetmek istiyor musunuz?')
+              : context.tr('Henüz hedefinize ulaşmadınız.'),
           style: TextStyle(
             color: Theme.of(ctx)
                 .colorScheme
@@ -163,18 +164,18 @@ class _FastingScreenState extends State<FastingScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Vazgeç'),
+            child: Text(context.tr('Vazgeç')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFF85149),
                 foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, 'cancel'),
-            child: const Text('Orucu İptal Et'),
+            child: Text(context.tr('Orucu İptal Et')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, 'end'),
-            child: const Text('Orucu Bitir'),
+            child: Text(context.tr('Orucu Bitir')),
           ),
         ],
       ),
@@ -228,35 +229,35 @@ class FastingClockWidget extends StatelessWidget {
     return '${_p(e.inHours)}:${_p(e.inMinutes % 60)}:${_p(e.inSeconds % 60)}';
   }
 
-  String get _remainingLongText {
+  String _remainingLongText(BuildContext context) {
     if (!isActive) return '00:00:00';
     final goal = Duration(hours: goalHours);
     final rem = goal - elapsed!;
-    if (rem.isNegative) return 'HEDEFE ULAŞILDI';
+    if (rem.isNegative) return context.tr('HEDEFE ULAŞILDI');
     return '${_p(rem.inHours)}:${_p(rem.inMinutes % 60)}:${_p(rem.inSeconds % 60)}';
   }
 
   String _formatTime(DateTime dt) => '${_p(dt.hour)}:${_p(dt.minute)}';
 
-  String get _startTimeFormatted {
+  String _startTimeFormatted(BuildContext context) {
     final nowDay = DateTime(now.year, now.month, now.day);
     final startDay = DateTime(fastStart.year, fastStart.month, fastStart.day);
     final diff = nowDay.difference(startDay).inDays;
     
-    String dayText = 'Bugün';
-    if (diff == 1) dayText = 'Dün';
-    else if (diff > 1) dayText = '$diff gün önce';
+    String dayText = context.tr('Bugün');
+    if (diff == 1) dayText = context.tr('Dün');
+    else if (diff > 1) dayText = '$diff ${context.tr('gün önce')}';
     
     return '${_p(fastStart.hour)}:${_p(fastStart.minute)} $dayText';
   }
 
-  String get _endTimeFormatted {
+  String _endTimeFormatted(BuildContext context) {
     final nowDay = DateTime(now.year, now.month, now.day);
     final endDay = DateTime(fastEnd.year, fastEnd.month, fastEnd.day);
     final diff = endDay.difference(nowDay).inDays;
     
-    String dayText = 'Bugün';
-    if (diff == 1) dayText = 'Yarın';
+    String dayText = context.tr('Bugün');
+    if (diff == 1) dayText = context.tr('Yarın');
     
     return '${_p(fastEnd.hour)}:${_p(fastEnd.minute)} $dayText';
   }
@@ -296,7 +297,7 @@ class FastingClockWidget extends StatelessWidget {
                       // Pivot: The duration text exactly in the center
                       Center(
                         child: Text(
-                          '$goalHours saat',
+                          '$goalHours ${context.tr('saat')}',
                           style: TextStyle(
                             fontSize: 38,
                             fontWeight: FontWeight.w900,
@@ -309,7 +310,7 @@ class FastingClockWidget extends StatelessWidget {
                       Positioned(
                         top: 75,
                         child: Text(
-                          'Hedef Saat',
+                          context.tr('Hedef Saat'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -341,7 +342,7 @@ class FastingClockWidget extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Başlangıç: ${_formatTime(fastStart)}',
+                                  '${context.tr('Başlangıç')}: ${_formatTime(fastStart)}',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
@@ -361,7 +362,7 @@ class FastingClockWidget extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Bitiş: ${_formatTime(fastEnd)}',
+                                  '${context.tr('Bitiş')}: ${_formatTime(fastEnd)}',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
@@ -416,7 +417,7 @@ class FastingClockWidget extends StatelessWidget {
                         child: Column(
                           children: [
                             Text(
-                              'GEÇEN',
+                              context.tr('GEÇEN'),
                               style: TextStyle(
                                 fontSize: 7,
                                 fontWeight: FontWeight.w800,
@@ -442,7 +443,7 @@ class FastingClockWidget extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'KALAN: ${_remainingLongText.split(' ').first}',
+                                '${context.tr('KALAN')}: ${_remainingLongText(context).split(' ').first}',
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w900,
@@ -464,7 +465,7 @@ class FastingClockWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '$goalHours:${goalHours > 24 ? 0 : 24 - goalHours} Orucu',
+                    '$goalHours:${goalHours > 24 ? 0 : 24 - goalHours} ${context.tr('Orucu')}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
@@ -482,22 +483,22 @@ class FastingClockWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _CompactStatItem(
-                    label: 'BAŞLANGIÇ', 
-                    value: _startTimeFormatted,
+                    label: context.tr('BAŞLANGIÇ'), 
+                    value: _startTimeFormatted(context),
                     icon: Icons.play_circle_outline,
                     color: const Color(0xFF007AFF),
                   ),
                   const SizedBox(height: 6),
                   _CompactStatItem(
-                    label: 'HEDEF', 
-                    value: '$goalHours Saat', 
+                    label: context.tr('HEDEF'), 
+                    value: '$goalHours ${context.tr('Saat')}', 
                     icon: Icons.flag_outlined,
                     color: primaryColor,
                   ),
                   const SizedBox(height: 6),
                   _CompactStatItem(
-                    label: 'BİTİŞ', 
-                    value: _endTimeFormatted,
+                    label: context.tr('BİTİŞ'), 
+                    value: _endTimeFormatted(context),
                     icon: Icons.stop_circle_outlined,
                     color: const Color(0xFFFF9500),
                   ),
@@ -530,7 +531,7 @@ class FastingClockWidget extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          'GEÇEN SÜRE',
+                          context.tr('GEÇEN SÜRE'),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
@@ -559,7 +560,7 @@ class FastingClockWidget extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'KALAN: $_remainingLongText',
+                          '${context.tr('KALAN')}: ${_remainingLongText(context)}',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -580,19 +581,19 @@ class FastingClockWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _StatItem(
-                    label: 'BAŞLANGIÇ', 
-                    value: _startTimeFormatted,
+                    label: context.tr('BAŞLANGIÇ'), 
+                    value: _startTimeFormatted(context),
                     valueColor: const Color(0xFF007AFF),
                   ),
                   _StatItem(
-                    label: 'HEDEF', 
-                    value: '$goalHours Saat', 
+                    label: context.tr('HEDEF'), 
+                    value: '$goalHours ${context.tr('Saat')}', 
                     valueColor: primaryColor,
                     isLarge: true,
                   ),
                   _StatItem(
-                    label: 'BİTİŞ', 
-                    value: _endTimeFormatted,
+                    label: context.tr('BİTİŞ'), 
+                    value: _endTimeFormatted(context),
                     valueColor: const Color(0xFFFF9500),
                   ),
                 ],
@@ -974,7 +975,7 @@ class _ActiveContent extends StatelessWidget {
                 const SizedBox(height: 24),
                 if (recentHistory.isNotEmpty)
                   Text(
-                    'Geçmiş ${recentHistory.length} orucun',
+                    context.tr('Geçmiş {} orucun').replaceAll('{}', recentHistory.length.toString()),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.2,
@@ -988,7 +989,7 @@ class _ActiveContent extends StatelessWidget {
                       child: Column(
                         children: [
                           Text(
-                            'Şu anlık burası boş ama doğru yoldasın,\nbir sonraki orucunda burası dolu olacak.',
+                            context.tr('Şu anlık burası boş ama doğru yoldasın,\nbir sonraki orucunda burası dolu olacak.'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -1025,9 +1026,9 @@ class _ActiveContent extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: onEnd,
             icon: const Icon(Icons.stop_circle_outlined, size: 20),
-            label: const Text(
-              'Orucu Bitir',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            label: Text(
+              context.tr('Orucu Bitir'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 52),
@@ -1073,36 +1074,36 @@ class _SelectionContent extends StatelessWidget {
             delegate: SliverChildListDelegate([
               _ModeCard(
                 mode: FastingMode.twelvetwelve,
-                title: '12:12 (Başlangıç)',
-                subtitle: '12 saat oruç, 12 saat beslenme.',
-                description: 'Sirkadiyen denge için.',
+                title: context.tr('12:12 (Başlangıç)'),
+                subtitle: context.tr('12 saat oruç, 12 saat beslenme.'),
+                description: context.tr('Sirkadiyen denge için.'),
                 icon: Icons.wb_sunny_outlined,
                 isSelected: selectedMode == FastingMode.twelvetwelve,
                 onTap: () => onModeChanged(FastingMode.twelvetwelve),
               ),
               _ModeCard(
                 mode: FastingMode.sixteen8,
-                title: '16:8 (Standart)',
-                subtitle: '16 saat oruç, 8 saat beslenme.',
-                description: 'En popüler ve sürdürülebilir mod.',
+                title: context.tr('16:8 (Standart)'),
+                subtitle: context.tr('16 saat oruç, 8 saat beslenme.'),
+                description: context.tr('En popüler ve sürdürülebilir mod.'),
                 icon: Icons.star_outline_rounded,
                 isSelected: selectedMode == FastingMode.sixteen8,
                 onTap: () => onModeChanged(FastingMode.sixteen8),
               ),
               _ModeCard(
                 mode: FastingMode.eighteen6,
-                title: '18:6 (İleri Seviye)',
-                subtitle: '18 saat oruç, 6 saat beslenme.',
-                description: 'Daha derin otofaji için.',
+                title: context.tr('18:6 (İleri Seviye)'),
+                subtitle: context.tr('18 saat oruç, 6 saat beslenme.'),
+                description: context.tr('Daha derin otofaji için.'),
                 icon: Icons.auto_awesome_outlined,
                 isSelected: selectedMode == FastingMode.eighteen6,
                 onTap: () => onModeChanged(FastingMode.eighteen6),
               ),
               _ModeCard(
                 mode: FastingMode.custom,
-                title: 'Serbest',
-                subtitle: '$customHours saat oruç, ${customHours > 24 ? 0 : 24 - customHours} saat beslenme.',
-                description: 'Hedeflerinize göre özelleştirin.',
+                title: context.tr('Serbest'),
+                subtitle: context.tr('{} saat oruç, {} saat beslenme.').replaceFirst('{}', customHours.toString()).replaceFirst('{}', (customHours > 24 ? 0 : 24 - customHours).toString()),
+                description: context.tr('Hedeflerinize göre özelleştirin.'),
                 icon: Icons.tune_rounded,
                 isSelected: selectedMode == FastingMode.custom,
                 onTap: () => onModeChanged(FastingMode.custom),
@@ -1115,8 +1116,8 @@ class _SelectionContent extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Süre Seçin', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text('$customHours Saat', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00BFA5))),
+                                Text(context.tr('Süre Seçin'), style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text('$customHours ${context.tr('Saat')}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00BFA5))),
                               ],
                             ),
                             SliderTheme(
@@ -1142,9 +1143,9 @@ class _SelectionContent extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onStart,
                 icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                label: const Text(
-                  'Orucu Başlat',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                label: Text(
+                  context.tr('Orucu Başlat'),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
@@ -1161,7 +1162,7 @@ class _SelectionContent extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
               child: Text(
-                'Geçmiş Oruçlar',
+                context.tr('Geçmiş Oruçlar'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -1195,7 +1196,7 @@ class _SelectionContent extends StatelessWidget {
                     children: [
                       Icon(Icons.history_rounded, size: 48, color: Theme.of(context).colorScheme.onSurface),
                       const SizedBox(height: 12),
-                      const Text('Henüz geçmiş oruç kaydı bulunmuyor.', style: TextStyle(fontSize: 13)),
+                      Text(context.tr('Henüz geçmiş oruç kaydı bulunmuyor.'), style: TextStyle(fontSize: 13)),
                     ],
                   ),
                 ),
@@ -1336,7 +1337,7 @@ class _PhaseCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  phase.name,
+                  context.tr(phase.name),
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -1344,7 +1345,7 @@ class _PhaseCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  phase.description,
+                  context.tr(phase.description),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -1363,9 +1364,9 @@ class _StatsRow extends StatelessWidget {
 
   const _StatsRow({required this.session});
 
-  String _short(Duration d) {
-    if (d.inHours > 0) return '${d.inHours}s ${d.inMinutes % 60}dk';
-    return '${d.inMinutes}dk';
+  String _short(BuildContext context, Duration d) {
+    if (d.inHours > 0) return '${d.inHours}${context.tr('s')} ${d.inMinutes % 60}${context.tr('dk')}';
+    return '${d.inMinutes}${context.tr('dk')}';
   }
 
   @override
@@ -1380,8 +1381,8 @@ class _StatsRow extends StatelessWidget {
     return Row(
       children: [
         _StatChip(
-          label: 'Kalan Süre',
-          value: _short(safeRemaining),
+          label: context.tr('Kalan Süre'),
+          value: _short(context, safeRemaining),
           icon: Icons.hourglass_bottom_rounded,
           isDark: isDark,
         ),
@@ -1521,13 +1522,13 @@ class _HistoryTileState extends State<_HistoryTile>
   ];
 
   String _fmtDate(DateTime d) =>
-      '${_days[d.weekday]} ${d.day} ${_months[d.month]}, '
+      '${context.tr(_days[d.weekday])} ${d.day} ${context.tr(_months[d.month])}, '
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   String _fmtDur(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
-    return m > 0 ? '${h}s ${m}dk' : '${h}s';
+    return m > 0 ? '${h}${context.tr('s')} ${m}${context.tr('dk')}' : '${h}${context.tr('s')}';
   }
 
   Color _modeColor() {
@@ -1554,16 +1555,16 @@ class _HistoryTileState extends State<_HistoryTile>
         return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Kaydı Sil'),
-            content: const Text('Bu oruç kaydını silmek istediğinize emin misiniz?'),
+            title: Text(context.tr('Kaydı Sil')),
+            content: Text(context.tr('Bu oruç kaydını silmek istediğinize emin misiniz?')),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Vazgeç'),
+                child: Text(context.tr('Vazgeç')),
               ),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Sil', style: TextStyle(color: Colors.red)),
+                child: Text(context.tr('Sil'), style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -1605,7 +1606,7 @@ class _HistoryTileState extends State<_HistoryTile>
             ),
             child: Center(
               child: Text(
-                widget.session.mode.label,
+                context.tr(widget.session.mode.label),
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -1623,9 +1624,9 @@ class _HistoryTileState extends State<_HistoryTile>
           ),
           subtitle: Text(
             isBroken
-                ? 'İptal edildi'
+                ? context.tr('İptal edildi')
                 : widget.session.wasCompleted
-                    ? 'Tamamlandı ✓'
+                    ? context.tr('Tamamlandı ✓')
                     : _fmtDate(widget.session.startTime.add(elapsed)),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: isBroken ? redColor.withValues(alpha: 0.8) : null,

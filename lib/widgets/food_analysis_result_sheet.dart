@@ -10,6 +10,8 @@ import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import '../l10n/app_localizations.dart';
+import '../services/saved_foods_service.dart';
 
 class FoodAnalysisResultSheet extends StatefulWidget {
   final FoodAnalysisResult result;
@@ -115,7 +117,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
     super.initState();
     _selectedMeal = widget.mealType ?? 'kahvaltı';
     if (widget.image == null && !widget.isFullScreen) {
-      _fetchSuggestedImage(widget.result.foodName);
+      _fetchSuggestedImage(widget.result.foodName, widget.result.foodNameEn);
     }
 
     final isTr = Provider.of<LanguageProvider>(context, listen: false).isTurkish;
@@ -133,6 +135,57 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
     _carbCtrl.addListener(_autoCalcCalories);
     _fatCtrl.addListener(_autoCalcCalories);
     _fiberCtrl.addListener(_autoCalcCalories);
+    _checkIfSaved();
+  }
+
+  void _checkIfSaved() async {
+    final name = _nameCtrl.text.trim().isEmpty ? widget.result.foodName : _nameCtrl.text.trim();
+    final saved = await SavedFoodsService.isSaved(name);
+    if (mounted) setState(() => _isSaved = saved);
+  }
+
+  Future<void> _toggleSaveFood() async {
+    final name = _nameCtrl.text.trim().isEmpty ? widget.result.foodName : _nameCtrl.text.trim();
+    if (_isSaved) {
+      await SavedFoodsService.remove(name);
+      if (mounted) {
+        setState(() => _isSaved = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Kayıtlı yiyeceklerden kaldırıldı')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      final portionGrams = double.tryParse(_gramsCtrl.text) ?? widget.result.portionGrams;
+      final factor = portionGrams / 100;
+      final food = SavedFood(
+        id: name,
+        name: name,
+        portionGrams: portionGrams,
+        nutritionPer100g: NutritionData(
+          calories: factor > 0 ? (double.tryParse(_calorieCtrl.text) ?? 0.0) / factor : 0,
+          protein: factor > 0 ? (double.tryParse(_proteinCtrl.text) ?? 0.0) / factor : 0,
+          carbohydrates: factor > 0 ? (double.tryParse(_carbCtrl.text) ?? 0.0) / factor : 0,
+          fat: factor > 0 ? (double.tryParse(_fatCtrl.text) ?? 0.0) / factor : 0,
+          fiber: factor > 0 ? (double.tryParse(_fiberCtrl.text) ?? 0.0) / factor : 0,
+        ),
+        sources: widget.result.sources,
+        savedAt: DateTime.now(),
+        imagePath: widget.image?.path,
+      );
+      await SavedFoodsService.save(food);
+      if (mounted) {
+        setState(() => _isSaved = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Kayıtlı yiyeceklere eklendi')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _autoCalcCalories() {
@@ -157,10 +210,11 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
     super.dispose();
   }
 
-  Future<void> _fetchSuggestedImage(String foodName) async {
+  Future<void> _fetchSuggestedImage(String foodName, String? foodNameEn) async {
     if (mounted) setState(() => _imageSearching = true);
     try {
-      final query = Uri.encodeComponent('$foodName yemek');
+      final nameForSearch = foodNameEn ?? foodName;
+      final query = Uri.encodeComponent('$nameForSearch food');
       final resp = await http.get(Uri.parse(
         'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
         '&format=json&piprop=thumbnail&pithumbsize=600'
@@ -171,13 +225,31 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         final pages = data['query']?['pages'] as Map<String, dynamic>?;
         if (pages != null) {
+          String? url;
           for (final page in pages.values) {
             final thumb = page['thumbnail']?['source'] as String?;
             if (thumb != null) {
-              if (mounted) setState(() => _suggestedImageUrl = thumb);
+              final lowerThumb = thumb.toLowerCase();
+              if (lowerThumb.contains('.svg') ||
+                  lowerThumb.contains('flag') ||
+                  lowerThumb.contains('map') ||
+                  lowerThumb.contains('logo') ||
+                  lowerThumb.contains('icon') ||
+                  lowerThumb.contains('diagram') ||
+                  lowerThumb.contains('chart') ||
+                  lowerThumb.contains('portrait') ||
+                  lowerThumb.contains('emblem') ||
+                  lowerThumb.contains('shield') ||
+                  lowerThumb.contains('person') ||
+                  lowerThumb.contains('graph') ||
+                  lowerThumb.contains('blank')) {
+                continue;
+              }
+              url = thumb;
               break;
             }
           }
+          if (mounted) setState(() => _suggestedImageUrl = url);
         }
       }
     } catch (_) {}
@@ -221,9 +293,12 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       } catch (_) {}
     }
 
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
     final entry = FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameCtrl.text.trim().isEmpty ? widget.result.foodName : _nameCtrl.text.trim(),
+      name: _nameCtrl.text.trim().isEmpty 
+          ? (isTr ? widget.result.foodName : (widget.result.foodNameEn ?? widget.result.foodName)) 
+          : _nameCtrl.text.trim(),
       portionSize: portionGrams,
       nutritionData: NutritionData(
         calories: factor > 0 ? (double.tryParse(_calorieCtrl.text) ?? 0.0) / factor : 0,
@@ -253,16 +328,16 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       return await showDialog<bool?>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Analizi Sil?'),
-          content: const Text('Bu analizi silmek istediğinizden emin misiniz?'),
+          title: Text(context.tr('Analizi Sil?')),
+          content: Text(context.tr('Bu analizi silmek istediğinizden emin misiniz?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Vazgeç', style: TextStyle(color: Colors.grey)),
+              child: Text(context.tr('Vazgeç'), style: const TextStyle(color: Colors.grey)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Sil', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              child: Text(context.tr('Sil'), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -273,16 +348,16 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       return await showDialog<bool?>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Analizden Çıkılsın mı?'),
-          content: const Text('Henüz kaydetmediniz. Devam etmek mi istersiniz yoksa silip çıkmak mı?'),
+          title: Text(context.tr('Analizden Çıkılsın mı?')),
+          content: Text(context.tr('Henüz kaydetmediniz. Devam etmek mi istersiniz yoksa silip çıkmak mı?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Çık', style: TextStyle(color: Colors.grey)),
+              child: Text(context.tr('Çık'), style: const TextStyle(color: Colors.grey)),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Kaydetmeye Devam Et'),
+              child: Text(context.tr('Kaydetmeye Devam Et')),
             ),
           ],
         ),
@@ -336,50 +411,84 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                   ),
                 ),
               ),
-            if (widget.image != null && !widget.isFullScreen) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  child: Image.file(
-                    widget.image!,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ] else if (!widget.isFullScreen) ...[
-              if (_imageSearching)
-                Container(
-                  height: 140,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: cs.primary.withValues(alpha: 0.06),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
-                        const SizedBox(height: 8),
-                        Text('Görsel aranıyor...', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-                      ],
+            if (!widget.isFullScreen) ...[
+              Stack(
+                children: [
+                  if (widget.image != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 400),
+                        child: Image.file(
+                          widget.image!,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    )
+                  else if (_imageSearching)
+                    Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: cs.primary.withValues(alpha: 0.06),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
+                            const SizedBox(height: 8),
+                            Text(context.tr('Görsel aranıyor...'), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (_suggestedImageUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: CachedNetworkImage(
+                        imageUrl: _suggestedImageUrl!,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    )
+                  else
+                    Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: cs.primary.withValues(alpha: 0.06),
+                      ),
+                      child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 56, color: cs.primary.withValues(alpha: 0.25))),
                     ),
-                  ),
-                )
-              else if (_suggestedImageUrl != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: CachedNetworkImage(
-                    imageUrl: _suggestedImageUrl!,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                  ),
-                ),
-                const SizedBox(height: 8),
+                  if (!_imageSearching)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: GestureDetector(
+                        onTap: _toggleSaveFood,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                          child: Icon(
+                            _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (widget.image == null && !_imageSearching && _suggestedImageUrl != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -392,7 +501,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                       Icon(Icons.image_outlined, size: 16, color: cs.onSurfaceVariant),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text('Önerilen görsel kullanılsın mı?',
+                        child: Text(context.tr('Önerilen görsel kullanılsın mı?'),
                           style: TextStyle(fontSize: 12, color: cs.onSurface, fontWeight: FontWeight.w500)),
                       ),
                       Switch.adaptive(
@@ -403,16 +512,8 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                     ],
                   ),
                 ),
-              ] else
-                Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: cs.primary.withValues(alpha: 0.06),
-                  ),
-                  child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 56, color: cs.primary.withValues(alpha: 0.25))),
-                ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
             ],
             Row(
               children: [
@@ -429,7 +530,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
             const SizedBox(height: 4),
             Row(
               children: [
-                Text('Porsiyon: ', style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
+                Text(context.tr('Porsiyon: '), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
                 IntrinsicWidth(
                   child: TextField(
                     controller: _gramsCtrl,
@@ -442,7 +543,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                     ),
                   ),
                 ),
-                Text(' g', style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
+                Text(context.tr(' g'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
               ],
             ),
             Row(
@@ -468,17 +569,17 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                 Text('kcal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: cs.primary.withValues(alpha: 0.7))),
               ],
             ),
-            Text('~${result.alternativeMin.round()} – ${result.alternativeMax.round()} kcal aralığı', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+            Text('${context.tr('~')}${result.alternativeMin.round()} – ${result.alternativeMax.round()}${context.tr(' kcal aralığı')}', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 11)),
             const SizedBox(height: 16),
             Row(
               children: [
-                _EditableMacro(controller: _proteinCtrl, label: 'Protein', color: const Color(0xFF7EE787)),
+                _EditableMacro(controller: _proteinCtrl, label: context.tr('Protein'), color: const Color(0xFF7EE787)),
                 const SizedBox(width: 6),
-                _EditableMacro(controller: _carbCtrl, label: 'Karbonhidrat', color: const Color(0xFF58A6FF)),
+                _EditableMacro(controller: _carbCtrl, label: context.tr('Karbonhidrat'), color: const Color(0xFF58A6FF)),
                 const SizedBox(width: 6),
-                _EditableMacro(controller: _fatCtrl, label: 'Yağ', color: const Color(0xFFF0A500)),
+                _EditableMacro(controller: _fatCtrl, label: context.tr('Yağ'), color: const Color(0xFFF0A500)),
                 const SizedBox(width: 6),
-                _EditableMacro(controller: _fiberCtrl, label: 'Lif', color: const Color(0xFFFF6B6B)),
+                _EditableMacro(controller: _fiberCtrl, label: context.tr('Lif'), color: const Color(0xFFFF6B6B)),
               ],
             ),
             if (result.offProduct != null) ...[
@@ -495,13 +596,13 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
             OutlinedButton.icon(
               onPressed: _showMicroNutrients,
               icon: const Icon(Icons.equalizer_rounded, size: 18),
-              label: const Text('Mikro Besinleri Gör', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              label: Text(context.tr('Mikro Besinleri Gör'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             ),
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 12),
-            Text('Hangi öğüne eklensin?', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurfaceVariant)),
+            Text(context.tr('Hangi öğüne eklensin?'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurfaceVariant)),
             const SizedBox(height: 8),
             _MealChipRow(selected: _selectedMeal, onChanged: (m) => setState(() => _selectedMeal = m)),
             const SizedBox(height: 16),
@@ -514,7 +615,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                 }
               },
               icon: const Icon(Icons.edit_note_rounded, size: 22),
-              label: const Text('Yemeği Düzenle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              label: Text(context.tr('Yemeği Düzenle'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -524,7 +625,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
             FilledButton.icon(
               onPressed: _confirm,
               icon: const Icon(Icons.check_rounded, size: 22),
-              label: const Text('Öğüne Ekle', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              label: Text(context.tr('Öğüne Ekle'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             ),
           ],
@@ -591,6 +692,22 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                         width: 40, height: 40,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5)),
                         child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 8,
+                    right: 88,
+                    child: GestureDetector(
+                      onTap: _toggleSaveFood,
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5)),
+                        child: Icon(
+                          _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                          color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),
@@ -690,6 +807,7 @@ class _ConfidenceBadge extends StatelessWidget {
       builder: (_) {
         final cs = Theme.of(context).colorScheme;
         final isDark = Theme.of(context).brightness == Brightness.dark;
+        final isTr = context.read<LanguageProvider>().isTurkish;
         return Container(
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF6F8FA),
@@ -711,29 +829,42 @@ class _ConfidenceBadge extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFF26D0CE).withValues(alpha: 0.35), width: 0.8),
                     ),
-                    child: const Text('Yapay Zeka Analizi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF26D0CE))),
+                    child: Text(context.tr('Yapay Zeka Analizi'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF26D0CE))),
                   ),
                   const SizedBox(width: 12),
-                  Text('Nasıl hesaplandı?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                  Text(context.tr('Nasıl hesaplandı?'), style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
                 ],
               ),
               const SizedBox(height: 16),
               Text(
-                'Bu besin bilgisi, yüklediğiniz görseli analiz eden gelişmiş yapay zeka modelleri (Claude Vision) ve besin veritabanları (Edamam, OpenFoodFacts) kullanılarak oluşturulmuştur.',
+                context.tr('Bu besin bilgisi, yüklediğiniz görseli analiz eden gelişmiş yapay zeka modelleri (Claude Vision) ve besin veritabanları (Edamam, OpenFoodFacts) kullanılarak oluşturulmuştur.'),
                 style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.8), height: 1.5),
               ),
-              if (result.confidenceReason != null) ...[
-                const SizedBox(height: 20),
-                Text(
-                  'ANALİZ DETAYI',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: cs.onSurface.withValues(alpha: 0.4), letterSpacing: 1.1),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  result.confidenceReason!,
-                  style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6), height: 1.5, fontStyle: FontStyle.italic),
-                ),
-              ],
+              Builder(builder: (ctx) {
+                final confidenceReasonText = isTr 
+                    ? result.confidenceReason 
+                    : (result.confidenceReasonEn != null && result.confidenceReasonEn!.isNotEmpty 
+                        ? result.confidenceReasonEn 
+                        : result.confidenceReason);
+                if (confidenceReasonText != null && confidenceReasonText.isNotEmpty) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      Text(
+                        context.tr('ANALİZ DETAYI'),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: cs.onSurface.withValues(alpha: 0.4), letterSpacing: 1.1),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        confidenceReasonText,
+                        style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6), height: 1.5, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
               const SizedBox(height: 20),
             ],
           ),
@@ -759,7 +890,7 @@ class _ConfidenceBadge extends StatelessWidget {
             Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 4),
             Text(
-              'Doğruluk %$displayedScore',
+              '${context.tr('Doğruluk %')}$displayedScore',
               style: TextStyle(
                 color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                 fontSize: 11,
@@ -820,7 +951,12 @@ class _MealChipRow extends StatelessWidget {
   const _MealChipRow({required this.selected, required this.onChanged});
   @override
   Widget build(BuildContext context) {
-    const meals = [('kahvaltı', '☀️', 'Kahvaltı'), ('öğle', '🌤', 'Öğle'), ('akşam', '🌙', 'Akşam'), ('ara öğün', '☕', 'Ara Öğün')];
+    final meals = [
+      ('kahvaltı', '☀️', context.tr('Kahvaltı')),
+      ('öğle', '🌤', context.tr('Öğle')),
+      ('akşam', '🌙', context.tr('Akşam')),
+      ('ara öğün', '☕', context.tr('Ara Öğün'))
+    ];
     return Wrap(
       spacing: 6,
       children: meals.map((m) => ChoiceChip(
@@ -877,77 +1013,77 @@ class MicroNutrientsSheet extends StatelessWidget {
   final ScrollController? scrollController;
   const MicroNutrientsSheet({super.key, required this.result, this.scrollController});
 
-  List<_NutriSection> _buildSections(NutritionData65 n, double factor) {
+  List<_NutriSection> _buildSections(BuildContext context, NutritionData65 n, double factor) {
     double s(double v) => v * factor;
 
     return [
-      _NutriSection('MİNERALLER', const Color(0xFF58A6FF), [
-        _NutriEntry('Kalsiyum',    s(n.calcium),    'mg',  decimals: 0, dri: 1000),
-        _NutriEntry('Demir',       s(n.iron),       'mg',  dri: 18),
-        _NutriEntry('Magnezyum',   s(n.magnesium),  'mg',  decimals: 0, dri: 420),
-        _NutriEntry('Fosfor',      s(n.phosphorus), 'mg',  decimals: 0, dri: 700),
-        _NutriEntry('Potasyum',    s(n.potassium),  'mg',  decimals: 0, dri: 3500),
-        _NutriEntry('Sodyum',      s(n.sodium),     'mg',  decimals: 0, dri: 2300),
-        _NutriEntry('Çinko',       s(n.zinc),       'mg',  dri: 11),
-        _NutriEntry('Bakır',       s(n.copper),     'mg',  dri: 0.9),
-        _NutriEntry('Manganez',    s(n.manganese),  'mg',  dri: 2.3),
-        _NutriEntry('Selenyum',    s(n.selenium),   'mcg', dri: 55),
-        _NutriEntry('İyot',        s(n.iodine),     'mcg', dri: 150),
-        _NutriEntry('Krom',        s(n.chromium),   'mcg', dri: 35),
-        _NutriEntry('Molibden',    s(n.molybdenum), 'mcg', dri: 45),
-        _NutriEntry('Florür',      s(n.fluoride),   'mcg', decimals: 0),
+      _NutriSection(context.tr('MİNERALLER'), const Color(0xFF58A6FF), [
+        _NutriEntry(context.tr('Kalsiyum'),    s(n.calcium),    'mg',  decimals: 0, dri: 1000),
+        _NutriEntry(context.tr('Demir'),       s(n.iron),       'mg',  dri: 18),
+        _NutriEntry(context.tr('Magnezyum'),   s(n.magnesium),  'mg',  decimals: 0, dri: 420),
+        _NutriEntry(context.tr('Fosfor'),      s(n.phosphorus), 'mg',  decimals: 0, dri: 700),
+        _NutriEntry(context.tr('Potasyum'),    s(n.potassium),  'mg',  decimals: 0, dri: 3500),
+        _NutriEntry(context.tr('Sodyum'),      s(n.sodium),     'mg',  decimals: 0, dri: 2300),
+        _NutriEntry(context.tr('Çinko'),       s(n.zinc),       'mg',  dri: 11),
+        _NutriEntry(context.tr('Bakır'),       s(n.copper),     'mg',  dri: 0.9),
+        _NutriEntry(context.tr('Manganez'),    s(n.manganese),  'mg',  dri: 2.3),
+        _NutriEntry(context.tr('Selenyum'),    s(n.selenium),   'mcg', dri: 55),
+        _NutriEntry(context.tr('İyot'),        s(n.iodine),     'mcg', dri: 150),
+        _NutriEntry(context.tr('Krom'),        s(n.chromium),   'mcg', dri: 35),
+        _NutriEntry(context.tr('Molibden'),    s(n.molybdenum), 'mcg', dri: 45),
+        _NutriEntry(context.tr('Florür'),      s(n.fluoride),   'mcg', decimals: 0),
       ]),
 
-      _NutriSection('VİTAMİNLER', const Color(0xFFFFA726), [
-        _NutriEntry('Vitamin C',             s(n.vitC),        'mg',  dri: 90),
-        _NutriEntry('Vitamin D',             s(n.vitD_mcg),    'mcg', dri: 20),
-        _NutriEntry('Vitamin A',             s(n.vitA_RAE),    'mcg RAE', dri: 900),
-        _NutriEntry('Vitamin E',             s(n.vitE),        'mg',  dri: 15),
-        _NutriEntry('Vitamin K',             s(n.vitK),        'mcg', dri: 120),
-        _NutriEntry('B1 (Tiamin)',           s(n.thiamine),    'mg',  dri: 1.2),
-        _NutriEntry('B2 (Riboflavin)',       s(n.riboflavin),  'mg',  dri: 1.3),
-        _NutriEntry('B3 (Niasin)',           s(n.niacin),      'mg',  dri: 16),
-        _NutriEntry('B5 (Pantotenik)',       s(n.pantothenic), 'mg',  dri: 5),
-        _NutriEntry('B6',                   s(n.vitB6),       'mg',  dri: 1.7),
-        _NutriEntry('Folat (B9)',           s(n.folate),      'mcg', decimals: 0, dri: 400),
-        _NutriEntry('B12',                  s(n.vitB12),      'mcg', dri: 2.4),
-        _NutriEntry('Biotin (B7)',          s(n.biotin),      'mcg', dri: 30),
-        _NutriEntry('Kolin',               s(n.choline),     'mg',  decimals: 0, dri: 550),
+      _NutriSection(context.tr('VİTAMİNLER'), const Color(0xFFFFA726), [
+        _NutriEntry(context.tr('Vitamin C'),             s(n.vitC),        'mg',  dri: 90),
+        _NutriEntry(context.tr('Vitamin D'),             s(n.vitD_mcg),    'mcg', dri: 20),
+        _NutriEntry(context.tr('Vitamin A'),             s(n.vitA_RAE),    'mcg RAE', dri: 900),
+        _NutriEntry(context.tr('Vitamin E'),             s(n.vitE),        'mg',  dri: 15),
+        _NutriEntry(context.tr('Vitamin K'),             s(n.vitK),        'mcg', dri: 120),
+        _NutriEntry(context.tr('B1 (Tiamin)'),           s(n.thiamine),    'mg',  dri: 1.2),
+        _NutriEntry(context.tr('B2 (Riboflavin)'),       s(n.riboflavin),  'mg',  dri: 1.3),
+        _NutriEntry(context.tr('B3 (Niasin)'),           s(n.niacin),      'mg',  dri: 16),
+        _NutriEntry(context.tr('B5 (Pantotenik)'),       s(n.pantothenic), 'mg',  dri: 5),
+        _NutriEntry(context.tr('B6'),                   s(n.vitB6),       'mg',  dri: 1.7),
+        _NutriEntry(context.tr('Folat (B9)'),           s(n.folate),      'mcg', decimals: 0, dri: 400),
+        _NutriEntry(context.tr('B12'),                  s(n.vitB12),      'mcg', dri: 2.4),
+        _NutriEntry(context.tr('Biotin (B7)'),          s(n.biotin),      'mcg', dri: 30),
+        _NutriEntry(context.tr('Kolin'),               s(n.choline),     'mg',  decimals: 0, dri: 550),
       ]),
 
-      _NutriSection('KAROTENOİDLER', const Color(0xFFFF6B00), [
-        _NutriEntry('Beta-Karoten',          s(n.betaCarot),   'mcg', decimals: 0, dri: 3000),
-        _NutriEntry('Likopen',             s(n.lycopene),    'mcg', decimals: 0, dri: 10000),
-        _NutriEntry('Lutein + Zeaksantin', s(n.luteinZea),   'mcg', decimals: 0, dri: 6000),
-        _NutriEntry('Alfa-Karoten',        s(n.alphaCarot),  'mcg', decimals: 0, dri: 2000),
+      _NutriSection(context.tr('KAROTENOİDLER'), const Color(0xFFFF6B00), [
+        _NutriEntry(context.tr('Beta-Karoten'),          s(n.betaCarot),   'mcg', decimals: 0, dri: 3000),
+        _NutriEntry(context.tr('Likopen'),             s(n.lycopene),    'mcg', decimals: 0, dri: 10000),
+        _NutriEntry(context.tr('Lutein + Zeaksantin'), s(n.luteinZea),   'mcg', decimals: 0, dri: 6000),
+        _NutriEntry(context.tr('Alfa-Karoten'),        s(n.alphaCarot),  'mcg', decimals: 0, dri: 2000),
       ]),
 
-      _NutriSection('YAĞ & KOLESTEROl', const Color(0xFF3FB950), [
-        _NutriEntry('Doymuş Yağ',      s(n.satFat),    'g', dri: 20),
-        _NutriEntry('Tekli Doymamiş',  s(n.monoFat),   'g', dri: 30),
-        _NutriEntry('Çoklu Doymamış',  s(n.polyFat),   'g', dri: 20),
-        _NutriEntry('Trans Yağ',       s(n.transFat),  'g', dri: 2),
-        _NutriEntry('Kolesterol',      s(n.cholesterol), 'mg', decimals: 0, dri: 300),
-        _NutriEntry('Omega-3',         s(n.omega3),    'g',  dri: 1.6),
-        _NutriEntry('Omega-6',         s(n.omega6),    'g',  dri: 15),
-        _NutriEntry('ALA',             s(n.ala),       'g',  dri: 1.6),
-        _NutriEntry('EPA',             s(n.epa),       'g',  dri: 0.5),
-        _NutriEntry('DHA',             s(n.dha),       'g',  dri: 0.5),
-        _NutriEntry('Linoleik',        s(n.linoleic),  'g',  dri: 15),
+      _NutriSection(context.tr('YAĞ & KOLESTEROl'), const Color(0xFF3FB950), [
+        _NutriEntry(context.tr('Doymuş Yağ'),      s(n.satFat),    'g', dri: 20),
+        _NutriEntry(context.tr('Tekli Doymamiş'),  s(n.monoFat),   'g', dri: 30),
+        _NutriEntry(context.tr('Çoklu Doymamış'),  s(n.polyFat),   'g', dri: 20),
+        _NutriEntry(context.tr('Trans Yağ'),       s(n.transFat),  'g', dri: 2),
+        _NutriEntry(context.tr('Kolesterol'),      s(n.cholesterol), 'mg', decimals: 0, dri: 300),
+        _NutriEntry(context.tr('Omega-3'),         s(n.omega3),    'g',  dri: 1.6),
+        _NutriEntry(context.tr('Omega-6'),         s(n.omega6),    'g',  dri: 15),
+        _NutriEntry(context.tr('ALA'),             s(n.ala),       'g',  dri: 1.6),
+        _NutriEntry(context.tr('EPA'),             s(n.epa),       'g',  dri: 0.5),
+        _NutriEntry(context.tr('DHA'),             s(n.dha),       'g',  dri: 0.5),
+        _NutriEntry(context.tr('Linoleik'),        s(n.linoleic),  'g',  dri: 15),
       ]),
 
-      _NutriSection('AMİNO ASİTLER', const Color(0xFFD2A8FF), [
-        _NutriEntry('Lösin',          s(n.leucine),       'g', dri: 2.7),
-        _NutriEntry('Lizin',          s(n.lysine),        'g', dri: 2.1),
-        _NutriEntry('Valin',          s(n.valine),        'g', dri: 1.8),
-        _NutriEntry('İzolösin',       s(n.isoleucine),    'g', dri: 1.4),
-        _NutriEntry('Treonin',        s(n.threonine),     'g', dri: 1.0),
-        _NutriEntry('Metionin',       s(n.methionine),    'g', dri: 0.9),
-        _NutriEntry('Fenilalanin',    s(n.phenylalanine), 'g', dri: 2.3),
-        _NutriEntry('Triptofan',      s(n.tryptophan),    'g', dri: 0.3),
-        _NutriEntry('Histidin',       s(n.histidine),     'g', dri: 0.7),
-        _NutriEntry('Sistein',        s(n.cystine),       'g', dri: 0.4),
-        _NutriEntry('Tirozin',        s(n.tyrosine),      'g', dri: 0.8),
+      _NutriSection(context.tr('AMİNO ASİTLER'), const Color(0xFFD2A8FF), [
+        _NutriEntry(context.tr('Lösin'),          s(n.leucine),       'g', dri: 2.7),
+        _NutriEntry(context.tr('Lizin'),          s(n.lysine),        'g', dri: 2.1),
+        _NutriEntry(context.tr('Valin'),          s(n.valine),        'g', dri: 1.8),
+        _NutriEntry(context.tr('İzolösin'),       s(n.isoleucine),    'g', dri: 1.4),
+        _NutriEntry(context.tr('Treonin'),        s(n.threonine),     'g', dri: 1.0),
+        _NutriEntry(context.tr('Metionin'),       s(n.methionine),    'g', dri: 0.9),
+        _NutriEntry(context.tr('Fenilalanin'),    s(n.phenylalanine), 'g', dri: 2.3),
+        _NutriEntry(context.tr('Triptofan'),      s(n.tryptophan),    'g', dri: 0.3),
+        _NutriEntry(context.tr('Histidin'),       s(n.histidine),     'g', dri: 0.7),
+        _NutriEntry(context.tr('Sistein'),        s(n.cystine),       'g', dri: 0.4),
+        _NutriEntry(context.tr('Tirozin'),        s(n.tyrosine),      'g', dri: 0.8),
       ]),
     ];
   }
@@ -961,7 +1097,7 @@ class MicroNutrientsSheet extends StatelessWidget {
 
     // Aktif bölümleri belirle (en az 1 besin değeri >= 0.01 olanlar)
     final factor = result.portionGrams / 100.0;
-    final sections = n65 != null ? _buildSections(n65, factor) : <_NutriSection>[];
+    final sections = n65 != null ? _buildSections(context, n65, factor) : <_NutriSection>[];
     final activeSections = sections.where((sec) => sec.entries.any((e) => e.value >= 0.01)).toList();
     
     // Toplam mineral + vitamin sayısı
@@ -986,9 +1122,9 @@ class MicroNutrientsSheet extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${result.portionGrams.round()}g porsiyon', style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5))),
+                    Text('${result.portionGrams.round()}${context.tr('g porsiyon')}', style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5))),
                     if (totalCount > 0)
-                      Text('$totalCount besin tespit edildi', style: TextStyle(fontSize: 10, color: cs.primary.withValues(alpha: 0.7), fontWeight: FontWeight.w600)),
+                      Text('$totalCount ${context.tr('besin tespit edildi')}', style: TextStyle(fontSize: 10, color: cs.primary.withValues(alpha: 0.7), fontWeight: FontWeight.w600)),
                   ],
                 ),
               ],
@@ -1000,7 +1136,7 @@ class MicroNutrientsSheet extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(40),
-                      child: Text('Detaylı besin bilgisi mevcut değil', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5))),
+                      child: Text(context.tr('Detaylı besin bilgisi mevcut değil'), style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5))),
                     ),
                   )
                 : ListView.builder(

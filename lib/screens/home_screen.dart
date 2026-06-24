@@ -26,6 +26,8 @@ import 'fasting_screen.dart';
 import 'profile_screen.dart' show ProfileScreen, openNewProfileWizard;
 import 'saved_foods_screen.dart';
 import 'suggestions_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../services/saved_foods_service.dart';
 import '../widgets/food_analysis_result_sheet.dart';
 import '../services/sync_service.dart';
 
@@ -104,18 +106,18 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Oruç Devam Ediyor', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: const Text(
-          'Şu an oruç tutuyorsunuz. Yemek eklemek orucu etkileyebilir. Devam etmek istiyor musunuz?',
+        title: Text(context.tr('Oruç Devam Ediyor'), style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          context.tr('Şu an oruç tutuyorsunuz. Yemek eklemek orucu etkileyebilir. Devam etmek istiyor musunuz?'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Vazgeç'),
+            child: Text(context.tr('Vazgeç')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Devam Et'),
+            child: Text(context.tr('Devam Et')),
           ),
         ],
       ),
@@ -298,9 +300,10 @@ class _HomeScreenState extends State<HomeScreen> {
       onEdit: () async {
         // Convert result to FoodEntry and open ManualEntryScreen
         final nd = result.nutritionPer100g;
+        final isTr = Localizations.localeOf(context).languageCode == 'tr';
         final entry = FoodEntry(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: result.foodName,
+          name: isTr ? result.foodName : (result.foodNameEn ?? result.foodName),
           portionSize: result.portionGrams,
           nutritionData: NutritionData(
             calories: nd.calories,
@@ -355,17 +358,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _FloatingAddMenu extends StatelessWidget {
+class _FloatingAddMenu extends StatefulWidget {
   final bool isOpen;
   final Function(String) onTap;
 
   const _FloatingAddMenu({required this.isOpen, required this.onTap});
 
   @override
+  State<_FloatingAddMenu> createState() => _FloatingAddMenuState();
+}
+
+class _FloatingAddMenuState extends State<_FloatingAddMenu> {
+  bool _hasSavedFoods = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedFoods();
+  }
+
+  @override
+  void didUpdateWidget(_FloatingAddMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isOpen && !oldWidget.isOpen) {
+      _checkSavedFoods();
+    }
+  }
+
+  Future<void> _checkSavedFoods() async {
+    final list = await SavedFoodsService.load();
+    if (mounted) {
+      setState(() {
+        _hasSavedFoods = list.isNotEmpty;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final nutrition = context.watch<NutritionProvider>();
-    final hasFavorites = nutrition.savedMeals.isNotEmpty;
-    
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -373,51 +403,51 @@ class _FloatingAddMenu extends StatelessWidget {
         _buildMenuItem(
           context,
           index: 4,
-          icon: hasFavorites ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-          label: 'Kaydedilen Yemekler',
-          description: 'Favori öğünlerini hızlıca ekle',
+          icon: _hasSavedFoods ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+          label: context.tr('Kaydedilen Yemekler'),
+          description: context.tr('Favori öğünlerini hızlıca ekle'),
           color: Colors.redAccent,
-          onTap: () => onTap('saved'),
+          onTap: () => widget.onTap('saved'),
         ),
         const SizedBox(height: 10),
         _buildMenuItem(
           context,
           index: 3,
           icon: Icons.qr_code_scanner_rounded,
-          label: 'Barkoddan Analiz',
-          description: 'Paketli gıdaları tara',
+          label: context.tr('Barkoddan Analiz'),
+          description: context.tr('Paketli gıdaları tara'),
           color: Colors.orange,
-          onTap: () => onTap('barcode'),
+          onTap: () => widget.onTap('barcode'),
         ),
         const SizedBox(height: 10),
         _buildMenuItem(
           context,
           index: 2,
           icon: Icons.edit_note_rounded,
-          label: 'Manuel Analiz',
-          description: 'Besin değerlerini elle gir',
+          label: context.tr('Manuel Analiz'),
+          description: context.tr('Besin değerlerini elle gir'),
           color: Colors.green,
-          onTap: () => onTap('manual'),
+          onTap: () => widget.onTap('manual'),
         ),
         const SizedBox(height: 10),
         _buildMenuItem(
           context,
           index: 1,
           icon: Icons.mic_rounded,
-          label: 'Anlatarak Analiz',
-          description: 'Sesinle veya yazarak ekle',
+          label: context.tr('Tarif Ederek Analiz'),
+          description: context.tr('Tarif ederek veya yazarak ekle'),
           color: Colors.purple,
-          onTap: () => onTap('voice'),
+          onTap: () => widget.onTap('voice'),
         ),
         const SizedBox(height: 10),
         _buildMenuItem(
           context,
           index: 0,
           icon: Icons.camera_alt_rounded,
-          label: 'Görselden Analiz',
-          description: 'Fotoğrafını çekerek ekle',
+          label: context.tr('Görselden Analiz'),
+          description: context.tr('Fotoğrafını çekerek ekle'),
           color: Colors.blue,
-          onTap: () => onTap('camera'),
+          onTap: () => widget.onTap('camera'),
         ),
       ],
     );
@@ -438,15 +468,15 @@ class _FloatingAddMenu extends StatelessWidget {
     const duration = Duration(milliseconds: 300);
     
     return AnimatedSlide(
-      offset: isOpen ? Offset.zero : const Offset(0, 0.5),
+      offset: widget.isOpen ? Offset.zero : const Offset(0, 0.5),
       duration: duration,
       curve: Curves.easeOutBack,
       child: AnimatedOpacity(
-        opacity: isOpen ? 1 : 0,
+        opacity: widget.isOpen ? 1 : 0,
         duration: duration,
         curve: Curves.easeOut,
         child: IgnorePointer(
-          ignoring: !isOpen,
+          ignoring: !widget.isOpen,
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(16),
@@ -541,7 +571,7 @@ class _HigTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> labels = ['Özet', 'Oruç', 'Öneriler', 'Profil'];
+    final List<String> labels = [context.tr('Özet'), context.tr('Oruç'), context.tr('Öneriler'), context.tr('Profil')];
     final List<IconData> iconsOutlined = [
       Icons.dashboard_outlined,
       Icons.timer_outlined,
@@ -771,7 +801,7 @@ class _AnalysisStatusBoxState extends State<_AnalysisStatusBox> with SingleTicke
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '🔄 Yemek analizi yapılıyor...',
+                            '🔄 ${context.tr('Yemek analizi yapılıyor...')}',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -780,7 +810,7 @@ class _AnalysisStatusBoxState extends State<_AnalysisStatusBox> with SingleTicke
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Lütfen bekleyin, sonuçlar yakında hazır olacak.',
+                            context.tr('Lütfen bekleyin, sonuçlar yakında hazır olacak.'),
                             style: TextStyle(
                               fontSize: 10,
                               color: widget.isDark ? Colors.white70 : Colors.black54,
@@ -831,9 +861,9 @@ class _CoachFloatingButton extends StatelessWidget {
               child: const Icon(Icons.psychology, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 4),
-            const Text(
-              'Beslenme Koçu',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            Text(
+              context.tr('Beslenme Koçu'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ],
         ),
@@ -842,13 +872,35 @@ class _CoachFloatingButton extends StatelessWidget {
   }
 }
 
-class _SavedMealsSheet extends StatelessWidget {
+class _SavedMealsSheet extends StatefulWidget {
+  @override
+  State<_SavedMealsSheet> createState() => _SavedMealsSheetState();
+}
+
+class _SavedMealsSheetState extends State<_SavedMealsSheet> {
+  List<SavedFood> _savedFoods = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFoods();
+  }
+
+  Future<void> _loadFoods() async {
+    final list = await SavedFoodsService.load();
+    if (mounted) {
+      setState(() {
+        _savedFoods = list;
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final nutrition = context.watch<NutritionProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
-    final savedMeals = nutrition.savedMeals;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
@@ -868,30 +920,49 @@ class _SavedMealsSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Kaydedilen Yemekler',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          Text(
+            context.tr('Kaydedilen Yemekler'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 4),
           Text(
-            'Favori öğünlerini hızlıca ekle',
+            context.tr('Favori öğünlerini hızlıca ekle'),
             style: TextStyle(
               fontSize: 13,
               color: cs.onSurface.withValues(alpha: 0.5),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Expanded(
-            child: savedMeals.isEmpty
-                ? _buildEmpty(cs)
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: savedMeals.length,
-                    itemBuilder: (context, i) {
-                      final meal = savedMeals[i];
-                      return _SavedMealItem(meal: meal);
-                    },
-                  ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _savedFoods.isEmpty
+                    ? _buildEmpty(context, cs)
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _savedFoods.length,
+                        itemBuilder: (context, i) {
+                          final food = _savedFoods[i];
+                          final meal = FoodEntry(
+                            id: food.id,
+                            name: food.name,
+                            portionSize: food.portionGrams,
+                            portionUnit: 'g',
+                            nutritionData: food.nutritionScaled,
+                            timestamp: food.savedAt,
+                            mealType: 'kahvaltı', // fallback
+                            imagePath: food.imagePath,
+                            imageUrl: food.imageUrl,
+                          );
+                          return _SavedMealItem(
+                            meal: meal,
+                            onDeleted: () async {
+                              await SavedFoodsService.remove(food.id);
+                              _loadFoods();
+                            },
+                          );
+                        },
+                      ),
           ),
           const SizedBox(height: 20),
         ],
@@ -899,24 +970,24 @@ class _SavedMealsSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildEmpty(ColorScheme cs) {
+  Widget _buildEmpty(BuildContext context, ColorScheme cs) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.bookmark_border_rounded, size: 48, color: cs.primary.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
-          const Text(
-            'Henüz kaydedilmiş yemek yok',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          Text(
+            context.tr('Henüz kaydedilmiş yemek yok'),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Yemek detaylarından favorilere ekleyerek burada görebilirsiniz.',
+              context.tr('Yemek detaylarından favorilere ekleyerek burada görebilirsiniz.'),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
         ],
@@ -927,13 +998,13 @@ class _SavedMealsSheet extends StatelessWidget {
 
 class _SavedMealItem extends StatelessWidget {
   final FoodEntry meal;
-  const _SavedMealItem({required this.meal});
+  final VoidCallback onDeleted;
+  const _SavedMealItem({required this.meal, required this.onDeleted});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
-    final nutrition = context.read<NutritionProvider>();
 
     final itemBg = isDark
         ? const Color(0xFF21262D).withValues(alpha: 0.6)
@@ -960,10 +1031,28 @@ class _SavedMealItem extends StatelessWidget {
               height: 60,
               child: meal.imagePath != null && File(meal.imagePath!).existsSync()
                   ? Image.file(File(meal.imagePath!), fit: BoxFit.cover)
-                  : Container(
-                      color: isDark ? const Color(0xFF161B22) : Colors.white,
-                      child: Icon(Icons.restaurant_rounded, color: cs.primary.withValues(alpha: 0.3)),
-                    ),
+                  : (meal.imageUrl != null && meal.imageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: meal.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: cs.primary.withValues(alpha: 0.1),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 16, height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: isDark ? const Color(0xFF161B22) : Colors.white,
+                            child: Icon(Icons.restaurant_rounded, color: cs.primary.withValues(alpha: 0.3)),
+                          ),
+                        )
+                      : Container(
+                          color: isDark ? const Color(0xFF161B22) : Colors.white,
+                          child: Icon(Icons.restaurant_rounded, color: cs.primary.withValues(alpha: 0.3)),
+                        )),
             ),
           ),
           const SizedBox(width: 14),
@@ -994,7 +1083,7 @@ class _SavedMealItem extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                onPressed: () => nutrition.removeSavedMeal(meal.id),
+                onPressed: onDeleted,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -1038,10 +1127,10 @@ class _SavedMealPicker extends StatelessWidget {
     final nutrition = context.read<NutritionProvider>();
 
     final meals = [
-      ('kahvaltı', Icons.wb_sunny_outlined, 'Kahvaltı'),
-      ('öğle', Icons.wb_cloudy_outlined, 'Öğle'),
-      ('akşam', Icons.nights_stay_outlined, 'Akşam'),
-      ('ara öğün', Icons.coffee_outlined, 'Ara Öğün'),
+      ('kahvaltı', Icons.wb_sunny_outlined, context.tr('Kahvaltı')),
+      ('öğle', Icons.wb_cloudy_outlined, context.tr('Öğle')),
+      ('akşam', Icons.nights_stay_outlined, context.tr('Akşam')),
+      ('ara öğün', Icons.coffee_outlined, context.tr('Ara Öğün')),
     ];
 
     return Container(
@@ -1053,9 +1142,9 @@ class _SavedMealPicker extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Hangi öğüne eklensin?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          Text(
+            context.tr('Hangi öğüne eklensin?'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 24),
           Row(
@@ -1073,7 +1162,7 @@ class _SavedMealPicker extends StatelessWidget {
                   Navigator.pop(context); // Close saved meals sheet
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('${meal.name} eklendi'),
+                      content: Text('${meal.name} ${context.tr('eklendi')}'),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -1200,7 +1289,7 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Yeni Rozet Kazandın!',
+                          context.tr('Yeni Rozet Kazandın!'),
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -1214,13 +1303,13 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          widget.achievement.name,
+                          context.tr(widget.achievement.name),
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.achievement.description,
+                          context.tr(widget.achievement.description),
                           style: TextStyle(
                             fontSize: 13,
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1229,7 +1318,7 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Devam et!',
+                          context.tr('Devam et!'),
                           style: TextStyle(
                             fontSize: 12,
                             color: Theme.of(context).colorScheme.onSurfaceVariant,

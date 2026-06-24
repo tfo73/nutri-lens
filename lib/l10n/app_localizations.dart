@@ -10,8 +10,17 @@ class AppLocalizations {
   const AppLocalizations({required this.isTurkish});
 
   static AppLocalizations of(BuildContext context) {
-    final isTurkish = context.watch<LanguageProvider>().isTurkish;
-    return AppLocalizations(isTurkish: isTurkish);
+    bool isTr = true;
+    try {
+      isTr = context.watch<LanguageProvider>().isTurkish;
+    } catch (_) {
+      try {
+        isTr = context.read<LanguageProvider>().isTurkish;
+      } catch (_) {
+        isTr = true;
+      }
+    }
+    return AppLocalizations(isTurkish: isTr);
   }
 
   String tr(String key) {
@@ -19,3 +28,8 @@ class AppLocalizations {
     return AppEn.strings[key] ?? key;
   }
 }
+
+extension LocalizationExtension on BuildContext {
+  String tr(String key) => AppLocalizations.of(this).tr(key);
+}
+

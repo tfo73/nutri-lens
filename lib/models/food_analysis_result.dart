@@ -34,6 +34,7 @@ class FoodAnalysisResult {
   /// 0–100 güven skoru
   final int confidenceScore;
   final String? confidenceReason;
+  final String? confidenceReasonEn;
 
   /// Kalori belirsizlik aralığı (ölçeklendirilmiş)
   final double alternativeMin;
@@ -53,6 +54,7 @@ class FoodAnalysisResult {
     required this.sources,
     required this.confidenceScore,
     this.confidenceReason,
+    this.confidenceReasonEn,
     required this.alternativeMin,
     required this.alternativeMax,
   });
@@ -126,6 +128,7 @@ class FoodAnalysisResult {
       sources: const ['Claude'],
       confidenceScore: (json['guven_skoru'] as num?)?.toInt() ?? 50,
       confidenceReason: json['guven_nedeni']?.toString(),
+      confidenceReasonEn: json['guven_nedeni_en']?.toString(),
       alternativeMin: altMin,
       alternativeMax: altMax,
     );
@@ -140,6 +143,7 @@ class FoodAnalysisResult {
     List<String>? sources,
     int? confidenceScore,
     String? confidenceReason,
+    String? confidenceReasonEn,
     double? alternativeMin,
     double? alternativeMax,
   }) {
@@ -155,6 +159,7 @@ class FoodAnalysisResult {
       sources: sources ?? this.sources,
       confidenceScore: confidenceScore ?? this.confidenceScore,
       confidenceReason: confidenceReason ?? this.confidenceReason,
+      confidenceReasonEn: confidenceReasonEn ?? this.confidenceReasonEn,
       alternativeMin: alternativeMin ?? this.alternativeMin,
       alternativeMax: alternativeMax ?? this.alternativeMax,
     );

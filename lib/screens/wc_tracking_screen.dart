@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../providers/wellness_provider.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 
 // Bristol Stool Chart types mapped to -3..3 scale
 class StoolType {
@@ -21,14 +22,14 @@ class StoolType {
   });
 }
 
-const wcStoolTypes = [
-  StoolType(value: -3, emoji: '🪨', assetPath: 'assets/ibs/type1.webp', name: 'Sert Topaklar',    desc: 'Ayrı sert topaklar, geçirmesi zor',  color: Color(0xFFF85149)),
-  StoolType(value: -2, emoji: '🥔', assetPath: 'assets/ibs/type2.webp', name: 'Topak Sosis',      desc: 'Sosis şeklinde, yüzeyi parçalı',     color: Color(0xFFFF8C42)),
-  StoolType(value: -1, emoji: '🌭', assetPath: 'assets/ibs/type3.webp', name: 'Çatlak Yüzey',     desc: 'Sosis şekli, yüzeyinde çatlaklar',   color: Color(0xFFFFCC00)),
-  StoolType(value:  0, emoji: '✅', assetPath: 'assets/ibs/type4.webp', name: 'Normal',            desc: 'Düzgün, yumuşak, kolay geçer',       color: Color(0xFF3FB950)),
-  StoolType(value:  1, emoji: '💩', assetPath: 'assets/ibs/type5.webp', name: 'Yumuşak Topaklar', desc: 'Net kenarlı yumuşak parçalar',        color: Color(0xFFFFCC00)),
-  StoolType(value:  2, emoji: '💧', assetPath: 'assets/ibs/type6.webp', name: 'Parçalı Sıvı',     desc: 'Akıcı, yumuşak parçalar',            color: Color(0xFFFF8C42)),
-  StoolType(value:  3, emoji: '🌊', assetPath: 'assets/ibs/type7.webp', name: 'Sıvı',             desc: 'Tamamen sıvı, katı yok',             color: Color(0xFFF85149)),
+List<StoolType> wcStoolTypes(BuildContext context) => [
+  StoolType(value: -3, emoji: '🪨', assetPath: 'assets/ibs/type1.webp', name: context.tr('Sert Topaklar'), desc: context.tr('Ayrı sert topaklar, geçirmesi zor'),  color: Color(0xFFF85149)),
+  StoolType(value: -2, emoji: '🥔', assetPath: 'assets/ibs/type2.webp', name: context.tr('Topak Sosis'), desc: context.tr('Sosis şeklinde, yüzeyi parçalı'),     color: Color(0xFFFF8C42)),
+  StoolType(value: -1, emoji: '🌭', assetPath: 'assets/ibs/type3.webp', name: context.tr('Çatlak Yüzey'), desc: context.tr('Sosis şekli, yüzeyinde çatlaklar'),   color: Color(0xFFFFCC00)),
+  StoolType(value:  0, emoji: '✅', assetPath: 'assets/ibs/type4.webp', name: context.tr('Normal'), desc: context.tr('Düzgün, yumuşak, kolay geçer'),       color: Color(0xFF3FB950)),
+  StoolType(value:  1, emoji: '💩', assetPath: 'assets/ibs/type5.webp', name: context.tr('Yumuşak Topaklar'), desc: context.tr('Net kenarlı yumuşak parçalar'),        color: Color(0xFFFFCC00)),
+  StoolType(value:  2, emoji: '💧', assetPath: 'assets/ibs/type6.webp', name: context.tr('Parçalı Sıvı'), desc: context.tr('Akıcı, yumuşak parçalar'),            color: Color(0xFFFF8C42)),
+  StoolType(value:  3, emoji: '🌊', assetPath: 'assets/ibs/type7.webp', name: context.tr('Sıvı'), desc: context.tr('Tamamen sıvı, katı yok'),             color: Color(0xFFF85149)),
 ];
 
 // Category for each type index
@@ -85,7 +86,8 @@ class _WcTrackingSheetState extends State<_WcTrackingSheet> {
   Future<void> _save() async {
     final now = DateTime.now();
     final logTime = DateTime(now.year, now.month, now.day, _selectedTime.hour, _selectedTime.minute);
-    await context.read<WellnessProvider>().logWc(stoolType: wcStoolTypes[_selectedIndex].value, time: logTime);
+    final stoolValue = _selectedIndex - 3;
+    await context.read<WellnessProvider>().logWc(stoolType: stoolValue, time: logTime);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -93,7 +95,7 @@ class _WcTrackingSheetState extends State<_WcTrackingSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
-    final selected = wcStoolTypes[_selectedIndex];
+    final selected = wcStoolTypes(context)[_selectedIndex];
     final cat = _category(_selectedIndex);
 
     return Container(
@@ -120,7 +122,7 @@ class _WcTrackingSheetState extends State<_WcTrackingSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                const Text('Tuvalet Takibi',
+                Text(context.tr('Tuvalet Takibi'),
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                 const Spacer(),
                 GestureDetector(
@@ -168,10 +170,10 @@ class _WcTrackingSheetState extends State<_WcTrackingSheet> {
             height: 180,
             child: PageView.builder(
               controller: _ctrl,
-              itemCount: wcStoolTypes.length,
+              itemCount: wcStoolTypes(context).length,
               onPageChanged: (i) => setState(() => _selectedIndex = i),
               itemBuilder: (_, i) {
-                final type = wcStoolTypes[i];
+                final type = wcStoolTypes(context)[i];
                 final isSelected = i == _selectedIndex;
                 return AnimatedScale(
                   scale: isSelected ? 1.0 : 0.75,
@@ -240,9 +242,9 @@ class _WcTrackingSheetState extends State<_WcTrackingSheet> {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(wcStoolTypes.length, (i) {
+            children: List.generate(wcStoolTypes(context).length, (i) {
               final isSelected = i == _selectedIndex;
-              final type = wcStoolTypes[i];
+              final type = wcStoolTypes(context)[i];
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -270,7 +272,7 @@ class _WcTrackingSheetState extends State<_WcTrackingSheet> {
                   backgroundColor: selected.color,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('Kaydet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                child: Text(context.tr('Kaydet'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ),
@@ -305,7 +307,7 @@ class WcTrackingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Tuvalet Takibi'), centerTitle: true),
+        appBar: AppBar(title: Text(context.tr('Tuvalet Takibi')), centerTitle: true),
         body: Center(child: _WcTrackingSheet()),
       );
 }

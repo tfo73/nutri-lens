@@ -14,6 +14,7 @@ import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/food_analysis_result.dart';
 import '../models/food_entry.dart';
@@ -28,6 +29,7 @@ import '../widgets/animated_widgets.dart';
 import '../widgets/analysis_widgets.dart';
 import '../widgets/food_analysis_result_sheet.dart';
 import 'manual_entry_screen.dart';
+import '../l10n/app_localizations.dart';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -49,7 +51,7 @@ void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı
       onSave: (entry) {
         context.read<NutritionProvider>().addFoodEntry(entry);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${entry.name} eklendi'), behavior: SnackBarBehavior.floating),
+          SnackBar(content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)), behavior: SnackBarBehavior.floating),
         );
         onDone?.call();
       },
@@ -57,7 +59,7 @@ void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı
   );
 }
 
-Map<String, dynamic> buildPrefillMap(FoodAnalysisResult result) {
+Map<String, dynamic> buildPrefillMap(FoodAnalysisResult result, {bool isTr = true}) {
   final scaled = result.nutritionScaled;
   final factor = result.portionGrams / 100.0;
   final n65 = result.nutrition65per100g;
@@ -66,7 +68,7 @@ Map<String, dynamic> buildPrefillMap(FoodAnalysisResult result) {
   String? f(double? v, [int dec = 1]) => v != null ? v.toStringAsFixed(dec) : null;
 
   return {
-    'name': result.foodName,
+    'name': isTr ? result.foodName : (result.foodNameEn ?? result.foodName),
     'calories': scaled.calories.toStringAsFixed(0),
     'protein': scaled.protein.toStringAsFixed(1),
     'carbs': scaled.carbohydrates.toStringAsFixed(1),
@@ -146,7 +148,7 @@ void showManualEntrySheet(BuildContext context, {String selectedMeal = 'kahvalt�
         onSave: (entry) {
           context.read<NutritionProvider>().addFoodEntry(entry);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${entry.name} eklendi'), behavior: SnackBarBehavior.floating),
+            SnackBar(content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)), behavior: SnackBarBehavior.floating),
           );
           onDone?.call();
         },
@@ -298,7 +300,7 @@ class _CameraScreenState extends State<CameraScreen>
         );
       } else {
         setState(() {
-          _errorMessage = 'Ürün bulunamadı. Manuel giriş yapabilirsiniz.';
+          _errorMessage = context.tr('Ürün bulunamadı. Manuel giriş yapabilirsiniz.');
           _viewState = _ViewState.error;
           _barcodeDetected = false;
           _barcodeHandling = false;
@@ -383,7 +385,7 @@ class _CameraScreenState extends State<CameraScreen>
       if (mounted) {
         setState(() {
           _isCapturing = false;
-          _errorMessage = 'Fotoğraf çekilemedi. Tekrar deneyin.';
+          _errorMessage = context.tr('Fotoğraf çekilemedi. Tekrar deneyin.');
           _viewState = _ViewState.error;
         });
       }
@@ -430,7 +432,7 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _analyzeWithAI(Uint8List bytes) async {
     if (_isOffline) {
       setState(() {
-        _errorMessage = 'Çevrimdışısın — AI analiz devre dışı';
+        _errorMessage = context.tr('Çevrimdışısın — AI analiz devre dışı');
         _viewState = _ViewState.error;
       });
       return;
@@ -467,9 +469,10 @@ class _CameraScreenState extends State<CameraScreen>
           // Hemen ardından ManualEntryScreen'i push et
           final res = provider.lastResult!;
           final nd = res.nutritionPer100g; // 100g bazında — initState factor ile çarpar
+          final isTr = Localizations.localeOf(context).languageCode == 'tr';
           final entry = FoodEntry(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
-            name: res.foodName,
+            name: isTr ? res.foodName : (res.foodNameEn ?? res.foodName),
             portionSize: res.portionGrams,
             nutritionData: NutritionData(
               calories: nd.calories,
@@ -516,7 +519,7 @@ class _CameraScreenState extends State<CameraScreen>
       });
     } else {
       setState(() {
-        _errorMessage = 'Analiz başarısız oldu veya yarıda kesildi.';
+        _errorMessage = context.tr('Analiz başarısız oldu veya yarıda kesildi.');
         _viewState = _ViewState.error;
       });
     }
@@ -550,6 +553,11 @@ class _CameraScreenState extends State<CameraScreen>
     if (_isSaved) {
       await SavedFoodsService.remove(result.foodName);
       if (mounted) setState(() { _isSaved = false; _saving = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('Kayıtlı yiyeceklerden kaldırıldı')), duration: const Duration(seconds: 2)),
+        );
+      }
     } else {
       final food = SavedFood(
         id: result.foodName,
@@ -564,7 +572,7 @@ class _CameraScreenState extends State<CameraScreen>
       if (mounted) setState(() { _isSaved = true; _saving = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Favorilere eklendi ★'), duration: Duration(seconds: 2)),
+          SnackBar(content: Text(context.tr('Kayıtlı yiyeceklere eklendi')), duration: const Duration(seconds: 2)),
         );
       }
     }
@@ -629,17 +637,17 @@ class _CameraScreenState extends State<CameraScreen>
                     child: Text('AI Analiz', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
                   ),
                   const SizedBox(width: 12),
-                  Text('Nasıl çalışır?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                  Text(context.tr('Nasıl çalışır?'), style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
                 ],
               ),
               const SizedBox(height: 16),
               Text(
-                'Bu besin bilgisi, yüklediğiniz görseli analiz eden yapay zeka (Claude Vision) tarafından oluşturulmuştur.',
+                context.tr('Bu besin bilgisi, yüklediğiniz görseli analiz eden yapay zeka (Claude Vision) tarafından oluşturulmuştur.'),
                 style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.8), height: 1.5),
               ),
               const SizedBox(height: 12),
               Text(
-                'AI tahmini, gerçek laboratuvar ölçümü değildir. Porsiyon büyüklüğü, pişirme yöntemi ve malzeme farklılıkları sonucu etkileyebilir. Kesin değerler için ürün etiketini kontrol edin.',
+                context.tr('AI tahmini, gerçek laboratuvar ölçümü değildir. Porsiyon büyüklüğü, pişirme yöntemi ve malzeme farklılıkları sonucu etkileyebilir. Kesin değerler için ürün etiketini kontrol edin.'),
                 style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.55), height: 1.5),
               ),
             ],
@@ -671,13 +679,13 @@ class _CameraScreenState extends State<CameraScreen>
           scrollCtrl: scrollCtrl,
           selectedMeal: _selectedMeal,
           isAnalysis: true,
-          prefill: buildPrefillMap(result),
+          prefill: buildPrefillMap(result, isTr: Localizations.localeOf(ctx).languageCode == 'tr'),
           onSave: (entry) {
             _analysisService.saveCorrection(result.foodName, entry.nutritionData);
             context.read<NutritionProvider>().addFoodEntry(entry);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                  content: Text('${entry.name} eklendi'),
+                  content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
                   behavior: SnackBarBehavior.floating),
             );
             _resetToScanning();
@@ -705,7 +713,7 @@ class _CameraScreenState extends State<CameraScreen>
     context.read<NutritionProvider>().addFoodEntry(entry);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text('${entry.name} eklendi'),
+          content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
           behavior: SnackBarBehavior.floating),
     );
     _resetToScanning();
@@ -727,7 +735,7 @@ class _CameraScreenState extends State<CameraScreen>
     context.read<NutritionProvider>().addFoodEntry(entry);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text('${entry.name} eklendi'),
+          content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
           behavior: SnackBarBehavior.floating),
     );
     widget.onFoodAdded?.call();
@@ -747,7 +755,7 @@ class _CameraScreenState extends State<CameraScreen>
           context.read<NutritionProvider>().addFoodEntry(entry);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${entry.name} eklendi'),
+              content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -781,7 +789,7 @@ class _CameraScreenState extends State<CameraScreen>
             context.read<NutritionProvider>().addFoodEntry(entry);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                  content: Text('${entry.name} eklendi'),
+                  content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
                   behavior: SnackBarBehavior.floating),
             );
             if (_viewState != _ViewState.scanning) _resetToScanning();
@@ -963,7 +971,7 @@ class _CameraScreenState extends State<CameraScreen>
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : Icon(
-                            _isSaved ? Icons.star_rounded : Icons.star_outline_rounded,
+                            _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                             color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
                             size: 22,
                           ),
@@ -1711,11 +1719,11 @@ class _MealChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const meals = [
-      ('kahvaltı', '☀️', 'Kahvaltı'),
-      ('öğle', '🌤', 'Öğle'),
-      ('akşam', '🌙', 'Akşam'),
-      ('ara öğün', '☕', 'Ara Öğün'),
+    final meals = [
+      ('kahvaltı', '☀️', context.tr('Kahvaltı')),
+      ('öğle', '🌤', context.tr('Öğle')),
+      ('akşam', '🌙', context.tr('Akşam')),
+      ('ara öğün', '☕', context.tr('Ara Öğün')),
     ];
     return Wrap(
       spacing: 6,
@@ -1763,19 +1771,70 @@ class _BarcodeProductSheet extends StatefulWidget {
 }
 
 class _BarcodeProductSheetState extends State<_BarcodeProductSheet> {
-  final _portionCtrl = TextEditingController(text: '100');
+  late final TextEditingController _portionCtrl;
   late String _meal;
+  bool _isSaved = false;
 
   @override
   void initState() {
     super.initState();
+    final initialPortion = widget.product.portionSizeGrams;
+    final initialPortionText = initialPortion != null && initialPortion > 0
+        ? initialPortion.toStringAsFixed(0)
+        : '100';
+    _portionCtrl = TextEditingController(text: initialPortionText);
     _meal = widget.selectedMeal;
+    _checkIfSaved();
   }
 
   @override
   void dispose() {
     _portionCtrl.dispose();
     super.dispose();
+  }
+
+  void _checkIfSaved() async {
+    final saved = await SavedFoodsService.isSaved(widget.product.name);
+    if (mounted) setState(() => _isSaved = saved);
+  }
+
+  Future<void> _toggleSaveFood() async {
+    final name = widget.product.name;
+    if (_isSaved) {
+      await SavedFoodsService.remove(name);
+      if (mounted) {
+        setState(() => _isSaved = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Kayıtlı yiyeceklerden kaldırıldı')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      final portionGrams = double.tryParse(_portionCtrl.text) ?? 100.0;
+      final food = SavedFood(
+        id: name,
+        name: name,
+        brand: widget.product.brand,
+        portionGrams: portionGrams,
+        nutritionPer100g: widget.product.nutritionPer100g,
+        sources: ['barcode'],
+        savedAt: DateTime.now(),
+        imagePath: null,
+        imageUrl: widget.product.imageUrl,
+      );
+      await SavedFoodsService.save(food);
+      if (mounted) {
+        setState(() => _isSaved = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Kayıtlı yiyeceklere eklendi')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _confirm() {
@@ -1785,15 +1844,145 @@ class _BarcodeProductSheetState extends State<_BarcodeProductSheet> {
     widget.onAdd(portion, _meal);
   }
 
+  Widget _buildMicroNutrientList(BuildContext context, NutritionData n, double factor) {
+    final scaled = n.scaleBy(factor);
+    final cs = Theme.of(context).colorScheme;
+
+    bool hasVal(double? v) => v != null && v > 0.0;
+    
+    final vitamins = <(String, double, String)>[
+      if (hasVal(scaled.vitaminC)) ('Vitamin C', scaled.vitaminC!, 'mg'),
+      if (hasVal(scaled.vitaminD)) ('Vitamin D', scaled.vitaminD!, 'mcg'),
+      if (hasVal(scaled.vitaminA)) ('Vitamin A', scaled.vitaminA!, 'mcg'),
+      if (hasVal(scaled.vitaminE)) ('Vitamin E', scaled.vitaminE!, 'mg'),
+      if (hasVal(scaled.vitaminK)) ('Vitamin K', scaled.vitaminK!, 'mcg'),
+      if (hasVal(scaled.vitaminB6)) ('Vitamin B6', scaled.vitaminB6!, 'mg'),
+      if (hasVal(scaled.vitaminB12)) ('Vitamin B12', scaled.vitaminB12!, 'mcg'),
+      if (hasVal(scaled.folate)) ('Folat', scaled.folate!, 'mcg'),
+      if (hasVal(scaled.thiamine)) ('Tiamin (B1)', scaled.thiamine!, 'mg'),
+      if (hasVal(scaled.riboflavin)) ('Riboflavin (B2)', scaled.riboflavin!, 'mg'),
+      if (hasVal(scaled.niacin)) ('Niasin (B3)', scaled.niacin!, 'mg'),
+      if (hasVal(scaled.pantothenic)) ('Pantotenik Asit (B5)', scaled.pantothenic!, 'mg'),
+    ];
+
+    final minerals = <(String, double, String)>[
+      if (hasVal(scaled.calcium)) ('Kalsiyum', scaled.calcium!, 'mg'),
+      if (hasVal(scaled.iron)) ('Demir', scaled.iron!, 'mg'),
+      if (hasVal(scaled.magnesium)) ('Magnezyum', scaled.magnesium!, 'mg'),
+      if (hasVal(scaled.zinc)) ('Çinko', scaled.zinc!, 'mg'),
+      if (hasVal(scaled.potassium)) ('Potasyum', scaled.potassium!, 'mg'),
+      if (hasVal(scaled.sodium)) ('Sodyum', scaled.sodium!, 'mg'),
+      if (hasVal(scaled.phosphorus)) ('Fosfor', scaled.phosphorus!, 'mg'),
+      if (hasVal(scaled.selenium)) ('Selenyum', scaled.selenium!, 'mcg'),
+      if (hasVal(scaled.copper)) ('Bakır', scaled.copper!, 'mg'),
+      if (hasVal(scaled.manganese)) ('Manganez', scaled.manganese!, 'mg'),
+    ];
+
+    final fats = <(String, double, String)>[
+      if (hasVal(scaled.monoFat)) ('Tekli Doymamış Yağ', scaled.monoFat!, 'g'),
+      if (hasVal(scaled.polyFat)) ('Çoklu Doymamış Yağ', scaled.polyFat!, 'g'),
+      if (hasVal(scaled.transFat)) ('Trans Yağ', scaled.transFat!, 'g'),
+      if (hasVal(scaled.omega3)) ('Omega-3', scaled.omega3!, 'g'),
+      if (hasVal(scaled.omega6)) ('Omega-6', scaled.omega6!, 'g'),
+      if (hasVal(scaled.cholesterol)) ('Kolesterol', scaled.cholesterol!, 'mg'),
+    ];
+
+    if (vitamins.isEmpty && minerals.isEmpty && fats.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Center(
+          child: Text(
+            context.tr('Mikro besin verisi bulunamadı'),
+            style: TextStyle(
+              fontSize: 12,
+              color: cs.onSurface.withValues(alpha: 0.5),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget section(String title, Color color) => Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 6),
+          child: Text(
+            context.tr(title),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: color,
+            ),
+          ),
+        );
+
+    Widget row(String label, double value, String unit) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr(label),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+              Text(
+                value.toStringAsFixed(value < 0.1 ? 2 : 1),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                unit,
+                style: TextStyle(fontSize: 10, color: cs.onSurface.withValues(alpha: 0.4)),
+              ),
+            ],
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (vitamins.isNotEmpty) ...[
+          section('VİTAMİNLER', const Color(0xFFFFA726)),
+          ...vitamins.map((v) => row(v.$1, v.$2, v.$3)),
+        ],
+        if (minerals.isNotEmpty) ...[
+          section('MİNERALLER', const Color(0xFF58A6FF)),
+          ...minerals.map((m) => row(m.$1, m.$2, m.$3)),
+        ],
+        if (fats.isNotEmpty) ...[
+          section('YAĞLAR', const Color(0xFF3FB950)),
+          ...fats.map((f) => row(f.$1, f.$2, f.$3)),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final factor = (double.tryParse(_portionCtrl.text) ?? 100.0) / 100.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final portionGrams = double.tryParse(_portionCtrl.text) ?? 100.0;
+    final factor = portionGrams / 100.0;
     final n = widget.product.nutritionPer100g;
+    final hasImage = widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty;
 
-    return Padding(
+    final hasMicros = [
+      n.monoFat, n.polyFat, n.transFat, n.cholesterol,
+      n.selenium, n.magnesium, n.iron, n.zinc, n.calcium, n.potassium, n.sodium, n.phosphorus, n.copper, n.manganese,
+      n.vitaminA, n.vitaminC, n.vitaminD, n.vitaminE, n.vitaminK, n.vitaminB12, n.thiamine, n.riboflavin, n.niacin, n.pantothenic, n.vitaminB6, n.folate,
+      n.omega3, n.omega6,
+    ].any((v) => v != null && v > 0.0);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C2128) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       padding: EdgeInsets.fromLTRB(
-          16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 24),
+          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1805,35 +1994,92 @@ class _BarcodeProductSheetState extends State<_BarcodeProductSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                    color: cs.outlineVariant,
-                    borderRadius: BorderRadius.circular(2)),
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
+            // Image Stack
+            Stack(
+              children: [
+                if (hasImage)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: CachedNetworkImage(
+                      imageUrl: widget.product.imageUrl!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  )
+                else
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: cs.primary.withValues(alpha: 0.06),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.restaurant_menu_rounded,
+                        size: 56,
+                        color: cs.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: GestureDetector(
+                    onTap: _toggleSaveFood,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                      child: Icon(
+                        _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                        color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Icon(Icons.qr_code_rounded, color: cs.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(widget.product.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
+                  child: Text(
+                    widget.product.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
                 ),
               ],
             ),
             if (widget.product.brand != null) ...[
-              const SizedBox(height: 2),
-              Text(widget.product.brand!,
-                  style: TextStyle(
-                      color: cs.onSurfaceVariant, fontSize: 12)),
+              const SizedBox(height: 4),
+              Text(
+                widget.product.brand!,
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
             ],
             const SizedBox(height: 16),
             TextField(
               controller: _portionCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Porsiyon miktarı',
-                border: OutlineInputBorder(),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: context.tr('Porsiyon Miktarı (g) *'),
+                border: const OutlineInputBorder(),
                 suffixText: 'g',
                 isDense: true,
               ),
@@ -1843,31 +2089,56 @@ class _BarcodeProductSheetState extends State<_BarcodeProductSheet> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
               ),
               child: Column(
                 children: [
-                  _infoRow(context, 'Kalori',
-                      '${(n.calories * factor).toStringAsFixed(0)} kcal'),
-                  _infoRow(context, 'Protein',
-                      '${(n.protein * factor).toStringAsFixed(1)} g'),
-                  _infoRow(context, 'Karbonhidrat',
-                      '${(n.carbohydrates * factor).toStringAsFixed(1)} g'),
-                  _infoRow(context, 'Yağ',
-                      '${(n.fat * factor).toStringAsFixed(1)} g'),
+                  _infoRow(context, 'Kalori', '${(n.calories * factor).toStringAsFixed(0)} kcal'),
+                  _infoRow(context, 'Protein', '${(n.protein * factor).toStringAsFixed(1)} g'),
+                  _infoRow(context, 'Karbonhidrat', '${(n.carbohydrates * factor).toStringAsFixed(1)} g'),
+                  _infoRow(context, 'Yağ', '${(n.fat * factor).toStringAsFixed(1)} g'),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            _MealChipRow(
-                selected: _meal,
-                onChanged: (m) => setState(() => _meal = m)),
+            if (hasMicros) ...[
+              const SizedBox(height: 12),
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  title: Text(
+                    context.tr('Daha fazlası'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: cs.primary,
+                    ),
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  children: [
+                    _buildMicroNutrientList(context, widget.product.nutritionPer100g, factor),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
+            Text(context.tr('Öğün Seçin'), style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 8),
+            _MealChipRow(
+              selected: _meal,
+              onChanged: (m) => setState(() => _meal = m),
+            ),
+            const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _confirm,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Öğüne Ekle'),
+              icon: const Icon(Icons.check_rounded),
+              label: Text(context.tr('Öğüne Ekle')),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
             ),
           ],
         ),
@@ -1877,11 +2148,11 @@ class _BarcodeProductSheetState extends State<_BarcodeProductSheet> {
 
   Widget _infoRow(BuildContext ctx, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Text(ctx.tr(label),
               style: TextStyle(
                   color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                   fontSize: 13)),
@@ -2181,7 +2452,7 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                       borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-              Text(widget.isAnalysis ? 'Analizi Düzenle' : 'Manuel Giriş',
+              Text(widget.isAnalysis ? context.tr('Analizi Düzenle') : context.tr('Manuel Giriş'),
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -2245,11 +2516,11 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
               // ── İsteğe bağlı alanlar ──────────────────────────────────
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
-                title: Text('Detaylar (opsiyonel)',
+                title: Text(context.tr('Detaylar (opsiyonel)'),
                     style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                 children: [
                   const SizedBox(height: 4),
-                  _DetailSection('Karbonhidrat & Yağlar', const Color(0xFF3FB950), cs, [
+                  _DetailSection(context.tr('Karbonhidrat & Yağlar'), const Color(0xFF3FB950), cs, [
                     _FieldDef(_sugarCtrl,    'Şeker',             'g'),
                     _FieldDef(_satFatCtrl,   'Doymuş Yağ',        'g'),
                     _FieldDef(_monoFatCtrl,  'Tekli Doymamış Yağ','g'),
@@ -2257,7 +2528,7 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                     _FieldDef(_transFatCtrl, 'Trans Yağ',         'g'),
                     _FieldDef(_cholCtrl,     'Kolesterol',        'mg'),
                   ]),
-                  _DetailSection('Mineraller', const Color(0xFF58A6FF), cs, [
+                  _DetailSection(context.tr('Mineraller'), const Color(0xFF58A6FF), cs, [
                     _FieldDef(_sodiumCtrl,   'Sodyum',    'mg'),
                     _FieldDef(_magCtrl,      'Magnezyum', 'mg'),
                     _FieldDef(_calciumCtrl,  'Kalsiyum',  'mg'),
@@ -2269,7 +2540,7 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                     _FieldDef(_copperCtrl,   'Bakır',     'mg'),
                     _FieldDef(_mangCtrl,     'Manganez',  'mg'),
                   ]),
-                  _DetailSection('Vitaminler', const Color(0xFFFFA726), cs, [
+                  _DetailSection(context.tr('Vitaminler'), const Color(0xFFFFA726), cs, [
                     _FieldDef(_vitACtrl,     'A Vitamini',  'μg'),
                     _FieldDef(_vitCCtrl,     'C Vitamini',  'mg'),
                     _FieldDef(_vitDCtrl,     'D Vitamini',  'μg'),
@@ -2278,27 +2549,27 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                     _FieldDef(_b12Ctrl,      'B12',         'μg'),
                     _FieldDef(_thiamineCtrl, 'B1 (Tiamin)', 'mg'),
                     _FieldDef(_riboflavCtrl, 'B2 (Riboflavin)','mg'),
-                    _FieldDef(_niacinCtrl,   'B3 (Niyasin)','mg'),
+                    _FieldDef(_niacinCtrl,   'B3 (Niasin)','mg'),
                     _FieldDef(_pantCtrl,     'B5 (Pantotenik)','mg'),
                     _FieldDef(_vitB6Ctrl,       'B6',          'mg'),
                     _FieldDef(_folateCtrl,   'Folat',       'μg'),
                     _FieldDef(_cholineCtrl,  'Kolin',       'mg'),
                     _FieldDef(_biotinCtrl,   'Biyotin',     'μg'),
                   ]),
-                  _DetailSection('Karotenoidler', const Color(0xFFFF6B00), cs, [
+                  _DetailSection(context.tr('Karotenoidler'), const Color(0xFFFF6B00), cs, [
                     _FieldDef(_betaCarotCtrl, 'Beta-Karoten', 'μg'),
                     _FieldDef(_lycopeneCtrl,  'Likopen',      'μg'),
-                    _FieldDef(_luteinZeaCtrl, 'Lutein+Zea',   'μg'),
+                    _FieldDef(_luteinZeaCtrl, 'Lutein+Zeaksantin',   'μg'),
                     _FieldDef(_alphaCarotCtrl,'Alfa-Karoten', 'μg'),
                   ]),
-                  _DetailSection('Yağ Asitleri', const Color(0xFF3FB950), cs, [
+                  _DetailSection(context.tr('Yağ Asitleri'), const Color(0xFF3FB950), cs, [
                     _FieldDef(_omega3Ctrl,   'Omega-3', 'g'),
                     _FieldDef(_omega6Ctrl,   'Omega-6', 'g'),
                     _FieldDef(_alaCtrl,      'ALA',     'g'),
                     _FieldDef(_epaCtrl,      'EPA',     'g'),
                     _FieldDef(_dhaCtrl,      'DHA',     'g'),
                   ]),
-                  _DetailSection('Amino Asitler', const Color(0xFFD2A8FF), cs, [
+                  _DetailSection(context.tr('Amino Asitler'), const Color(0xFFD2A8FF), cs, [
                     _FieldDef(_tryptCtrl,  'Triptofan',    'g'),
                     _FieldDef(_threonCtrl, 'Treonin',      'g'),
                     _FieldDef(_isolCtrl,   'İzolösin',     'g'),
@@ -2353,7 +2624,7 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                         children: [
                           ListTile(
                             leading: const Icon(Icons.camera_alt_rounded),
-                            title: const Text('Kamera'),
+                            title: Text(context.tr('Kamera')),
                             onTap: () {
                               Navigator.pop(context);
                               _pickPhoto(ImageSource.camera);
@@ -2361,7 +2632,7 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                           ),
                           ListTile(
                             leading: const Icon(Icons.photo_library_rounded),
-                            title: const Text('Galeriden Seç'),
+                            title: Text(context.tr('Galeriden Seç')),
                             onTap: () {
                               Navigator.pop(context);
                               _pickPhoto(ImageSource.gallery);
@@ -2372,11 +2643,11 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                     ),
                   ),
                   icon: const Text('📷'),
-                  label: const Text('Fotoğraf Ekle'),
+                  label: Text(context.tr('Fotoğraf Ekle')),
                 ),
               const SizedBox(height: 12),
               // ── Öğün seçici ───────────────────────────────────────────
-              Text('Öğün',
+              Text(context.tr('Öğün'),
                   style: Theme.of(context)
                       .textTheme
                       .labelMedium
@@ -2390,8 +2661,8 @@ class _ManualEntryBottomSheetState extends State<_ManualEntryBottomSheet> {
                 onPressed: _save,
                 style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(48)),
-                child: const Text('Kaydet',
-                    style: TextStyle(
+                child: Text(context.tr('Kaydet'),
+                    style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 16)),
               ),
             ],
@@ -2433,7 +2704,7 @@ class _Field extends StatelessWidget {
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.text,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: context.tr(label),
         suffixText: suffix,
         border: const OutlineInputBorder(),
         isDense: true,
@@ -2449,7 +2720,7 @@ class _Field extends StatelessWidget {
             : null,
       ),
       validator: required
-          ? (v) => (v == null || v.trim().isEmpty) ? 'Gerekli' : null
+          ? (v) => (v == null || v.trim().isEmpty) ? context.tr('Gerekli') : null
           : null,
     );
   }
@@ -2802,7 +3073,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
 
     // Check minimum description length
     if (desc.split(' ').length < 2 && desc.length < 6) {
-      setState(() => _errorMsg = 'Lütfen yemeği daha detaylı tarif edin (en az 2-3 kelime).');
+      setState(() => _errorMsg = context.tr('Lütfen yemeği daha detaylı tarif edin (en az 2-3 kelime).'));
       return;
     }
 
@@ -2826,7 +3097,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
       if (score < 35 || foodName.isEmpty || calories < 5) {
         setState(() {
           _sheetState = _VoiceSheetState.input;
-          _errorMsg = 'Tarif anlaşılamadı. Lütfen yemek adı, miktar ve pişirme yöntemini daha net belirtin.';
+          _errorMsg = context.tr('Tarif anlaşılamadı. Lütfen yemek adı, miktar ve pişirme yöntemini daha net belirtin.');
         });
         return;
       }
@@ -2835,12 +3106,12 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
         _result = result;
         _sheetState = _VoiceSheetState.confirming;
       });
-      _searchFoodImage(foodName);
+      _searchFoodImage(foodName, result.foodNameEn);
     } catch (e) {
       if (mounted) {
         setState(() {
           _sheetState = _VoiceSheetState.input;
-          _errorMsg = 'Analiz başarısız: $e. Tekrar deneyin.';
+          _errorMsg = '${context.tr('Analiz başarısız: {}').replaceFirst('{}', e.toString())}.';
         });
       }
     }
@@ -2910,11 +3181,11 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     return result;
   }
 
-  Future<void> _searchFoodImage(String foodName) async {
+  Future<void> _searchFoodImage(String foodName, String? foodNameEn) async {
     if (mounted) setState(() => _photoSearching = true);
     try {
-      final translated = _translateForImageSearch(foodName);
-      final query = Uri.encodeComponent('$translated food');
+      final nameForSearch = foodNameEn ?? _translateForImageSearch(foodName);
+      final query = Uri.encodeComponent('$nameForSearch food');
       final response = await http.get(Uri.parse(
         'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
         '&format=json&piprop=thumbnail&pithumbsize=400'
@@ -2929,7 +3200,26 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
           String? url;
           for (final page in pages.values) {
             final thumb = page['thumbnail']?['source'] as String?;
-            if (thumb != null) { url = thumb; break; }
+            if (thumb != null) {
+              final lowerThumb = thumb.toLowerCase();
+              if (lowerThumb.contains('.svg') ||
+                  lowerThumb.contains('flag') ||
+                  lowerThumb.contains('map') ||
+                  lowerThumb.contains('logo') ||
+                  lowerThumb.contains('icon') ||
+                  lowerThumb.contains('diagram') ||
+                  lowerThumb.contains('chart') ||
+                  lowerThumb.contains('portrait') ||
+                  lowerThumb.contains('emblem') ||
+                  lowerThumb.contains('shield') ||
+                  lowerThumb.contains('person') ||
+                  lowerThumb.contains('graph') ||
+                  lowerThumb.contains('blank')) {
+                continue;
+              }
+              url = thumb;
+              break;
+            }
           }
           if (mounted) setState(() => _foundImageUrl = url);
         }
@@ -2997,7 +3287,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
           scrollCtrl: scrollCtrl,
           selectedMeal: _meal,
           isAnalysis: true,
-          prefill: buildPrefillMap(result),
+          prefill: buildPrefillMap(result, isTr: Localizations.localeOf(ctx).languageCode == 'tr'),
           onSave: (entry) {
             setState(() {
               _result = FoodAnalysisResult(
@@ -3131,7 +3421,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                           Icon(Icons.restaurant_menu_rounded, color: cs.primary, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            'Yemeği Tarif Et',
+                            context.tr('Yemeği Tarif Et'),
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -3143,7 +3433,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                             icon: Icon(Icons.edit_rounded, color: cs.primary, size: 20),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            tooltip: 'Düzenle',
+                            tooltip: context.tr('Düzenle'),
                             onPressed: () => _openEditSheet(_result!),
                           ),
                       ],
@@ -3198,7 +3488,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Örnekler:',
+                  context.tr('Örnekler:'),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -3207,9 +3497,9 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                 ),
                 const SizedBox(height: 4),
                 ...[
-                  '2 adet köfte, yanında pilav 200g',
-                  '1 bardak süt ve 2 dilim ekmek',
-                  'Izgara tavuk göğsü 150g, salata',
+                  context.tr('2 adet köfte, yanında pilav 200g'),
+                  context.tr('1 bardak süt ve 2 dilim ekmek'),
+                  context.tr('Izgara tavuk göğsü 150g, salata'),
                 ].map((e) => GestureDetector(
                       onTap: () {
                         _textCtrl.text = e;
@@ -3239,7 +3529,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Önceki tarif: ${_conversationHistory.join(' + ')}',
+              context.tr('Önceki tarif: {}').replaceFirst('{}', _conversationHistory.join(' + ')),
               style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
             ),
           ),
@@ -3270,8 +3560,8 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                     hintText: _conversationHistory.isEmpty
-                        ? 'Yemeği tarif et... gramajı, miktar ve yemek adını yaz'
-                        : 'Daha fazla detay ekle...',
+                        ? context.tr('Yemeği tarif et... gramajı, miktar ve yemek adını yaz')
+                        : context.tr('Daha fazla detay ekle...'),
                     hintStyle: TextStyle(
                       fontSize: 13,
                       color: cs.onSurfaceVariant.withValues(alpha: 0.6),
@@ -3324,7 +3614,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                 _PulsingDot(),
                 const SizedBox(width: 8),
                 Text(
-                  'Dinleniyor... konuşun',
+                  context.tr('Dinleniyor... konuşun'),
                   style: TextStyle(
                     fontSize: 12,
                     color: const Color(0xFFF85149),
@@ -3353,7 +3643,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                     child: Image.file(_selectedFoodImage!, width: 52, height: 52, fit: BoxFit.cover),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(child: Text('Fotoğraf seçildi', style: TextStyle(fontSize: 13, color: cs.primary, fontWeight: FontWeight.w600))),
+                  Expanded(child: Text(context.tr('Fotoğraf seçildi'), style: TextStyle(fontSize: 13, color: cs.primary, fontWeight: FontWeight.w600))),
                   IconButton(
                     icon: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
                     onPressed: () => setState(() => _selectedFoodImage = null),
@@ -3364,7 +3654,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   const SizedBox(width: 14),
                   Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.onSurfaceVariant),
                   const SizedBox(width: 10),
-                  Text('Yemek fotoğrafı ekle (isteğe bağlı)', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+                  Text(context.tr('Yemek fotoğrafı ekle (isteğe bağlı)'), style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
                 ],
               ],
             ),
@@ -3382,7 +3672,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
             onPressed: val.text.trim().isEmpty ? null : _analyze,
             icon: const Icon(Icons.auto_awesome_rounded, size: 18),
             label: Text(
-              _conversationHistory.isEmpty ? 'AI ile Hesapla' : 'Tekrar Hesapla',
+              _conversationHistory.isEmpty ? context.tr('AI ile Hesapla') : context.tr('Tekrar Hesapla'),
             ),
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
@@ -3403,7 +3693,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
             CircularProgressIndicator(color: cs.primary, strokeWidth: 2.5),
             const SizedBox(height: 16),
             Text(
-              'Besin değerleri hesaplanıyor...',
+              context.tr('Besin değerleri hesaplanıyor...'),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -3412,7 +3702,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              'AI tarifinizi analiz ediyor',
+              context.tr('AI tarifinizi analiz ediyor'),
               style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
           ],
@@ -3433,7 +3723,12 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     final fiber = scaled.fiber;
     final score = r.confidenceScore;
     final displayedScore = score < 85 ? 85 : (score > 100 ? 100 : score);
-    final confReason = r.confidenceReason ?? '';
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final confReason = isTr
+        ? (r.confidenceReason ?? '')
+        : (r.confidenceReasonEn != null && r.confidenceReasonEn!.isNotEmpty
+            ? r.confidenceReasonEn!
+            : (r.confidenceReason ?? ''));
     final minKcal = r.alternativeMin.toInt();
     final maxKcal = r.alternativeMax.toInt();
     final porsAcik = r.portionDescription ?? '';
@@ -3451,7 +3746,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
       void addIf(String label, double val, String unit, {int dec = 1}) {
         final scaledVal = val * factor;
         if (scaledVal > 0.01) {
-          detailsList.add(_infoRow(context, label, '${scaledVal.toStringAsFixed(dec)} $unit'));
+          detailsList.add(_infoRow(context, context.tr(label), '${scaledVal.toStringAsFixed(dec)} $unit'));
         }
       }
       addIf('Doymuş Yağ', n65.satFat, 'g');
@@ -3507,7 +3802,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                 border: Border.all(color: confColor.withValues(alpha: 0.4)),
               ),
               child: Text(
-                'Doğruluk: %$displayedScore',
+                context.tr('Doğruluk: %{}').replaceFirst('{}', displayedScore.toString()),
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -3521,7 +3816,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
         Text(
           porsAcik.isNotEmpty
               ? porsAcik
-              : (portion > 0 ? 'Porsiyon: ~${portion.toStringAsFixed(0)}g' : ''),
+              : (portion > 0 ? context.tr('Porsiyon: ~{}g').replaceFirst('{}', portion.toStringAsFixed(0)) : ''),
           style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: 10),
@@ -3535,26 +3830,26 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
         ),
         if (minKcal > 0 && maxKcal > 0)
           Text(
-            '~$minKcal – $maxKcal kcal aralığı',
+            context.tr('~{} – {} kcal aralığı').replaceFirst('{}', minKcal.toString()).replaceFirst('{}', maxKcal.toString()),
             style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
           ),
         const SizedBox(height: 10),
         Row(
           children: [
-            _MacroPill(label: 'Protein', value: '${protein.toStringAsFixed(1)}g', color: const Color(0xFF7EE787)),
+            _MacroPill(label: context.tr('Protein'), value: '${protein.toStringAsFixed(1)}g', color: const Color(0xFF7EE787)),
             const SizedBox(width: 8),
-            _MacroPill(label: 'Karb', value: '${carbs.toStringAsFixed(1)}g', color: const Color(0xFF58A6FF)),
+            _MacroPill(label: context.tr('Karb'), value: '${carbs.toStringAsFixed(1)}g', color: const Color(0xFF58A6FF)),
             const SizedBox(width: 8),
-            _MacroPill(label: 'Yağ', value: '${fat.toStringAsFixed(1)}g', color: const Color(0xFFF0A500)),
+            _MacroPill(label: context.tr('Yağ'), value: '${fat.toStringAsFixed(1)}g', color: const Color(0xFFF0A500)),
             const SizedBox(width: 8),
-            _MacroPill(label: 'Lif', value: '${fiber.toStringAsFixed(1)}g', color: const Color(0xFFD2A8FF)),
+            _MacroPill(label: context.tr('Lif'), value: '${fiber.toStringAsFixed(1)}g', color: const Color(0xFFD2A8FF)),
           ],
         ),
         const SizedBox(height: 14),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            title: const Text('Detaylar', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            title: Text(context.tr('Detaylar'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
             tilePadding: EdgeInsets.zero,
             childrenPadding: const EdgeInsets.only(bottom: 14),
             children: [
@@ -3569,7 +3864,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   children: detailsList.isNotEmpty
                       ? detailsList
                       : [
-                          Text('Mikro besin verisi bulunamadı.',
+                          Text(context.tr('Mikro besin verisi bulunamadı.'),
                               style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))
                         ],
                 ),
@@ -3596,7 +3891,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Daha Fazla Detay Eklenebilir',
+                        context.tr('Daha Fazla Detay Eklenebilir'),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -3607,7 +3902,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                       Text(
                         confReason.isNotEmpty
                             ? confReason
-                            : 'Girdiğiniz tarif çok kısa veya yetersiz olduğu için ortalama değerler hesaplanmıştır. Daha kesin sonuçlar için pişirme yöntemi, miktar veya marka belirterek detay ekleyebilirsiniz.',
+                            : context.tr('Girdiğiniz tarif çok kısa veya yetersiz olduğu için ortalama değerler hesaplanmıştır. Daha kesin sonuçlar için pişirme yöntemi, miktar veya marka belirterek detay ekleyebilirsiniz.'),
                         style: TextStyle(
                           fontSize: 12,
                           color: cs.onSurface,
@@ -3638,7 +3933,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
                 ),
                 const SizedBox(width: 10),
-                Text('Fotoğraf aranıyor...', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                Text(context.tr('Fotoğraf aranıyor...'), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
               ],
             ),
           )
@@ -3671,12 +3966,12 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bu fotoğrafı kullan?',
+                        context.tr('Bu fotoğrafı kullan?'),
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurface),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'İnternetten bulunan fotoğraf',
+                        context.tr('İnternetten bulunan fotoğraf'),
                         style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
                       ),
                     ],
@@ -3703,7 +3998,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
               child: OutlinedButton.icon(
                 onPressed: _askForMoreDetails,
                 icon: const Icon(Icons.add_comment_rounded, size: 16),
-                label: const Text('Hayır, Detay Ekle'),
+                label: Text(context.tr('Hayır, Detay Ekle')),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: cs.error,
                   side: BorderSide(color: cs.error.withValues(alpha: 0.4)),
@@ -3716,7 +4011,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
               child: FilledButton.icon(
                 onPressed: _saveResult,
                 icon: const Icon(Icons.check_rounded, size: 16),
-                label: const Text('Evet, Kaydet'),
+                label: Text(context.tr('Evet, Kaydet')),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),
                 ),
@@ -3914,11 +4209,37 @@ class _InAppCaptureScreenState extends State<_InAppCaptureScreen> {
   CameraController? _ctrl;
   bool _ready = false;
   bool _capturing = false;
+  bool _permissionGranted = false;
+  bool _checkingPermission = true;
 
   @override
   void initState() {
     super.initState();
-    _init();
+    _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    final status = await Permission.camera.status;
+    if (status.isGranted) {
+      if (mounted) {
+        setState(() {
+          _permissionGranted = true;
+          _checkingPermission = false;
+        });
+      }
+      _init();
+    } else {
+      final result = await Permission.camera.request();
+      if (mounted) {
+        setState(() {
+          _permissionGranted = result.isGranted;
+          _checkingPermission = false;
+        });
+      }
+      if (result.isGranted) {
+        _init();
+      }
+    }
   }
 
   Future<void> _init() async {
@@ -3955,6 +4276,60 @@ class _InAppCaptureScreenState extends State<_InAppCaptureScreen> {
   @override
   Widget build(BuildContext context) {
     final safe = MediaQuery.of(context).padding;
+
+    if (_checkingPermission) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    if (!_permissionGranted) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 64),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      context.tr('Barkod taramak için kamera izni vermeniz gerekmektedir.'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () async {
+                      openAppSettings();
+                    },
+                    child: Text(context.tr('Ayarlara Git')),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: safe.top + 12,
+              left: 12,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.55)),
+                  child: const Icon(Icons.close, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(

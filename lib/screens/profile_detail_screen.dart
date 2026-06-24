@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/daily_log.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/profile_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   final UserProfile profile;
@@ -71,7 +72,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Galeriden Seç'),
+              title: Text(context.tr('Galeriden Seç')),
               onTap: () {
                 Navigator.pop(ctx);
                 _pickImage(ImageSource.gallery);
@@ -79,7 +80,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Kameradan Çek'),
+              title: Text(context.tr('Kameradan Çek')),
               onTap: () {
                 Navigator.pop(ctx);
                 _pickImage(ImageSource.camera);
@@ -89,7 +90,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               ListTile(
                 leading: Icon(Icons.delete_outline,
                     color: Theme.of(context).colorScheme.error),
-                title: Text('Fotoğrafı Kaldır',
+                title: Text(context.tr('Fotoğrafı Kaldır'),
                     style: TextStyle(
                         color: Theme.of(context).colorScheme.error)),
                 onTap: () {
@@ -116,7 +117,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Profili Düzenle',
+            tooltip: context.tr('Profili Düzenle'),
             onPressed: () => _openEditSheet(context),
           ),
         ],
@@ -164,7 +165,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                         }
                       },
                       icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Bu Profili Aktif Et'),
+                      label: Text(context.tr('Bu Profili Aktif Et')),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -173,7 +174,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     FilledButton.icon(
                       onPressed: null,
                       icon: const Icon(Icons.check_circle),
-                      label: const Text('Aktif Profil'),
+                      label: Text(context.tr('Aktif Profil')),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: colorScheme.primaryContainer,
@@ -184,7 +185,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   OutlinedButton.icon(
                     onPressed: () => _openEditSheet(context),
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Profili Düzenle'),
+                    label: Text(context.tr('Profili Düzenle')),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
@@ -260,7 +261,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           const SizedBox(height: 8),
           if (isActive)
             Chip(
-              label: const Text('Aktif Profil'),
+              label: Text(context.tr('Aktif Profil')),
               avatar: const Icon(Icons.check_circle, size: 16),
               backgroundColor:
                   Theme.of(context).colorScheme.primaryContainer,
@@ -301,7 +302,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           color: Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 20),
-              Text('BMI Detayı',
+              Text(context.tr('BMI Detayı'),
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge
@@ -325,7 +326,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               const SizedBox(height: 24),
               if (bmi >= 18.5 && bmi < 25.0)
                 Text(
-                  '🎉 Tebrikler! BMI değeriniz normal aralıkta.',
+                  context.tr('🎉 Tebrikler! BMI değeriniz normal aralıkta.'),
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.green.shade700,
@@ -343,11 +344,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   Widget _buildBmiScale(BuildContext context, double bmi) {
     // Visual BMI scale bar
-    const segments = [
-      (0.0, 18.5, Colors.blue, 'Zayıf'),
-      (18.5, 25.0, Colors.green, 'Normal'),
-      (25.0, 30.0, Colors.amber, 'Fazla Kilolu'),
-      (30.0, 40.0, Colors.red, 'Obez'),
+    final segments = [
+      (0.0, 18.5, Colors.blue, context.tr('Zayıf')),
+      (18.5, 25.0, Colors.green, context.tr('Normal')),
+      (25.0, 30.0, Colors.amber, context.tr('Fazla Kilolu')),
+      (30.0, 40.0, Colors.red, context.tr('Obez')),
     ];
     const totalRange = 40.0;
     final clampedBmi = bmi.clamp(0.0, 40.0);
@@ -356,7 +357,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('BMI Skalası',
+        Text(context.tr('BMI Skalası'),
             style: Theme.of(context)
                 .textTheme
                 .labelLarge
@@ -404,10 +405,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   String _bmiCategory(double bmi) {
-    if (bmi < 18.5) return 'Zayıf';
-    if (bmi < 25) return 'Normal';
-    if (bmi < 30) return 'Fazla Kilolu';
-    return 'Obez';
+    if (bmi < 18.5) return context.tr('Zayıf');
+    if (bmi < 25) return context.tr('Normal');
+    if (bmi < 30) return context.tr('Fazla Kilolu');
+    return context.tr('Obez');
   }
 
   Widget _buildBmiCard(BuildContext context, UserProfile profile) {
@@ -421,19 +422,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
     if (bmi < 18.5) {
       bmiColor = Colors.blue;
-      bmiLabel = 'Zayıf — Kilo almanız önerilir';
+      bmiLabel = context.tr('Zayıf — Kilo almanız önerilir');
       bmiProgress = bmi / 18.5 * 0.25;
     } else if (bmi < 25) {
       bmiColor = Colors.green;
-      bmiLabel = 'Normal — Sağlıklı kilodayı!';
+      bmiLabel = context.tr('Normal — Sağlıklı kilodayı!');
       bmiProgress = 0.25 + (bmi - 18.5) / 6.5 * 0.25;
     } else if (bmi < 30) {
       bmiColor = Colors.amber;
-      bmiLabel = 'Fazla Kilolu — Dikkat edilmeli';
+      bmiLabel = context.tr('Fazla Kilolu — Dikkat edilmeli');
       bmiProgress = 0.5 + (bmi - 25) / 5 * 0.25;
     } else {
       bmiColor = Colors.red;
-      bmiLabel = 'Obez — Doktor tavsiyesi önerilir';
+      bmiLabel = context.tr('Obez — Doktor tavsiyesi önerilir');
       bmiProgress = (0.75 + (bmi - 30) / 10 * 0.25).clamp(0.75, 1.0);
     }
 
@@ -455,7 +456,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 Icon(Icons.monitor_weight_outlined, color: bmiColor),
                 const SizedBox(width: 8),
                 Text(
-                  'BMI Değerlendirmesi',
+                  context.tr('BMI Değerlendirmesi'),
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -549,24 +550,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Profil Bilgileri',
+            Text(context.tr('Profil Bilgileri'),
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _infoRow(context, Icons.cake_outlined, 'Yaş', '${profile.age} yaş'),
-            _infoRow(context, Icons.height, 'Boy', '${profile.height.toStringAsFixed(0)} cm'),
-            _infoRow(context, Icons.monitor_weight_outlined, 'Kilo',
-                '${profile.weight.toStringAsFixed(1)} kg'),
-            _infoRow(context, Icons.flag_outlined, 'Hedef', profile.goalLabel),
-            _infoRow(
-                context, Icons.directions_run, 'Aktivite', profile.activityLabel),
-            _infoRow(
-                context,
-                profile.gender == Gender.male ? Icons.male : Icons.female,
-                'Cinsiyet',
-                profile.gender == Gender.male ? 'Erkek' : 'Kadın'),
+            _infoRow(context, Icons.cake_outlined, context.tr('Yaş'), profile.age.toString()),
+            _infoRow(context, Icons.height, context.tr('Boy'), context.tr('{} cm').replaceFirst('{}', profile.height.toStringAsFixed(0))),
+            _infoRow(context, Icons.monitor_weight_outlined, context.tr('Kilo'), context.tr('{} kg').replaceFirst('{}', profile.weight.toStringAsFixed(1))),
+            _infoRow(context, Icons.flag_outlined, context.tr('Hedef'), context.tr(profile.goalLabel)),
+            _infoRow(context, Icons.directions_run, context.tr('Aktivite'), context.tr(profile.activityLabel)),
+            _infoRow(context, profile.gender == Gender.male ? Icons.male : Icons.female, context.tr('Cinsiyet'), profile.gender == Gender.male ? context.tr('Erkek') : context.tr('Kadın')),
           ],
         ),
       ),
@@ -580,7 +575,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Metabolizma',
+            Text(context.tr('Metabolizma'),
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -594,7 +589,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     'BMR',
                     '${profile.bmr.toStringAsFixed(0)}',
                     'kcal/gün',
-                    'Bazal Metabolizma Hızı — Hiç hareket etmeseydiniz vücudunuzun hayatta kalmak için yakacağı minimum kalori miktarıdır.',
+                    context.tr('Bazal Metabolizma Hızı — Hiç hareket etmeseydiniz vücudunuzun hayatta kalmak için yakacağı minimum kalori miktarıdır.'),
                     Icons.local_fire_department_outlined,
                   ),
                 ),
@@ -605,7 +600,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     'TDEE',
                     '${profile.tdee.toStringAsFixed(0)}',
                     'kcal/gün',
-                    'Günlük Toplam Enerji Harcaması — Aktivite seviyeniz dahil günde yaktığınız toplam kalori miktarıdır. Kalori hedefiniz bu değere göre hesaplanır.',
+                    context.tr('Günlük Toplam Enerji Harcaması — Aktivite seviyeniz dahil günde yaktığınız toplam kalori miktarıdır. Kalori hedefiniz bu değere göre hesaplanır.'),
                     Icons.bolt_outlined,
                   ),
                 ),
@@ -627,7 +622,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Günlük Makro Hedefleri',
+              context.tr('Günlük Makro Hedefleri'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onPrimaryContainer,
@@ -636,14 +631,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _macroChip(context, 'Kalori',
+                _macroChip(context, context.tr('Kalori'),
                     '${profile.calorieGoal.toStringAsFixed(0)} kcal'),
-                _macroChip(context, 'Protein',
+                _macroChip(context, context.tr('Protein'),
                     '${profile.proteinGoal.toStringAsFixed(0)}g'),
-                _macroChip(context, 'Karb.',
+                _macroChip(context, context.tr('Karb.'),
                     '${profile.carbGoal.toStringAsFixed(0)}g'),
-                _macroChip(
-                    context, 'Yağ', '${profile.fatGoal.toStringAsFixed(0)}g'),
+                _macroChip(context, context.tr('Yağ'), '${profile.fatGoal.toStringAsFixed(0)}g'),
               ],
             ),
           ],
@@ -662,7 +656,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Son 7 Gün Kalori',
+            Text(context.tr('Son 7 Gün Kalori'),
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -683,7 +677,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                             return const SizedBox.shrink();
                           }
                           final date = _recentLogs[idx].date;
-                          const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+                          final days = [context.tr('Pzt'), context.tr('Sal'), context.tr('Çar'), context.tr('Per'), context.tr('Cum'), context.tr('Cmt'), context.tr('Paz')];
                           return Text(
                             days[date.weekday - 1],
                             style: const TextStyle(fontSize: 10),
@@ -754,7 +748,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Bu Haftanın Özeti',
+            Text(context.tr('Bu Haftanın Özeti'),
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -763,21 +757,21 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             _infoRow(
               context,
               Icons.local_fire_department_outlined,
-              'Ortalama Kalori',
+              context.tr('Ortalama Kalori'),
               '${avgCalories.toStringAsFixed(0)} kcal/gün',
             ),
             if (topFood != null)
               _infoRow(
                 context,
                 Icons.restaurant_outlined,
-                'En Çok Yenen',
+                context.tr('En Çok Yenen'),
                 topFood,
               ),
             _infoRow(
               context,
               Icons.calendar_today_outlined,
-              'Kayıt Günü',
-              '${_recentLogs.length} gün',
+              context.tr('Kayıt Günü'),
+              context.tr('{} gün').replaceFirst('{}', _recentLogs.length.toString()),
             ),
           ],
         ),
@@ -794,7 +788,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('İstatistikler',
+            Text(context.tr('İstatistikler'),
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium

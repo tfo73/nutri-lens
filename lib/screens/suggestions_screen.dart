@@ -7,6 +7,9 @@ import '../providers/profile_provider.dart';
 import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
+import '../services/saved_foods_service.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/recipes_en.dart';
 import 'coach_screen.dart';
 
 // ─── Öğün zamanı ─────────────────────────────────────────────────────────────
@@ -22,21 +25,21 @@ extension _PeriodX on _Period {
     return _Period.araOgun;
   }
 
-  String get baslik {
+  String baslik(BuildContext context) {
     switch (this) {
-      case _Period.kahvalti: return 'Günaydın!';
-      case _Period.ogle:     return 'Öğle Vakti';
-      case _Period.araOgun:  return 'Ara Öğün';
-      case _Period.aksam:    return 'Akşam Yemeği';
+      case _Period.kahvalti: return context.tr('Günaydın!');
+      case _Period.ogle:     return context.tr('Öğle Vakti');
+      case _Period.araOgun:  return context.tr('Ara Öğün');
+      case _Period.aksam:    return context.tr('Akşam Yemeği');
     }
   }
 
-  String get altyazi {
+  String altyazi(BuildContext context) {
     switch (this) {
-      case _Period.kahvalti: return 'Güne enerjik başla';
-      case _Period.ogle:     return 'Öğle arası güç yemeği';
-      case _Period.araOgun:  return 'Enerjini canlı tut';
-      case _Period.aksam:    return 'Güne güzel bir kapanış';
+      case _Period.kahvalti: return context.tr('Güne enerjik başla');
+      case _Period.ogle:     return context.tr('Öğle arası güç yemeği');
+      case _Period.araOgun:  return context.tr('Enerjini canlı tut');
+      case _Period.aksam:    return context.tr('Güne güzel bir kapanış');
     }
   }
 
@@ -46,6 +49,15 @@ extension _PeriodX on _Period {
       case _Period.ogle:     return 'ogle';
       case _Period.araOgun:  return 'araOgun';
       case _Period.aksam:    return 'aksam';
+    }
+  }
+
+  String suggestionsTitle(BuildContext context) {
+    switch (this) {
+      case _Period.kahvalti: return context.tr('Kahvaltı');
+      case _Period.ogle:     return context.tr('Öğle');
+      case _Period.araOgun:  return context.tr('Ara Öğün');
+      case _Period.aksam:    return context.tr('Akşam');
     }
   }
 }
@@ -188,6 +200,38 @@ class _Tarif {
     required this.malzemeler,
     required this.adimlar,
   });
+}
+
+extension _TarifLocalizer on _Tarif {
+  String localizedAd(BuildContext context) {
+    if (AppLocalizations.of(context).isTurkish) return ad;
+    return enRecipes[ad]?.ad ?? ad;
+  }
+
+  String localizedAciklama(BuildContext context) {
+    if (AppLocalizations.of(context).isTurkish) return aciklama;
+    return enRecipes[ad]?.aciklama ?? aciklama;
+  }
+
+  List<String> localizedEtiketler(BuildContext context) {
+    if (AppLocalizations.of(context).isTurkish) return etiketler;
+    return enRecipes[ad]?.etiketler ?? etiketler;
+  }
+
+  List<String> localizedDiyetler(BuildContext context) {
+    if (AppLocalizations.of(context).isTurkish) return diyetler;
+    return enRecipes[ad]?.diyetler ?? diyetler;
+  }
+
+  List<String> localizedMalzemeler(BuildContext context) {
+    if (AppLocalizations.of(context).isTurkish) return malzemeler;
+    return enRecipes[ad]?.malzemeler ?? malzemeler;
+  }
+
+  List<String> localizedAdimlar(BuildContext context) {
+    if (AppLocalizations.of(context).isTurkish) return adimlar;
+    return enRecipes[ad]?.adimlar ?? adimlar;
+  }
 }
 
 // ─── Tarif veritabanı ─────────────────────────────────────────────────────────
@@ -700,9 +744,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
           onTap: (index) {
             _tabController.animateTo(index, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
           },
-          tabs: const [
-            Tab(text: 'Günlük Tarifler'),
-            Tab(text: 'Beslenme Koçu'),
+          tabs: [
+            Tab(text: context.tr('Günlük Tarifler')),
+            Tab(text: context.tr('Beslenme Koçu')),
           ],
           labelStyle: const TextStyle(fontWeight: FontWeight.w700),
           indicatorWeight: 3,
@@ -765,9 +809,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     }
 
     // Dynamic Section Titles
-    String lunchTitle = 'Hızlı ${currentPeriod.baslik.replaceAll('!', '')}';
-    String relaxationTitle = (hour >= 5 && hour < 12) ? 'Sabah Dinçliği' : 'Akşam Dinlenmesi';
-    String relaxationSub = (hour >= 5 && hour < 12) ? 'Güne zinde başlamak için öneriler.' : 'Kaliteli bir uyku için hafif seçimler.';
+    String lunchTitle = context.tr('Hızlı {}').replaceFirst('{}', currentPeriod.suggestionsTitle(context));
+    String relaxationTitle = (hour >= 5 && hour < 12) ? context.tr('Sabah Dinçliği') : context.tr('Akşam Dinlenmesi');
+    String relaxationSub = (hour >= 5 && hour < 12) ? context.tr('Güne zinde başlamak için öneriler.') : context.tr('Kaliteli bir uyku için hafif seçimler.');
 
     // Filter recipes based on time and status
     // ─── Sağlık ve Tercih Filtreleme ──────────────────────────────────────────
@@ -821,12 +865,12 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
         _buildCoachHeaderCard(context, cs),
         
         if (safeRecipes.length < _db.length)
-          _buildInfoBanner('Sağlık profilin için en uygun tarifleri en başa taşıdık.'),
+          _buildInfoBanner(context.tr('Sağlık profilin için en uygun tarifleri en başa taşıdık.')),
         
         const SizedBox(height: 24),
         
         // Metabolism Boosters Section
-        _buildSectionHeader('Metabolizma Hızlandırıcılar', 'Enerjini zirveye taşıyacak seçimler.'),
+        _buildSectionHeader(context.tr('Metabolizma Hızlandırıcılar'), context.tr('Enerjini zirveye taşıyacak seçimler.')),
         const SizedBox(height: 16),
         _HorizontalScrollSection(
           height: 100,
@@ -836,7 +880,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
         const SizedBox(height: 32),
         
         // Main Meal Section (Dynamic Title)
-        _buildSectionHeader(lunchTitle, gaps.isNotEmpty ? 'Eksik olduğun besin değerlerine göre özel seçildi.' : (isOverGoal ? 'Kalori hedefini aştığın için hafif seçenekler.' : 'Hızlı ve sağlıklı tarifler.')),
+        _buildSectionHeader(lunchTitle, gaps.isNotEmpty ? context.tr('Eksik olduğun besin değerlerine göre özel seçildi.') : (isOverGoal ? context.tr('Kalori hedefini aştığın için hafif seçenekler.') : context.tr('Hızlı ve sağlıklı tarifler.'))),
         const SizedBox(height: 16),
         _HorizontalScrollSection(
           height: 240,
@@ -872,9 +916,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Öğün Seçin', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            Text(context.tr('Öğün Seçin'), style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            const Text('Bu tarifi hangi öğüne eklemek istersiniz?', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            Text(context.tr('Bu tarifi hangi öğüne eklemek istersiniz?'), style: TextStyle(fontSize: 14, color: Colors.grey)),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -901,15 +945,27 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
       default: mealColor = const Color(0xFF4CD964);
     }
 
+    String capitalize(String s) {
+      if (s.isEmpty) return s;
+      return s.split(' ').map((word) {
+        if (word.isEmpty) return '';
+        return '${word[0].toUpperCase()}${word.substring(1)}';
+      }).join(' ');
+    }
+
+    final displayLabel = capitalize(context.tr(type));
+
     return GestureDetector(
       onTap: () {
         final nutrition = context.read<NutritionProvider>();
-        nutrition.addFoodEntry(_foodEntryFromTarif(r, type));
+        nutrition.addFoodEntry(_foodEntryFromTarif(r, type, context));
         Navigator.pop(context); // Close selection
         Navigator.pop(context); // Close details
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${r.ad} tüm besin değerleriyle $type öğününe eklendi!'),
+            content: Text(context.tr('{} tüm besin değerleriyle {} öğününe eklendi!')
+                .replaceFirst('{}', r.localizedAd(context))
+                .replaceFirst('{}', displayLabel)),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Theme.of(context).colorScheme.primary,
           ),
@@ -927,7 +983,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
             child: Icon(icon, color: mealColor, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(displayLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -1019,12 +1075,12 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     return base;
   }
 
-  FoodEntry _foodEntryFromTarif(_Tarif r, String mealType) {
+  FoodEntry _foodEntryFromTarif(_Tarif r, String mealType, BuildContext context) {
     final nutritionData = _getEstimatedNutrition(r);
 
     return FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: r.ad,
+      name: r.localizedAd(context),
       portionSize: 100.0,
       portionUnit: 'g (1 porsiyon)',
       nutritionData: nutritionData,
@@ -1071,8 +1127,8 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'BESLENME KOÇU',
+          Text(
+            context.tr('BESLENME KOÇU'),
             style: TextStyle(
               color: Colors.white70,
               fontSize: 11,
@@ -1110,7 +1166,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
             ),
-            child: const Text('Hemen Gör', style: TextStyle(fontWeight: FontWeight.w800)),
+            child: Text(context.tr('Hemen Gör'), style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -1126,24 +1182,24 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     final hour = DateTime.now().hour;
 
     // Time-based greetings
-    String title = 'Günaydın, canlanma vakti!';
-    if (hour >= 12 && hour < 17) title = 'Tünaydın, enerji lazım!';
-    if (hour >= 17 && hour < 21) title = 'İyi akşamlar, hafifleyelim!';
-    if (hour >= 21 || hour < 6) title = 'İyi geceler, dinlenme vakti!';
+    String title = context.tr('Günaydın, canlanma vakti!');
+    if (hour >= 12 && hour < 17) title = context.tr('Tünaydın, enerji lazım!');
+    if (hour >= 17 && hour < 21) title = context.tr('İyi akşamlar, hafifleyelim!');
+    if (hour >= 21 || hour < 6) title = context.tr('İyi geceler, dinlenme vakti!');
 
     // Logic for description
-    String description = 'Senin için en sağlıklı önerileri hazırladım. Bugün hedeflerine ulaşmak için harika bir gün!';
+    String description = context.tr('Senin için en sağlıklı önerileri hazırladım. Bugün hedeflerine ulaşmak için harika bir gün!');
 
     if (stats.calories > calorieGoal && calorieGoal > 0) {
-      description = 'Bugün kalori hedefini biraz aşmışsın. Akşam yemeğinde hafif bir salata veya sebze yemeği tercih ederek dengeleyebiliriz.';
+      description = context.tr('Bugün kalori hedefini biraz aşmışsın. Akşam yemeğinde hafif bir salata veya sebze yemeği tercih ederek dengeleyebiliriz.');
     } else if (steps > 10000) {
-      description = 'Harika bir hareketlilik! 10.000 adımı geçtin. Kaslarını desteklemek için protein ağırlıklı bir ara öğün harika olur.';
+      description = context.tr('Harika bir hareketlilik! 10.000 adımı geçtin. Kaslarını desteklemek için protein ağırlıklı bir ara öğün harika olur.');
     } else if (stats.protein < (profile?.proteinGoal ?? 0) * 0.5 && stats.calories > 0) {
-      description = 'Bugün protein alımın biraz düşük kalmış. Kas sağlığın için bir sonraki öğününde protein kaynaklarına yer vermeni öneririm.';
+      description = context.tr('Bugün protein alımın biraz düşük kalmış. Kas sağlığın için bir sonraki öğününde protein kaynaklarına yer vermeni öneririm.');
     } else if (hour < 10 && stats.calories == 0) {
-      description = 'Güne zinde başlamak için besleyici bir kahvaltıya ne dersin? Metabolizmanı ateşleyecek önerilerim aşağıda.';
+      description = context.tr('Güne zinde başlamak için besleyici bir kahvaltıya ne dersin? Metabolizmanı ateşleyecek önerilerim aşağıda.');
     } else if (nutrition.todayLog.waterIntakeMl < 1000) {
-      description = 'Bugün su içmeyi biraz ihmal etmiş gibisin. Vücudunun nem dengesi için hemen bir bardak su içmeye ne dersin?';
+      description = context.tr('Bugün su içmeyi biraz ihmal etmiş gibisin. Vücudunun nem dengesi için hemen bir bardak su içmeye ne dersin?');
     }
 
     return _CoachContent(title, description);
@@ -1188,13 +1244,13 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    r.ad,
+                    r.localizedAd(context),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   Text(
-                    r.aciklama,
+                    r.localizedAciklama(context),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
@@ -1241,13 +1297,13 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(r.ad, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(r.localizedAd(context), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _miniTag('KARB', Colors.blue),
+                      _miniTag(context.tr('KARB'), Colors.blue),
                       const SizedBox(width: 4),
-                      _miniTag('PRO', Colors.green),
+                      _miniTag(context.tr('PRO'), Colors.green),
                     ],
                   ),
                 ],
@@ -1293,8 +1349,8 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(r.ad, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(r.aciklama, style: TextStyle(fontSize: 11, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(r.localizedAd(context), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(r.localizedAciklama(context), style: TextStyle(fontSize: 11, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -1305,7 +1361,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
   }
 
   void _showRecipeDetails(BuildContext context, _Tarif r) {
-    final entry = _foodEntryFromTarif(r, 'ara öğün');
+    final entry = _foodEntryFromTarif(r, 'ara öğün', context);
     final microsMap = _getMicrosMap(entry.nutritionData);
 
     showModalBottomSheet(
@@ -1342,18 +1398,61 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                     top: 12, right: 12,
                     child: StatefulBuilder(
                       builder: (context, setState) {
-                        final nutrition = context.watch<NutritionProvider>();
-                        final isFav = nutrition.isFavorite(r.ad);
-                        return GestureDetector(
-                          onTap: () {
-                            nutrition.toggleFavoriteMeal(_foodEntryFromTarif(r, 'ara öğün'));
-                            setState(() {});
+                        final name = r.localizedAd(context);
+                        return FutureBuilder<bool>(
+                          future: SavedFoodsService.isSaved(name),
+                          builder: (context, snapshot) {
+                            final isFav = snapshot.data ?? false;
+                            return GestureDetector(
+                              onTap: () async {
+                                if (isFav) {
+                                  await SavedFoodsService.remove(name);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(context.tr('Kayıtlı yiyeceklerden kaldırıldı')),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  final entry = _foodEntryFromTarif(r, 'ara öğün', context);
+                                  final food = SavedFood(
+                                    id: name,
+                                    name: name,
+                                    portionGrams: entry.portionSize,
+                                    nutritionPer100g: entry.nutritionData,
+                                    sources: const ['Geçmiş'],
+                                    savedAt: DateTime.now(),
+                                    imagePath: entry.imagePath,
+                                  );
+                                  await SavedFoodsService.save(food);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(context.tr('Kayıtlı yiyeceklere eklendi')),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                                setState(() {});
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                ),
+                                child: Icon(
+                                  isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                  color: isFav ? r.renk : Colors.grey,
+                                  size: 24,
+                                ),
+                              ),
+                            );
                           },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]),
-                            child: Icon(isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: isFav ? r.renk : Colors.grey, size: 24),
-                          ),
                         );
                       }
                     ),
@@ -1368,9 +1467,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(r.ad, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                        Text(r.localizedAd(context), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 4),
-                        Text(r.aciklama, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                        Text(r.localizedAciklama(context), style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -1385,13 +1484,13 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _infoChip(Icons.timer_outlined, '${r.dakika} dk'),
-                  _infoChip(Icons.local_fire_department_outlined, r.etiketler.first),
-                  _infoChip(Icons.eco_outlined, r.diyetler.first),
+                  _infoChip(Icons.timer_outlined, '${r.dakika} ${context.tr('dk')}'),
+                  _infoChip(Icons.local_fire_department_outlined, r.localizedEtiketler(context).first),
+                  _infoChip(Icons.eco_outlined, r.localizedDiyetler(context).first),
                 ],
               ),
               const SizedBox(height: 32),
-              const Text('Besin Değerleri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Text(context.tr('Besin Değerleri'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(20),
@@ -1405,10 +1504,10 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _macroItem('Protein', '${r.protein}g', const Color(0xFF7EE787)),
-                        _macroItem('Karb', '${r.karb}g', const Color(0xFF58A6FF)),
-                        _macroItem('Yağ', '${r.yag}g', const Color(0xFFFFA726)),
-                        _macroItem('Lif', '${r.lif}g', const Color(0xFFBC8CF2)),
+                        _macroItem(context.tr('Protein'), '${r.protein}g', const Color(0xFF7EE787)),
+                        _macroItem(context.tr('Karb'), '${r.karb}g', const Color(0xFF58A6FF)),
+                        _macroItem(context.tr('Yağ'), '${r.yag}g', const Color(0xFFFFA726)),
+                        _macroItem(context.tr('Lif'), '${r.lif}g', const Color(0xFFBC8CF2)),
                       ],
                     ),
                     if (microsMap.isNotEmpty) ...[
@@ -1425,9 +1524,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('Malzemeler', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Text(context.tr('Malzemeler'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
-              ...r.malzemeler.map((m) => Padding(
+              ...r.localizedMalzemeler(context).map((m) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
@@ -1438,9 +1537,9 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                 ),
               )),
               const SizedBox(height: 32),
-              const Text('Hazırlanışı', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Text(context.tr('Hazırlanışı'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
-              ...r.adimlar.asMap().entries.map((entry) => Padding(
+              ...r.localizedAdimlar(context).asMap().entries.map((entry) => Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1468,7 +1567,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: const Text('Tarifi Ekle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  child: Text(context.tr('Tarifi Ekle'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 ),
               ),
               const SizedBox(height: 40),
@@ -1493,64 +1592,64 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     }
 
     // Yağlar & Kolesterol
-    addIfValid('Şeker', nd.sugar, 'g');
-    addIfValid('Doymuş Yağ', nd.saturatedFat, 'g');
-    addIfValid('Tekli Doymamış Yağ', nd.monoFat, 'g');
-    addIfValid('Çoklu Doymamış Yağ', nd.polyFat, 'g');
-    addIfValid('Trans Yağ', nd.transFat, 'g');
-    addIfValid('Kolesterol', nd.cholesterol, 'mg');
+    addIfValid(context.tr('Şeker'), nd.sugar, 'g');
+    addIfValid(context.tr('Doymuş Yağ'), nd.saturatedFat, 'g');
+    addIfValid(context.tr('Tekli Doymamış Yağ'), nd.monoFat, 'g');
+    addIfValid(context.tr('Çoklu Doymamış Yağ'), nd.polyFat, 'g');
+    addIfValid(context.tr('Trans Yağ'), nd.transFat, 'g');
+    addIfValid(context.tr('Kolesterol'), nd.cholesterol, 'mg');
 
     // Mineraller
-    addIfValid('Selenyum', nd.selenium, 'µg');
-    addIfValid('Magnezyum', nd.magnesium, 'mg');
-    addIfValid('Demir', nd.iron, 'mg');
-    addIfValid('Çinko', nd.zinc, 'mg');
-    addIfValid('Kalsiyum', nd.calcium, 'mg');
-    addIfValid('Potasyum', nd.potassium, 'mg');
-    addIfValid('Sodyum', nd.sodium, 'mg');
-    addIfValid('Fosfor', nd.phosphorus, 'mg');
-    addIfValid('Bakır', nd.copper, 'mg');
-    addIfValid('Manganez', nd.manganese, 'mg');
+    addIfValid(context.tr('Selenyum'), nd.selenium, 'µg');
+    addIfValid(context.tr('Magnezyum'), nd.magnesium, 'mg');
+    addIfValid(context.tr('Demir'), nd.iron, 'mg');
+    addIfValid(context.tr('Çinko'), nd.zinc, 'mg');
+    addIfValid(context.tr('Kalsiyum'), nd.calcium, 'mg');
+    addIfValid(context.tr('Potasyum'), nd.potassium, 'mg');
+    addIfValid(context.tr('Sodyum'), nd.sodium, 'mg');
+    addIfValid(context.tr('Fosfor'), nd.phosphorus, 'mg');
+    addIfValid(context.tr('Bakır'), nd.copper, 'mg');
+    addIfValid(context.tr('Manganez'), nd.manganese, 'mg');
 
     // Vitaminler
-    addIfValid('A Vitamini', nd.vitaminA, 'µg');
-    addIfValid('C Vitamini', nd.vitaminC, 'mg');
-    addIfValid('D Vitamini', nd.vitaminD, 'µg');
-    addIfValid('E Vitamini', nd.vitaminE, 'mg');
-    addIfValid('K Vitamini', nd.vitaminK, 'µg');
-    addIfValid('B12 Vitamini', nd.vitaminB12, 'µg');
-    addIfValid('B1 Vitamini', nd.thiamine, 'mg');
-    addIfValid('B2 Vitamini', nd.riboflavin, 'mg');
-    addIfValid('B3 Vitamini', nd.niacin, 'mg');
-    addIfValid('B5 Vitamini', nd.pantothenic, 'mg');
-    addIfValid('B6 Vitamini', nd.vitaminB6, 'mg');
-    addIfValid('Folat', nd.folate, 'µg');
-    addIfValid('Kolin', nd.choline, 'mg');
-    addIfValid('Biyotin', nd.biotin, 'µg');
+    addIfValid(context.tr('A Vitamini'), nd.vitaminA, 'µg');
+    addIfValid(context.tr('C Vitamini'), nd.vitaminC, 'mg');
+    addIfValid(context.tr('D Vitamini'), nd.vitaminD, 'µg');
+    addIfValid(context.tr('E Vitamini'), nd.vitaminE, 'mg');
+    addIfValid(context.tr('K Vitamini'), nd.vitaminK, 'µg');
+    addIfValid(context.tr('B12 Vitamini'), nd.vitaminB12, 'µg');
+    addIfValid(context.tr('B1 Vitamini'), nd.thiamine, 'mg');
+    addIfValid(context.tr('B2 Vitamini'), nd.riboflavin, 'mg');
+    addIfValid(context.tr('B3 Vitamini'), nd.niacin, 'mg');
+    addIfValid(context.tr('B5 Vitamini'), nd.pantothenic, 'mg');
+    addIfValid(context.tr('B6 Vitamini'), nd.vitaminB6, 'mg');
+    addIfValid(context.tr('Folat'), nd.folate, 'µg');
+    addIfValid(context.tr('Kolin'), nd.choline, 'mg');
+    addIfValid(context.tr('Biyotin'), nd.biotin, 'µg');
 
     // Yağ Asitleri
-    addIfValid('Omega-3', nd.omega3, 'g');
-    addIfValid('Omega-6', nd.omega6, 'g');
-    addIfValid('ALA', nd.ala, 'g');
-    addIfValid('EPA', nd.epa, 'g');
-    addIfValid('DHA', nd.dha, 'g');
+    addIfValid(context.tr('Omega-3'), nd.omega3, 'g');
+    addIfValid(context.tr('Omega-6'), nd.omega6, 'g');
+    addIfValid(context.tr('ALA'), nd.ala, 'g');
+    addIfValid(context.tr('EPA'), nd.epa, 'g');
+    addIfValid(context.tr('DHA'), nd.dha, 'g');
 
     // Amino Asitler
-    addIfValid('Triptofan', nd.tryptophan, 'g');
-    addIfValid('Treonin', nd.threonine, 'g');
-    addIfValid('İzolösin', nd.isoleucine, 'g');
-    addIfValid('Lösin', nd.leucine, 'g');
-    addIfValid('Lisin', nd.lysine, 'g');
-    addIfValid('Metiyonin', nd.methionine, 'g');
-    addIfValid('Fenilalanin', nd.phenylalanine, 'g');
-    addIfValid('Valin', nd.valine, 'g');
-    addIfValid('Histidin', nd.histidine, 'g');
+    addIfValid(context.tr('Triptofan'), nd.tryptophan, 'g');
+    addIfValid(context.tr('Treonin'), nd.threonine, 'g');
+    addIfValid(context.tr('İzolösin'), nd.isoleucine, 'g');
+    addIfValid(context.tr('Lösin'), nd.leucine, 'g');
+    addIfValid(context.tr('Lisin'), nd.lysine, 'g');
+    addIfValid(context.tr('Metiyonin'), nd.methionine, 'g');
+    addIfValid(context.tr('Fenilalanin'), nd.phenylalanine, 'g');
+    addIfValid(context.tr('Valin'), nd.valine, 'g');
+    addIfValid(context.tr('Histidin'), nd.histidine, 'g');
 
     // Karotenoidler
-    addIfValid('Beta-Karoten', nd.betaCarotene, 'µg');
-    addIfValid('Likopen', nd.lycopene, 'µg');
-    addIfValid('Lutein & Zeaksantin', nd.luteinZeaxanthin, 'µg');
-    addIfValid('Alfa-Karoten', nd.alphaCarotene, 'µg');
+    addIfValid(context.tr('Beta-Karoten'), nd.betaCarotene, 'µg');
+    addIfValid(context.tr('Likopen'), nd.lycopene, 'µg');
+    addIfValid(context.tr('Lutein & Zeaksantin'), nd.luteinZeaxanthin, 'µg');
+    addIfValid(context.tr('Alfa-Karoten'), nd.alphaCarotene, 'µg');
 
     return map;
   }
@@ -1663,12 +1762,17 @@ class _ExpandableMicrosSectionState extends State<_ExpandableMicrosSection> {
     final mineralsList = [
       'Kalsiyum', 'Demir', 'Magnezyum', 'Fosfor', 'Potasyum', 'Çinko', 'Bakır',
       'Manganez', 'Selenyum', 'Sodyum', 'İyot', 'Krom', 'Molibden', 'Florür',
+      'Calcium', 'Iron', 'Magnesium', 'Phosphorus', 'Potassium', 'Zinc', 'Copper',
+      'Manganese', 'Selenium', 'Sodium', 'Iodine', 'Chromium', 'Molybdenum', 'Fluoride'
     ];
 
     final vitaminsList = [
       'A Vitamini', 'C Vitamini', 'D Vitamini', 'E Vitamini', 'K Vitamini', 'B12 Vitamini',
       'B1 Vitamini', 'B2 Vitamini', 'B3 Vitamini', 'B5 Vitamini', 'B6 Vitamini',
       'Folat', 'Kolin', 'Biyotin',
+      'Vitamin A', 'Vitamin C', 'Vitamin D', 'Vitamin E', 'Vitamin K', 'Vitamin B12',
+      'Vitamin B1', 'Vitamin B2', 'Vitamin B3', 'Vitamin B5', 'Vitamin B6',
+      'Folate', 'Choline', 'Biotin'
     ];
 
     final Map<String, String> mineralsMap = {};
@@ -1678,7 +1782,7 @@ class _ExpandableMicrosSectionState extends State<_ExpandableMicrosSection> {
     widget.microsMap.forEach((k, v) {
       if (mineralsList.contains(k)) {
         mineralsMap[k] = v;
-      } else if (vitaminsList.contains(k) || k.contains('Vitamini')) {
+      } else if (vitaminsList.contains(k) || k.contains('Vitamini') || k.contains('Vitamin')) {
         vitaminsMap[k] = v;
       } else {
         othersMap[k] = v;
@@ -1744,7 +1848,7 @@ class _ExpandableMicrosSectionState extends State<_ExpandableMicrosSection> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Daha fazlası', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey)),
+              Text(context.tr('Daha fazlası'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey)),
               const SizedBox(width: 4),
               Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
             ],
@@ -1752,9 +1856,9 @@ class _ExpandableMicrosSectionState extends State<_ExpandableMicrosSection> {
         ),
         if (_isExpanded) ...[
           const SizedBox(height: 8),
-          buildCategory('MİNERALLER', const Color(0xFF58A6FF), mineralsMap),
-          buildCategory('VİTAMİNLER', const Color(0xFFFFA726), vitaminsMap),
-          buildCategory('DİĞER BESİNLER', const Color(0xFF7EE787), othersMap),
+          buildCategory(context.tr('MİNERALLER'), const Color(0xFF58A6FF), mineralsMap),
+          buildCategory(context.tr('VİTAMİNLER'), const Color(0xFFFFA726), vitaminsMap),
+          buildCategory(context.tr('DİĞER BESİNLER'), const Color(0xFF7EE787), othersMap),
         ],
       ],
     );
