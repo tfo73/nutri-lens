@@ -72,5 +72,20 @@
 	<string>Sesli yemek girişi yapabilmeniz için mikrofonunuza erişmemiz gerekiyor.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Yemek fotoğraflarını galeriden seçip analiz edebilmeniz için galerinize erişmemiz gerekiyor.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Egzersiz ve adım verilerinizi Apple Sağlık ile senkronize etmek için erişim izni gerekiyor.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Egzersiz ve adım verilerinizi Apple Sağlık uygulamasında güncellemek için erişim izni gerekiyor.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.808142209819-5qrdgha994qpksdqqibu26q939vsi8jm</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

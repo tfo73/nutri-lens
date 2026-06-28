@@ -300,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onEdit: () async {
         // Convert result to FoodEntry and open ManualEntryScreen
         final nd = result.nutritionPer100g;
-        final isTr = Localizations.localeOf(context).languageCode == 'tr';
+        final isTr = context.read<LanguageProvider>().isTurkish;
         final entry = FoodEntry(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: isTr ? result.foodName : (result.foodNameEn ?? result.foodName),

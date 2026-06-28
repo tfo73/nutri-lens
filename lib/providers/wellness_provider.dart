@@ -201,6 +201,11 @@ class WellnessProvider extends ChangeNotifier {
     }
   }
 
+  WellnessLog getLogForDate(DateTime date) {
+    final key = _dateKey(date);
+    return _logs[key] ?? WellnessLog(date: date);
+  }
+
   Future<void> setSleepScore(int score) async {
     await _save(today.copyWith(sleepScore: score));
   }

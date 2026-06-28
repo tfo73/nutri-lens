@@ -17,6 +17,7 @@ class ConfigService {
         'USDA_API_KEY': '',
         'EDAMAM_NUTRITION_KEY': '',
         'EDAMAM_RECIPE_KEY': '',
+        'PIXABAY_API_KEY': '',
       });
       await _rc.fetchAndActivate();
       _initialized = true;
@@ -49,5 +50,12 @@ class ConfigService {
       return const String.fromEnvironment('EDAMAM_RECIPE_KEY');
     }
     return _rc.getString('EDAMAM_RECIPE_KEY');
+  }
+
+  static String get pixabayKey {
+    if (Platform.isWindows) {
+      return const String.fromEnvironment('PIXABAY_API_KEY');
+    }
+    return _rc.getString('PIXABAY_API_KEY');
   }
 }

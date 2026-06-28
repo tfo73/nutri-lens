@@ -55,22 +55,55 @@ class NotificationService {
     return false;
   }
 
-  static Future<void> scheduleWaterReminder(bool enabled) async {
+  static Future<void> scheduleWaterReminder({
+    required bool enabled,
+    required bool breakfastEnabled,
+    required TimeOfDay breakfastTime,
+    required bool lunchEnabled,
+    required TimeOfDay lunchTime,
+    required bool dinnerEnabled,
+    required TimeOfDay dinnerTime,
+  }) async {
     for (var i = 100; i < 110; i++) {
       await _plugin.cancel(i);
     }
     if (!enabled) return;
 
-    const hours = [8, 10, 12, 14, 16, 18, 20];
-    for (var i = 0; i < hours.length; i++) {
+    int id = 100;
+    if (breakfastEnabled) {
+      final targetHour = (breakfastTime.hour + 1) % 24;
       await _scheduleDailyNotification(
-        id: 100 + i,
+        id: id++,
         channelId: _waterChannelId,
         channelName: 'Su Hatırlatıcısı',
         title: '💧 Su İçme Zamanı!',
         body: 'Günde en az 8 bardak su içmeyi unutma!',
-        hour: hours[i],
-        minute: 0,
+        hour: targetHour,
+        minute: breakfastTime.minute,
+      );
+    }
+    if (lunchEnabled) {
+      final targetHour = (lunchTime.hour + 1) % 24;
+      await _scheduleDailyNotification(
+        id: id++,
+        channelId: _waterChannelId,
+        channelName: 'Su Hatırlatıcısı',
+        title: '💧 Su İçme Zamanı!',
+        body: 'Günde en az 8 bardak su içmeyi unutma!',
+        hour: targetHour,
+        minute: lunchTime.minute,
+      );
+    }
+    if (dinnerEnabled) {
+      final targetHour = (dinnerTime.hour + 1) % 24;
+      await _scheduleDailyNotification(
+        id: id++,
+        channelId: _waterChannelId,
+        channelName: 'Su Hatırlatıcısı',
+        title: '💧 Su İçme Zamanı!',
+        body: 'Günde en az 8 bardak su içmeyi unutma!',
+        hour: targetHour,
+        minute: dinnerTime.minute,
       );
     }
   }
@@ -359,7 +392,15 @@ class NotificationService {
     await prefs.setInt('notif_dinner_minute', settings.dinnerTime.minute);
     await prefs.setBool('notif_summary', settings.summaryEnabled);
 
-    await scheduleWaterReminder(settings.waterEnabled);
+    await scheduleWaterReminder(
+      enabled: settings.waterEnabled,
+      breakfastEnabled: settings.breakfastEnabled,
+      breakfastTime: settings.breakfastTime,
+      lunchEnabled: settings.lunchEnabled,
+      lunchTime: settings.lunchTime,
+      dinnerEnabled: settings.dinnerEnabled,
+      dinnerTime: settings.dinnerTime,
+    );
     await scheduleMealReminder(
       breakfast: settings.breakfastEnabled,
       breakfastTime: settings.breakfastTime,

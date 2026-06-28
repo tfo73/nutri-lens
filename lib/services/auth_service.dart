@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthService {
   // Lazy — Windows'ta Firebase init olmadan erişilmez
@@ -82,8 +83,50 @@ class AuthService {
     if (!Platform.isIOS && !Platform.isMacOS) {
       return AuthResult.error('Apple girişi bu platformda desteklenmiyor.');
     }
-    // TODO: sign_in_with_apple paketi eklenince implement edilecek
-    return AuthResult.error('Apple girişi yakında eklenecek.');
+    
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final oAuthProvider = OAuthProvider('apple.com');
+      final AuthCredential firebaseCredential = oAuthProvider.credential(
+        idToken: credential.identityToken,
+        accessToken: credential.authorizationCode,
+      );
+
+      final userCred = await _auth.signInWithCredential(firebaseCredential);
+      final isNew = userCred.additionalUserInfo?.isNewUser ?? false;
+
+      if (!isNew) {
+        final onboardingDone = await _checkOnboardingComplete(
+          userCred.user!.uid,
+        );
+        return AuthResult.success(
+          user: userCred.user!,
+          isNewUser: false,
+          onboardingComplete: onboardingDone,
+        );
+      } else {
+        await _createUserDocument(userCred.user!);
+        return AuthResult.success(
+          user: userCred.user!,
+          isNewUser: true,
+          onboardingComplete: false,
+        );
+      }
+    } on PlatformException catch (e) {
+      return AuthResult.error(
+        'Kod: ${e.code} | Mesaj: ${e.message} | Detay: ${e.details}',
+      );
+    } on FirebaseAuthException catch (e) {
+      return AuthResult.error('Firebase: ${e.code} - ${e.message}');
+    } catch (e) {
+      return AuthResult.error('Hata: ${e.runtimeType} - ${e.toString()}');
+    }
   }
 
   // ── EMAIL KAYIT ───────────────────────────────────

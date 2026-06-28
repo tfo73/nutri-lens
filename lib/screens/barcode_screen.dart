@@ -37,7 +37,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
   Future<void> _checkPermission() async {
     final status = await Permission.camera.status;
-    if (status.isGranted) {
+    if (status.isGranted || status.isLimited || status.isRestricted) {
       if (mounted) {
         setState(() {
           _permissionGranted = true;
@@ -48,7 +48,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       final result = await Permission.camera.request();
       if (mounted) {
         setState(() {
-          _permissionGranted = result.isGranted;
+          _permissionGranted = result.isGranted || result.isLimited || result.isRestricted;
           _checkingPermission = false;
         });
       }

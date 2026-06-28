@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/saved_foods_service.dart';
+import '../services/config_service.dart';
 
 class FoodAnalysisResultSheet extends StatefulWidget {
   final FoodAnalysisResult result;
@@ -211,48 +212,39 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
   }
 
   Future<void> _fetchSuggestedImage(String foodName, String? foodNameEn) async {
+    final apiKey = ConfigService.pixabayKey;
+    if (apiKey.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _imageSearching = false;
+          _suggestedImageUrl = null;
+        });
+      }
+      return;
+    }
+
     if (mounted) setState(() => _imageSearching = true);
     try {
       final nameForSearch = foodNameEn ?? foodName;
       final query = Uri.encodeComponent('$nameForSearch food');
       final resp = await http.get(Uri.parse(
-        'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
-        '&format=json&piprop=thumbnail&pithumbsize=600'
-        '&generator=search&gsrnamespace=6&gsrlimit=5&gsrsearch=$query',
+        'https://pixabay.com/api/?key=$apiKey&q=$query&image_type=photo&per_page=3'
       )).timeout(const Duration(seconds: 8));
+      
       if (!mounted) return;
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
-        final pages = data['query']?['pages'] as Map<String, dynamic>?;
-        if (pages != null) {
-          String? url;
-          for (final page in pages.values) {
-            final thumb = page['thumbnail']?['source'] as String?;
-            if (thumb != null) {
-              final lowerThumb = thumb.toLowerCase();
-              if (lowerThumb.contains('.svg') ||
-                  lowerThumb.contains('flag') ||
-                  lowerThumb.contains('map') ||
-                  lowerThumb.contains('logo') ||
-                  lowerThumb.contains('icon') ||
-                  lowerThumb.contains('diagram') ||
-                  lowerThumb.contains('chart') ||
-                  lowerThumb.contains('portrait') ||
-                  lowerThumb.contains('emblem') ||
-                  lowerThumb.contains('shield') ||
-                  lowerThumb.contains('person') ||
-                  lowerThumb.contains('graph') ||
-                  lowerThumb.contains('blank')) {
-                continue;
-              }
-              url = thumb;
-              break;
-            }
-          }
+        final hits = data['hits'] as List<dynamic>?;
+        if (hits != null && hits.isNotEmpty) {
+          final url = hits[0]['webformatURL'] as String?;
           if (mounted) setState(() => _suggestedImageUrl = url);
+        } else {
+          if (mounted) setState(() => _suggestedImageUrl = null);
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _suggestedImageUrl = null);
+    }
     if (mounted) setState(() => _imageSearching = false);
   }
 
@@ -293,7 +285,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       } catch (_) {}
     }
 
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final isTr = context.read<LanguageProvider>().isTurkish;
     final entry = FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameCtrl.text.trim().isEmpty 

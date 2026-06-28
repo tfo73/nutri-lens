@@ -151,8 +151,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadSteps() async {
     final isToday = DateUtils.isSameDay(_selectedDate, DateTime.now());
+    final healthSyncEnabled = context.read<ProfileProvider>().healthSyncEnabled;
     
     if (isToday) {
+      if (!healthSyncEnabled) {
+        if (mounted) setState(() => _steps = 0);
+        return;
+      }
       try {
         final hasPerms = await HealthService.requestPermissions();
         if (!hasPerms) return;
@@ -206,8 +211,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final allHours =
-            List.generate(DateTime.now().hour + 1, (i) => DateTime.now().hour - i);
+        final isToday = DateUtils.isSameDay(_selectedDate, DateTime.now());
+        final maxHour = isToday ? DateTime.now().hour : 23;
+        final allHours = List.generate(maxHour + 1, (i) => maxHour - i);
 
         return DraggableScrollableSheet(
           initialChildSize: 0.5,
@@ -253,7 +259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // Sıralama: En yeni giriş en üstte (Newest first)
                     entries.sort((a, b) => b.time.compareTo(a.time));
 
-                    final isCurrentHour = DateTime.now().hour == hour;
+                    final isCurrentHour = isToday && DateTime.now().hour == hour;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,7 +588,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               const SizedBox(width: 8),
               
-              // Streak UI
+              // Streak UI (Suspended for now)
+              if (false)
               GestureDetector(
                 onTap: () => _showStreakSheet(context, provider, profileProvider),
                 child: Container(
@@ -609,6 +616,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
+              if (false)
               const SizedBox(width: 8),
               // Premium butonu
               GestureDetector(
@@ -872,6 +880,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: _WaterSummaryCard(
                         consumed: selectedLog.waterIntakeMl,
                         goal: profileProvider.waterGoalMl,
+                        isReadOnly: !isToday,
                         onAdd: (ml) => provider.updateWater(
                           selectedLog.waterIntakeMl + ml,
                           deltaAmount: ml,
@@ -940,7 +949,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: FadeInSlide(
                       delay: const Duration(milliseconds: 420),
-                      child: const _WellnessSection(),
+                      child: _WellnessSection(selectedDate: _selectedDate),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -948,7 +957,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: FadeInSlide(
                       delay: const Duration(milliseconds: 460),
-                      child: _buildMealSections(context, provider, l10n, selectedLog),
+                      child: _buildMealSections(context, provider, l10n, selectedLog, isToday),
                     ),
                   ),
                   const SizedBox(height: 160),
@@ -1141,6 +1150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     NutritionProvider provider,
     AppLocalizations l10n,
     DailyLog selectedLog,
+    bool isToday,
   ) {
     final meals = selectedLog.entriesByMeal;
     const mealOrder = ['kahvaltı', 'öğle', 'akşam', 'ara öğün'];
@@ -1211,6 +1221,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 totalCal: totalCal,
                 cs: cs,
                 l10n: l10n,
+                isToday: isToday,
                 onAddPressed: (mode) => widget.onMealAddPressed?.call(meal, mode),
                 onTap: () =>
                     _showMealDetail(context, meal, mealName, entries, l10n, _selectedDate),
@@ -1284,6 +1295,7 @@ class _MealSection extends StatefulWidget {
   final AppLocalizations l10n;
   final Function(String mode) onAddPressed;
   final VoidCallback onTap;
+  final bool isToday;
 
   const _MealSection({
     required this.meal,
@@ -1295,6 +1307,7 @@ class _MealSection extends StatefulWidget {
     required this.l10n,
     required this.onAddPressed,
     required this.onTap,
+    required this.isToday,
   });
 
   @override
@@ -1499,27 +1512,28 @@ class _MealSectionState extends State<_MealSection> {
                         ),
                 ),
               ),
-              GestureDetector(
-                onTap: _toggleExpanded,
-                child: AnimatedRotation(
-                  duration: const Duration(milliseconds: 300),
-                  turns: _isExpanded ? 0.125 : 0.0,
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: (_isExpanded ? Colors.grey : widget.cs.primary)
-                          .withValues(alpha: 0.12),
-                    ),
-                    child: Icon(
-                      Icons.add_rounded,
-                      size: 22,
-                      color: _isExpanded ? Colors.grey : widget.cs.primary,
+              if (widget.isToday)
+                GestureDetector(
+                  onTap: _toggleExpanded,
+                  child: AnimatedRotation(
+                    duration: const Duration(milliseconds: 300),
+                    turns: _isExpanded ? 0.125 : 0.0,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: (_isExpanded ? Colors.grey : widget.cs.primary)
+                            .withValues(alpha: 0.12),
+                      ),
+                      child: Icon(
+                        Icons.add_rounded,
+                        size: 22,
+                        color: _isExpanded ? Colors.grey : widget.cs.primary,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1939,7 +1953,7 @@ class _DashboardPage1State extends State<_DashboardPage1> {
               ),
             ),
             // ── Streak overlay top-left ──────────────────────────────
-            if (widget.streak > 0)
+            if (false)
               Positioned(
                 top: 12,
                 left: 16,
@@ -3280,6 +3294,7 @@ class _WaterSummaryCard extends StatelessWidget {
   final Function(double) onAdd;
   final VoidCallback onRemoveTap;
   final VoidCallback onAddTap;
+  final bool isReadOnly;
 
   const _WaterSummaryCard({
     required this.consumed,
@@ -3287,6 +3302,7 @@ class _WaterSummaryCard extends StatelessWidget {
     required this.onAdd,
     required this.onRemoveTap,
     required this.onAddTap,
+    this.isReadOnly = false,
   });
 
   @override
@@ -3355,44 +3371,45 @@ class _WaterSummaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: consumed > 0 ? onRemoveTap : null,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: surface2,
-                      ),
-                      child: Icon(
-                        Icons.remove_rounded,
-                        size: 18,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: onAddTap,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: cs.primary,
-                      ),
-                      child: const Icon(
-                        Icons.add_rounded,
-                        size: 18,
-                        color: Colors.white,
+              if (!isReadOnly)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: consumed > 0 ? onRemoveTap : null,
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: surface2,
+                        ),
+                        child: Icon(
+                          Icons.remove_rounded,
+                          size: 18,
+                          color: cs.primary,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: onAddTap,
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: cs.primary,
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -4861,7 +4878,8 @@ class _StreakBottomSheet extends StatelessWidget {
 // ─── Wellness Section ─────────────────────────────────────────────────────────
 
 class _WellnessSection extends StatefulWidget {
-  const _WellnessSection();
+  final DateTime selectedDate;
+  const _WellnessSection({required this.selectedDate});
 
   @override
   State<_WellnessSection> createState() => _WellnessSectionState();
@@ -4968,6 +4986,8 @@ class _WellnessSectionState extends State<_WellnessSection> {
   @override
   Widget build(BuildContext context) {
     final wellness = context.watch<WellnessProvider>();
+    final log = wellness.getLogForDate(widget.selectedDate);
+    final isToday = DateUtils.isSameDay(widget.selectedDate, DateTime.now());
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     final cardBg = isDark ? const Color(0xFF161B22) : Colors.white;
@@ -5077,29 +5097,32 @@ class _WellnessSectionState extends State<_WellnessSection> {
                 final openH = s.$3;
                 final closeH = s.$4;
                 final status = _slotStatus(openH, closeH);
-                final current = wellness.today.moodFor(slot);
+                final current = log.moodFor(slot);
                 final cd = status == 'future' ? _countdown(openH) : null;
                 return Expanded(
                   child: _MoodSlotButton(
                     label: context.tr('mood_$slot'),
                     mood: current,
-                    status: status,
-                    countdown: cd,
-                    onTap: () {
-                      if (status == 'future') {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              context.tr('{} sonra ruh hali girişi yapabilirsiniz').replaceFirst('{}', cd ?? ""),
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                        return;
-                      }
-                      _showMoodPicker(context, wellness, slot);
-                    },
+                    status: isToday ? status : 'past',
+                    isToday: isToday,
+                    countdown: isToday ? cd : null,
+                    onTap: isToday
+                        ? () {
+                            if (status == 'future') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    context.tr('{} sonra ruh hali girişi yapabilirsiniz').replaceFirst('{}', cd ?? ""),
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            _showMoodPicker(context, wellness, slot);
+                          }
+                        : null,
                   ),
                 );
               }).toList(),
@@ -5108,20 +5131,28 @@ class _WellnessSectionState extends State<_WellnessSection> {
           // ── Tuvalet Takibi ─────────────────────────────────────────────────
           subCard(
             title: context.tr('TUVALET TAKİBİ'),
-            onHistoryTap: () => _showWcHistorySheet(context, wellness),
+            onHistoryTap: () => _showWcHistorySheet(context, wellness, widget.selectedDate),
             body: Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => _showWcHistorySheet(context, wellness),
+                    onTap: () => _showWcHistorySheet(context, wellness, widget.selectedDate),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          wellness.today.wcCount > 0
-                              ? context.tr('Bugün {} tane girdi yaptınız').replaceFirst('{}', wellness.today.wcCount.toString())
-                              : context.tr('Bugün hiç girdi yapmadınız'),
+                          log.wcCount > 0
+                              ? (isToday
+                                  ? context.tr('Bugün {} tane girdi yaptınız').replaceFirst('{}', log.wcCount.toString())
+                                  : (AppLocalizations.of(context).isTurkish
+                                      ? 'O gün ${log.wcCount} tane girdi yapıldı'
+                                      : 'You logged ${log.wcCount} entries that day'))
+                              : (isToday
+                                  ? context.tr('Bugün hiç girdi yapmadınız')
+                                  : (AppLocalizations.of(context).isTurkish
+                                      ? 'O gün hiç girdi yapılmadı'
+                                      : 'No entries logged that day')),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -5132,22 +5163,23 @@ class _WellnessSectionState extends State<_WellnessSection> {
                     ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => showWcTrackingSheet(context),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF58A6FF),
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      size: 22,
-                      color: Colors.white,
+                if (isToday)
+                  GestureDetector(
+                    onTap: () => showWcTrackingSheet(context),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF58A6FF),
+                      ),
+                      child: const Icon(
+                        Icons.add_rounded,
+                        size: 22,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -5160,11 +5192,13 @@ class _WellnessSectionState extends State<_WellnessSection> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(5, (i) {
                     final score = i + 1;
-                    final selected = wellness.today.sleepScore == score;
+                    final selected = log.sleepScore == score;
                     final col = _sleepColor(score);
                     return GestureDetector(
-                      onTap: () =>
-                          context.read<WellnessProvider>().setSleepScore(score),
+                      onTap: isToday
+                          ? () =>
+                              context.read<WellnessProvider>().setSleepScore(score)
+                          : null,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 48,
@@ -5173,9 +5207,15 @@ class _WellnessSectionState extends State<_WellnessSection> {
                           shape: BoxShape.circle,
                           color: selected
                               ? col
-                              : col.withValues(alpha: isDark ? 0.15 : 0.10),
+                              : (isToday
+                                  ? col.withValues(alpha: isDark ? 0.15 : 0.10)
+                                  : col.withValues(alpha: isDark ? 0.05 : 0.03)),
                           border: Border.all(
-                            color: selected ? col : col.withValues(alpha: 0.25),
+                            color: selected
+                                ? col
+                                : (isToday
+                                    ? col.withValues(alpha: 0.25)
+                                    : col.withValues(alpha: 0.08)),
                             width: 1.5,
                           ),
                         ),
@@ -5187,7 +5227,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                               fontWeight: FontWeight.w700,
                               color: selected
                                   ? Colors.white
-                                  : col.withValues(alpha: 0.7),
+                                  : (isToday
+                                      ? col.withValues(alpha: 0.7)
+                                      : col.withValues(alpha: 0.3)),
                             ),
                           ),
                         ),
@@ -5215,103 +5257,153 @@ class _WellnessSectionState extends State<_WellnessSection> {
                     ),
                   ],
                 ),
+                if (isToday && wellness.getLogForDate(widget.selectedDate.subtract(const Duration(days: 1))).sleepScore != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history, size: 14, color: cs.onSurface.withValues(alpha: 0.5)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${context.tr('Dünkü uyku puanı:')} ${wellness.getLogForDate(widget.selectedDate.subtract(const Duration(days: 1))).sleepScore}/5',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: cs.onSurface.withValues(alpha: 0.6),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
           // ── Semptom Takibi ────────────────────────────────────────────────
           subCard(
             title: context.tr('SEMPTOM TAKİBİ'),
-            body: Row(
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _symptomCtrl,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: context.tr('Semptom girin...'),
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: cs.onSurface.withValues(alpha: 0.4),
-                      ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      filled: true,
-                      fillColor: isDark
-                          ? const Color(0xFF21262D)
-                          : const Color(0xFFF5F5F7),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    style: const TextStyle(fontSize: 13),
-                    onSubmitted: (val) {
-                      final trimmed = val.trim();
-                      if (trimmed.isEmpty) return;
-                      if (!_isValidSymptom(trimmed)) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
-                            duration: const Duration(seconds: 3),
-                            behavior: SnackBarBehavior.floating,
+                if (isToday)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _symptomCtrl,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: InputDecoration(
+                            hintText: context.tr('Semptom girin...'),
+                            hintStyle: TextStyle(
+                              fontSize: 13,
+                              color: cs.onSurface.withValues(alpha: 0.4),
+                            ),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            filled: true,
+                            fillColor: isDark
+                                ? const Color(0xFF21262D)
+                                : const Color(0xFFF5F5F7),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
-                        );
-                        return;
-                      }
-                      wellness.addSymptom(trimmed);
-                      _symptomCtrl.clear();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.tr('Semptom kaydedildi')),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
+                          style: const TextStyle(fontSize: 13),
+                          onSubmitted: (val) {
+                            final trimmed = val.trim();
+                            if (trimmed.isEmpty) return;
+                            if (!_isValidSymptom(trimmed)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
+                                  duration: const Duration(seconds: 3),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+                            wellness.addSymptom(trimmed);
+                            _symptomCtrl.clear();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(context.tr('Semptom kaydedildi')),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () {
-                    final val = _symptomCtrl.text.trim();
-                    if (val.isEmpty) return;
-                    if (!_isValidSymptom(val)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
-                          duration: const Duration(seconds: 3),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                      return;
-                    }
-                    wellness.addSymptom(val);
-                    _symptomCtrl.clear();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.tr('Semptom kaydedildi')),
-                        duration: const Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
                       ),
-                    );
-                  },
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: cs.primary,
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      size: 22,
-                      color: Colors.white,
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: () {
+                          final val = _symptomCtrl.text.trim();
+                          if (val.isEmpty) return;
+                          if (!_isValidSymptom(val)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
+                                duration: const Duration(seconds: 3),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          wellness.addSymptom(val);
+                          _symptomCtrl.clear();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(context.tr('Semptom kaydedildi')),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: cs.primary,
+                          ),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            size: 22,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                if (log.symptoms.isNotEmpty) ...[
+                  if (isToday) const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: log.symptoms.map((symptom) {
+                      return Chip(
+                        label: Text(symptom, style: const TextStyle(fontSize: 12)),
+                        onDeleted: isToday
+                            ? () => wellness.removeSymptom(symptom)
+                            : null,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: EdgeInsets.zero,
+                      );
+                    }).toList(),
+                  ),
+                ] else if (!isToday)
+                  Text(
+                    context.tr('Semptom girilmedi'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -5320,8 +5412,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
     );
   }
 
-  void _showWcHistorySheet(BuildContext context, WellnessProvider wellness) {
-    final logs = wellness.today.wcEntries;
+  void _showWcHistorySheet(BuildContext context, WellnessProvider wellness, DateTime selectedDate) {
+    final log = wellness.getLogForDate(selectedDate);
+    final logs = log.wcEntries;
     if (logs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('Bugün hiç girdi yapmadınız'))),
@@ -5338,8 +5431,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final allHours =
-            List.generate(DateTime.now().hour + 1, (i) => DateTime.now().hour - i);
+        final isToday = DateUtils.isSameDay(selectedDate, DateTime.now());
+        final maxHour = isToday ? DateTime.now().hour : 23;
+        final allHours = List.generate(maxHour + 1, (i) => maxHour - i);
 
         return DraggableScrollableSheet(
           initialChildSize: 0.5,
@@ -5384,7 +5478,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                         final entries = logs
                             .where((e) => e.time.hour == hour)
                             .toList();
-                        final isCurrentHour = DateTime.now().hour == hour;
+                        final isCurrentHour = isToday && DateTime.now().hour == hour;
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -5536,6 +5630,7 @@ class _MoodSlotButton extends StatelessWidget {
   final String status;
   final String? countdown;
   final VoidCallback? onTap;
+  final bool isToday;
 
   const _MoodSlotButton({
     required this.label,
@@ -5543,6 +5638,7 @@ class _MoodSlotButton extends StatelessWidget {
     required this.status,
     this.countdown,
     this.onTap,
+    this.isToday = true,
   });
 
   @override
@@ -5565,6 +5661,8 @@ class _MoodSlotButton extends StatelessWidget {
       iconText = '🔒';
     } else if (hasMood) {
       iconText = mood!.emoji;
+    } else if (!isToday) {
+      iconText = '—';
     } else {
       iconText = '+';
     }
@@ -5580,16 +5678,20 @@ class _MoodSlotButton extends StatelessWidget {
               ? (isDark ? const Color(0xFF1A1F28) : const Color(0xFFF0F0F5))
               : (hasMood
                     ? cs.primary.withValues(alpha: 0.10)
-                    : (isDark
-                          ? const Color(0xFF21262D)
-                          : const Color(0xFFF5F5F7))),
+                    : (!isToday
+                          ? (isDark ? const Color(0xFF161B22).withValues(alpha: 0.3) : const Color(0xFFF5F5F7).withValues(alpha: 0.5))
+                          : (isDark
+                                ? const Color(0xFF21262D)
+                                : const Color(0xFFF5F5F7)))),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isFuture
                 ? statusColor.withValues(alpha: 0.25)
                 : (hasMood
                       ? cs.primary.withValues(alpha: 0.3)
-                      : cs.outline.withValues(alpha: 0.2)),
+                      : (!isToday
+                            ? cs.outline.withValues(alpha: 0.1)
+                            : cs.outline.withValues(alpha: 0.2))),
           ),
         ),
         child: Column(
@@ -5600,7 +5702,7 @@ class _MoodSlotButton extends StatelessWidget {
               iconText,
               style: TextStyle(
                 fontSize: hasMood ? 28 : 18,
-                color: isFuture ? statusColor.withValues(alpha: 0.6) : null,
+                color: isFuture ? statusColor.withValues(alpha: 0.6) : (!isToday && !hasMood ? cs.onSurface.withValues(alpha: 0.3) : null),
               ),
             ),
             if (!hasMood) const SizedBox(height: 3),
@@ -5613,7 +5715,9 @@ class _MoodSlotButton extends StatelessWidget {
                     ? cs.onSurface.withValues(alpha: 0.4)
                     : (hasMood
                           ? cs.primary
-                          : cs.onSurface.withValues(alpha: 0.7)),
+                          : (!isToday
+                                ? cs.onSurface.withValues(alpha: 0.4)
+                                : cs.onSurface.withValues(alpha: 0.7))),
               ),
             ),
             if (!hasMood && isFuture && countdown != null) ...[
@@ -6124,25 +6228,26 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
                                           ),
                                         ),
                                       ),
-                                      IconButton(
-                                        onPressed: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => ManualEntryScreen(
-                                              existingEntry: widget.entry,
-                                              date: widget.selectedDate,
+                                      if (DateUtils.isSameDay(widget.selectedDate, DateTime.now()))
+                                        IconButton(
+                                          onPressed: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ManualEntryScreen(
+                                                existingEntry: widget.entry,
+                                                date: widget.selectedDate,
+                                              ),
                                             ),
                                           ),
+                                          icon: const Icon(
+                                            Icons.edit_outlined,
+                                            size: 20,
+                                            color: Color(0xFF58A6FF),
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
                                         ),
-                                        icon: const Icon(
-                                          Icons.edit_outlined,
-                                          size: 20,
-                                          color: Color(0xFF58A6FF),
-                                        ),
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                      ),
                                     ],
                                   ),
                                 ],
@@ -6618,6 +6723,7 @@ class _CalendarStripState extends State<_CalendarStrip> {
           height: 110,
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF8F9FA),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -6672,7 +6778,7 @@ class _CalendarStripState extends State<_CalendarStrip> {
                         width: 38,
                         height: 38,
                         child: CustomPaint(
-                          painter: (isSelected && isPast) || (isPast && goalMet)
+                          painter: isSelected && isPast
                             ? _DashedBorderPainter(
                                 color: const Color(0xFF58A6FF),
                                 strokeWidth: 2.0,
@@ -6682,9 +6788,9 @@ class _CalendarStripState extends State<_CalendarStrip> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: isToday 
-                                  ? Border.all(color: const Color(0xFF58A6FF), width: 2.0) // Blue for today
-                                  : (!isSelected && isPast && !goalMet) 
-                                      ? Border.all(color: const Color(0xFF58A6FF).withValues(alpha: 0.3), width: 1.5) // Blue border for past missed
+                                  ? Border.all(color: isDark ? const Color(0xFF30363D) : Colors.grey.shade400, width: 2.0)
+                                  : (!isSelected && isPast) 
+                                      ? Border.all(color: const Color(0xFF58A6FF).withValues(alpha: 0.3), width: 1.5)
                                       : null,
                             ),
                             alignment: Alignment.center,
@@ -6703,10 +6809,6 @@ class _CalendarStripState extends State<_CalendarStrip> {
                       ),
                     ],
                   );
-
-                  if (isPast) {
-                    dayWidget = Opacity(opacity: 0.7, child: dayWidget);
-                  }
 
                   return GestureDetector(
                     onTap: isFuture ? null : () => widget.onDateSelected(date),

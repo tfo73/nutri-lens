@@ -66,31 +66,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 stretch: true,
                 backgroundColor: surfaceColor,
                 elevation: 0,
-                leadingWidth: 60,
-                leading: Padding(
-                  padding: const EdgeInsets.only(top: 24, left: 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      if (widget.onComplete != null) {
-                        widget.onComplete!();
-                      } else if (widget.fromOnboarding) {
-                        Navigator.pushReplacement(
-                            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
-                    ),
-                  ),
-                ),
+                automaticallyImplyLeading: false,
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [StretchMode.zoomBackground],
                   background: Stack(
@@ -155,44 +131,44 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       
                       // Bento Feature List
                       _buildFeatureItem(
-                        icon: Icons.analytics_rounded,
-                        title: _t('65+ Kritik Besin Analizi', '65+ Critical Nutrient Analysis'),
-                        desc: _t('Sadece kalori değil; vitamin, mineral ve antioksidan dengenizi tam isabetle ölçün.', 'Measure not just calories, but your vitamin, mineral, and antioxidant balance with full precision.'),
+                        icon: Icons.camera_alt_rounded,
+                        title: _t('Sınırsız Görselden Analiz', 'Unlimited Image Analysis'),
+                        desc: _t('Yemeğin fotoğrafını çekin, AI porsiyonu ve besin değerlerini çıkarsın.', 'Take a photo of your meal, let AI extract portion size and nutritional values.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
-                        icon: Icons.camera_rounded,
-                        title: _t('Sınırsız AI Tarama', 'Unlimited AI Scanning'),
-                        desc: _t('Fotoğraftan anında ve sınırsız kalori takibi.', 'Instant and unlimited calorie tracking from photos.'),
+                        icon: Icons.edit_note_rounded,
+                        title: _t('Sınırsız Tarif Ederek Analiz', 'Unlimited Description Analysis'),
+                        desc: _t('Yemek tariflerinizi veya yediklerinizi yazarak/anlatarak analiz edin.', 'Analyze your recipes or what you eat by writing or describing.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
                         icon: Icons.qr_code_scanner_rounded,
-                        title: _t('Barkoddan Analiz', 'Barcode Analysis'),
-                        desc: _t('Paketli gıdaların barkodunu tara, içeriğini anında öğren.', 'Scan packaged food barcodes, instantly learn their contents.'),
+                        title: _t('Sınırsız Barkoddan Analiz', 'Unlimited Barcode Analysis'),
+                        desc: _t('Paketli gıdaların barkodlarını anında tarayın ve tüm besin değerlerini görün.', 'Instantly scan packaged food barcodes and view all nutritional values.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
-                        icon: Icons.mic_rounded,
-                        title: _t('Anlatarak Analiz', 'Voice & Text Analysis'),
-                        desc: _t('Yediklerini sesli veya yazılı anlat, AI senin için hesaplasın.', 'Describe what you eat with voice or text, let AI calculate it for you.'),
+                        icon: Icons.chat_bubble_rounded,
+                        title: _t('Sınırsız Beslenme Koçu', 'Unlimited Nutrition Coach'),
+                        desc: _t('Size özel yapay zeka beslenme koçuyla dilediğiniz an sohbet edin.', 'Chat with your personal AI nutrition coach whenever you want.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
-                        icon: Icons.auto_graph_rounded,
-                        title: _t('Uzun Yaşam', 'Longevity'),
-                        desc: _t('Beslenme düzeninizin hücresel yaşlanma ve uzun ömür üzerindeki etkisini izleyin.', 'Monitor the impact of your nutrition on cellular aging and longevity.'),
+                        icon: Icons.restaurant_menu_rounded,
+                        title: _t('Sınırsız Günlük Tarifler', 'Unlimited Daily Recipes'),
+                        desc: _t('Vücudunuzun eksiklerine ve hedeflerinize özel lezzetli tarifler alın.', 'Get delicious recipes tailored to your body\'s deficiencies and goals.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildFeatureItem(
-                        icon: Icons.spa_rounded,
-                        title: _t('Eksikliklere Özel Tarifler', 'Deficiency-Specific Recipes'),
-                        desc: _t('Besin eksikliklerinizi gidermek için bilimsel temelli ve şef onaylı özel tarifler.', 'Science-based and chef-approved special recipes to address your nutrient deficiencies.'),
+                        icon: Icons.mail_rounded,
+                        title: _t('Bilgilerimi Maille Gönder', 'Send Info via Email'),
+                        desc: _t('Beslenme özetlerinizi ve analizlerinizi e-posta olarak raporlayın.', 'Receive your nutrition summaries and analysis as email reports.'),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
@@ -271,7 +247,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             if (!mounted) return;
                             setState(() => _isPurchasing = false);
                             if (result == PurchaseResult.success) {
-                              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+                                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
                             } else if (result == PurchaseResult.error) {
                               // Revert premium if purchase failed
                               profileProvider.updatePremiumStatus(false);
@@ -291,6 +267,29 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               color: Colors.black,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            if (widget.onComplete != null) {
+                              widget.onComplete!();
+                            } else if (widget.fromOnboarding) {
+                              Navigator.pushReplacement(
+                                  context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+                            } else {
+                              Navigator.pop(context);
+                            }
+                          },
+                          child: Text(
+                            _t('Premiumsuz Devam Et', 'Continue without Premium'),
+                            style: TextStyle(
+                              color: isDark ? Colors.white54 : Colors.black54,
+                              fontSize: 14,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
@@ -365,7 +364,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 const SizedBox(height: 2),
                 Text(
                   desc,
-                  style: TextStyle(fontSize: 16, color: isDark ? Colors.white54 : Colors.black54),
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black54),
                 ),
               ],
             ),
@@ -394,83 +393,87 @@ class _PaywallScreenState extends State<PaywallScreen> {
       padding: EdgeInsets.only(bottom: 12, top: isBadgeTopCenter ? 12 : 0),
       child: GestureDetector(
         onTap: () => setState(() => _selectedPlanIndex = index),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: selected ? appGreen : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.1)),
-                  width: selected ? 2 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (badge != null && !isBadgeTopCenter)
-                          _buildBadge(badge, appGreen),
-                        Text(
-                          title,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(fontSize: 14, color: isDark ? Colors.white38 : Colors.black45),
-                        ),
-                      ],
-                    ),
+        child: AnimatedScale(
+          scale: selected ? 1.04 : 0.96,
+          duration: const Duration(milliseconds: 200),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: selected ? appGreen : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.1)),
+                    width: selected ? 2 : 1,
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (oldPrice != null)
-                        Text(
-                          oldPrice,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDark ? Colors.white38 : Colors.black45,
-                            decoration: TextDecoration.lineThrough,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (badge != null && !isBadgeTopCenter)
+                            _buildBadge(badge, appGreen),
+                          Text(
+                            title,
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                           ),
-                        ),
-                      Text(
-                        price,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.black45),
+                          ),
+                        ],
                       ),
-                      if (savingsBlue != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            _t('%80 tasarruf', 'Save 80%'),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (oldPrice != null)
+                          Text(
+                            oldPrice,
                             style: TextStyle(
-                              fontSize: 18, // Large
-                              fontWeight: FontWeight.w900,
-                              color: savingsBlue, // Blue
+                              fontSize: 14,
+                              color: isDark ? Colors.white38 : Colors.black45,
+                              decoration: TextDecoration.lineThrough,
                             ),
                           ),
+                        Text(
+                          price,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                         ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (badge != null && isBadgeTopCenter)
-              Positioned(
-                top: -10,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _buildBadge(badge, appGreen, isPopular: true),
+                        if (savingsBlue != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              _t('%80 tasarruf', 'Save 80%'),
+                              style: TextStyle(
+                                fontSize: 13, // Made smaller to prevent wrapping
+                                fontWeight: FontWeight.w900,
+                                color: savingsBlue, // Blue
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-          ],
+              if (badge != null && isBadgeTopCenter)
+                Positioned(
+                  top: -10,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _buildBadge(badge, appGreen, isPopular: true),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

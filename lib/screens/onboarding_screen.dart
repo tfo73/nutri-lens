@@ -341,6 +341,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   final _pageCtrl = PageController();
   int _completedSteps = 0;
   bool _googleLoading = false;
+  bool _appleLoading = false;
   bool _signUpLoading = false;
   bool _finishLoading = false;
   bool _paywallPremiumSelected = true;
@@ -925,12 +926,38 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _introTimer = Timer.periodic(const Duration(milliseconds: 5000), (_) {
       if (!mounted) return;
       final next = (_introPage + 1) % 3;
-      _introCtrl.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 650),
-        curve: Curves.easeInOut,
-      );
+      if (_introCtrl.hasClients) {
+        _introCtrl.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 650),
+          curve: Curves.easeInOut,
+        );
+      }
     });
+  }
+
+
+  void _showAuthErrorDialog(String message, {String? title}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text(
+          title ?? _t('Giriş Başarısız', 'Login Failed'),
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tamam', style: TextStyle(color: Color(0xFF58A6FF))),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _next() async {
@@ -976,23 +1003,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
 
-  void _showAuthErrorDialog(String message, {String title = 'Uyarı'}) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tamam', style: TextStyle(color: Color(0xFF58A6FF))),
-          ),
-        ],
-      ),
-    );
-  }
-
   // Kullanılan yer: _stepLogin – giriş yap akışı (hesap yoksa popup, varsa premium kontrolü)
   Future<void> _handleGoogleSignInForLogin() async {
     setState(() => _googleLoading = true);
@@ -1017,6 +1027,46 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
 
     // Onboarding tamamlanmış → premium kontrolü
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_done', true);
+    if (!mounted) return;
+    SyncService.instance.pullUserData();
+    final profileProv = context.read<ProfileProvider>();
+    await profileProv.loadProfiles();
+    if (!mounted) return;
+
+    if (profileProv.isPremium) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const PaywallScreen(fromOnboarding: true)),
+      );
+    }
+  }
+
+  Future<void> _handleAppleSignInForLogin() async {
+    setState(() => _appleLoading = true);
+    final result = await AuthService().signInWithApple();
+    if (!mounted) return;
+    setState(() => _appleLoading = false);
+
+    if (result.cancelled) return;
+
+    if (!result.success) {
+      _showAuthErrorDialog(result.errorMessage ?? 'Apple girişi başarısız.');
+      return;
+    }
+
+    if (!result.onboardingComplete) {
+      _showAuthErrorDialog(
+        'Bu Apple hesabına kayıtlı bir profil bulunamadı.',
+        title: _t('Hesap Bulunamadı', 'Account Not Found'),
+      );
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
     if (!mounted) return;
@@ -1093,6 +1143,64 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       }
     } else {
       // Login adımı → onboarding'e devam
+      _navigateTo(_StepId.name);
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    setState(() => _appleLoading = true);
+    final result = await AuthService().signInWithApple();
+    if (!mounted) return;
+
+    if (result.cancelled) {
+      setState(() => _appleLoading = false);
+      return;
+    }
+
+    if (!result.success) {
+      setState(() => _appleLoading = false);
+      _showAuthErrorDialog(result.errorMessage ?? 'Apple girişi başarısız.');
+      return;
+    }
+
+    if (result.user != null) {
+      DeviceIdService.instance.migrateAnonDataToUser(result.user!.uid);
+    }
+
+    setState(() => _appleLoading = false);
+
+    if (result.onboardingComplete) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_done', true);
+      if (!mounted) return;
+      SyncService.instance.pullUserData();
+      final profileProv = context.read<ProfileProvider>();
+      await profileProv.loadProfiles();
+      if (!mounted) return;
+
+      if (profileProv.isPremium) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const PaywallScreen(fromOnboarding: true)),
+        );
+      }
+      return;
+    }
+
+    // Yeni Apple hesabı
+    _data.onboardingId = FirebaseAuth.instance.currentUser?.uid;
+    if (_current == _StepId.signUp) {
+      await _saveProfile();
+      if (!mounted) return;
+      if (widget.mode == OnboardingMode.linkAccount) {
+        _goHome();
+      } else {
+        _navigateTo(_StepId.completion);
+      }
+    } else {
       _navigateTo(_StepId.name);
     }
   }
@@ -2075,7 +2183,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           if (Platform.isIOS) ...[
             const SizedBox(height: 12),
-            _authButton(icon: '🍎', label: _t('Apple ile giriş yap', 'Log in with Apple'), onTap: _next),
+            _authButton(
+              icon: '🍎',
+              label: _t('Apple ile giriş yap', 'Log in with Apple'),
+              onTap: _appleLoading ? null : _handleAppleSignInForLogin,
+              loading: _appleLoading,
+            ),
           ],
           const SizedBox(height: 28),
           GestureDetector(
@@ -4903,6 +5016,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ElevatedButton(
                       onPressed: () async {
                         final granted = await HealthService.requestPermissions();
+                        if (granted && mounted) {
+                          await context.read<ProfileProvider>().setHealthSyncEnabled(true);
+                        }
                         if (mounted) _next();
                       },
                       style: ElevatedButton.styleFrom(
@@ -5802,6 +5918,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             onTap: _googleLoading ? null : _handleGoogleSignIn,
             loading: _googleLoading,
           ),
+          if (Platform.isIOS) ...[
+            const SizedBox(height: 12),
+            _authButton(
+              icon: '🍎',
+              label: _t('Apple ile Devam Et', 'Continue with Apple'),
+              onTap: _appleLoading ? null : _handleAppleSignIn,
+              loading: _appleLoading,
+            ),
+          ],
           if (widget.mode != OnboardingMode.linkAccount) ...[
             const SizedBox(height: 24),
             // --- Skip Sign Up ---

@@ -152,6 +152,18 @@ class NutriLensApp extends StatelessWidget {
           title: 'LensEat',
           debugShowCheckedModeBanner: false,
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          builder: (context, child) {
+            return GestureDetector(
+              onTap: () {
+                FocusScopeNode currentFocus = FocusScope.of(context);
+                if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                }
+              },
+              behavior: HitTestBehavior.translucent,
+              child: child,
+            );
+          },
 
           // ── Light Theme ───────────────────────────────────────────────────
           theme: ThemeData(

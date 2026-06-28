@@ -21,6 +21,7 @@ import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
 import '../providers/nutrition_provider.dart';
+import '../providers/language_provider.dart';
 import '../services/claude_vision_service.dart';
 import '../services/food_analysis_service.dart';
 import '../services/nutrition_service.dart';
@@ -469,7 +470,7 @@ class _CameraScreenState extends State<CameraScreen>
           // Hemen ardından ManualEntryScreen'i push et
           final res = provider.lastResult!;
           final nd = res.nutritionPer100g; // 100g bazında — initState factor ile çarpar
-          final isTr = Localizations.localeOf(context).languageCode == 'tr';
+          final isTr = context.read<LanguageProvider>().isTurkish;
           final entry = FoodEntry(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             name: isTr ? res.foodName : (res.foodNameEn ?? res.foodName),
@@ -679,7 +680,7 @@ class _CameraScreenState extends State<CameraScreen>
           scrollCtrl: scrollCtrl,
           selectedMeal: _selectedMeal,
           isAnalysis: true,
-          prefill: buildPrefillMap(result, isTr: Localizations.localeOf(ctx).languageCode == 'tr'),
+          prefill: buildPrefillMap(result, isTr: ctx.read<LanguageProvider>().isTurkish),
           onSave: (entry) {
             _analysisService.saveCorrection(result.foodName, entry.nutritionData);
             context.read<NutritionProvider>().addFoodEntry(entry);
@@ -844,15 +845,10 @@ class _CameraScreenState extends State<CameraScreen>
           key: _cameraKey,
           child: MobileScanner(
             controller: _scanner,
-            onDetect: (capture) {
-              if (_barcodeHandling) return;
-              final raw = capture.barcodes.firstOrNull?.rawValue;
-              if (raw != null) _onBarcodeDetected(raw);
-            },
           ),
         ),
         // 2. Focus frame
-        Center(child: _FocusFrame(barcodeDetected: _barcodeDetected)),
+        Center(child: _FocusFrame(barcodeDetected: false)),
         // 3. Back button
         Positioned(
           top: topPad + 8,
@@ -3287,7 +3283,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
           scrollCtrl: scrollCtrl,
           selectedMeal: _meal,
           isAnalysis: true,
-          prefill: buildPrefillMap(result, isTr: Localizations.localeOf(ctx).languageCode == 'tr'),
+          prefill: buildPrefillMap(result, isTr: ctx.read<LanguageProvider>().isTurkish),
           onSave: (entry) {
             setState(() {
               _result = FoodAnalysisResult(
@@ -3723,7 +3719,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
     final fiber = scaled.fiber;
     final score = r.confidenceScore;
     final displayedScore = score < 85 ? 85 : (score > 100 ? 100 : score);
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final isTr = context.watch<LanguageProvider>().isTurkish;
     final confReason = isTr
         ? (r.confidenceReason ?? '')
         : (r.confidenceReasonEn != null && r.confidenceReasonEn!.isNotEmpty

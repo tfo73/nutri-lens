@@ -940,7 +940,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     Color mealColor;
     switch (type) {
       case 'kahvaltı': mealColor = const Color(0xFFFF9500); break;
-      case 'öğle': mealColor = const Color(0xFFFFCC00); break;
+      case 'öğle': mealColor = const Color(0xFF039BE5); break;
       case 'akşam': mealColor = const Color(0xFF5856D6); break;
       default: mealColor = const Color(0xFF4CD964);
     }
@@ -1476,7 +1476,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(color: r.renk.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                    child: Text('${r.kalori} kcal', style: TextStyle(color: r.renk, fontWeight: FontWeight.bold)),
+                    child: Text('${r.kalori} kcal', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? r.renk : Colors.black87, fontWeight: FontWeight.w900)),
                   ),
                 ],
               ),
@@ -1506,7 +1506,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                       children: [
                         _macroItem(context.tr('Protein'), '${r.protein}g', const Color(0xFF7EE787)),
                         _macroItem(context.tr('Karb'), '${r.karb}g', const Color(0xFF58A6FF)),
-                        _macroItem(context.tr('Yağ'), '${r.yag}g', const Color(0xFFFFA726)),
+                        _macroItem(context.tr('Yağ'), '${r.yag}g', const Color(0xFFE65100)),
                         _macroItem(context.tr('Lif'), '${r.lif}g', const Color(0xFFBC8CF2)),
                       ],
                     ),
@@ -1857,7 +1857,7 @@ class _ExpandableMicrosSectionState extends State<_ExpandableMicrosSection> {
         if (_isExpanded) ...[
           const SizedBox(height: 8),
           buildCategory(context.tr('MİNERALLER'), const Color(0xFF58A6FF), mineralsMap),
-          buildCategory(context.tr('VİTAMİNLER'), const Color(0xFFFFA726), vitaminsMap),
+          buildCategory(context.tr('VİTAMİNLER'), const Color(0xFFE65100), vitaminsMap),
           buildCategory(context.tr('DİĞER BESİNLER'), const Color(0xFF7EE787), othersMap),
         ],
       ],

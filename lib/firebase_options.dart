@@ -66,7 +66,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
     androidClientId: '808142209819-hppu90dfelcvo4bejjsptf39vmalkltd.apps.googleusercontent.com',
     iosClientId: '808142209819-5qrdgha994qpksdqqibu26q939vsi8jm.apps.googleusercontent.com',
-    iosBundleId: 'com.example.nutriLens',
+    iosBundleId: 'com.bora.nutrilens',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -77,7 +77,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
     androidClientId: '808142209819-hppu90dfelcvo4bejjsptf39vmalkltd.apps.googleusercontent.com',
     iosClientId: '808142209819-5qrdgha994qpksdqqibu26q939vsi8jm.apps.googleusercontent.com',
-    iosBundleId: 'com.example.nutriLens',
+    iosBundleId: 'com.bora.nutrilens',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

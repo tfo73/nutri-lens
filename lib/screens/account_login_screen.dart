@@ -170,20 +170,36 @@ class AccountLoginScreen extends StatelessWidget {
 
   Future<void> _signInWithGoogle(BuildContext context) async {
     final navigator = Navigator.of(context);
-    await AuthService().signInWithGoogle();
-    navigator.pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (route) => false,
-    );
+    final result = await AuthService().signInWithGoogle();
+    if (result.isSuccess) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else if (result.errorMessage != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.errorMessage!)),
+        );
+      }
+    }
   }
 
   Future<void> _signInWithApple(BuildContext context) async {
     final navigator = Navigator.of(context);
-    await AuthService().signInWithApple();
-    navigator.pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (route) => false,
-    );
+    final result = await AuthService().signInWithApple();
+    if (result.isSuccess) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else if (result.errorMessage != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.errorMessage!)),
+        );
+      }
+    }
   }
 
   void _mockSignIn(BuildContext context) {
