@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/language_provider.dart';
@@ -392,7 +393,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
     return Padding(
       padding: EdgeInsets.only(bottom: 12, top: isBadgeTopCenter ? 12 : 0),
       child: GestureDetector(
-        onTap: () => setState(() => _selectedPlanIndex = index),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          setState(() => _selectedPlanIndex = index);
+        },
         child: AnimatedScale(
           scale: selected ? 1.04 : 0.96,
           duration: const Duration(milliseconds: 200),

@@ -18,6 +18,7 @@ class ConfigService {
         'EDAMAM_NUTRITION_KEY': '',
         'EDAMAM_RECIPE_KEY': '',
         'PIXABAY_API_KEY': '',
+        'OPENAI_API_KEY': '',
       });
       await _rc.fetchAndActivate();
       _initialized = true;
@@ -57,5 +58,12 @@ class ConfigService {
       return const String.fromEnvironment('PIXABAY_API_KEY');
     }
     return _rc.getString('PIXABAY_API_KEY');
+  }
+
+  static String get openaiKey {
+    if (Platform.isWindows) {
+      return const String.fromEnvironment('OPENAI_API_KEY');
+    }
+    return _rc.getString('OPENAI_API_KEY');
   }
 }
