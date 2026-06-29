@@ -276,6 +276,10 @@ class AuthService {
       'achievements',
       'coach_messages',
       'onboarding_answers',
+      'fasting',
+      'fasting_history',
+      'weight_history',
+      'wellness_logs',
     ];
     for (final sub in subcollections) {
       try {
@@ -289,6 +293,11 @@ class AuthService {
     }
     try {
       await userRef.delete();
+    } catch (_) {}
+
+    // Top-level devices/uid document
+    try {
+      await _db.collection('devices').doc(uid).delete();
     } catch (_) {}
   }
 

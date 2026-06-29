@@ -1,42 +1,57 @@
 {
   "project_info": {
-    "project_number": "808142209819",
-    "project_id": "nutrilens-app-ae2ab",
-    "storage_bucket": "nutrilens-app-ae2ab.firebasestorage.app"
+    "project_number": "392545068869",
+    "project_id": "lenseat-app",
+    "storage_bucket": "lenseat-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:808142209819:android:9e27aa6353807197a8c9be",
+        "mobilesdk_app_id": "1:392545068869:android:bbf62046dde08b730e402c",
         "android_client_info": {
-          "package_name": "com.nutrilens.app"
+          "package_name": "com.lenseat.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "808142209819-hppu90dfelcvo4bejjsptf39vmalkltd.apps.googleusercontent.com",
+          "client_id": "392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.nutrilens.app",
-            "certificate_hash": "6c3b0767266c5fb0b72d44c66aaff4a2aa948c4e"
+            "package_name": "com.lenseat.app",
+            "certificate_hash": "f9e55a41239afad1b89f5152646c16212329364b"
           }
         },
         {
-          "client_id": "808142209819-v49fjgjon70egf6j2mc9rov7mcfn8ang.apps.googleusercontent.com",
+          "client_id": "392545068869-ki77tjq74qe0f2damtasau8jeqb1djid.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lenseat.app",
+            "certificate_hash": "0cf367e5175e2b825da00f0358db2bc077167b33"
+          }
+        },
+        {
+          "client_id": "392545068869-4na2tjkrpeset7k9gcl4ge2bub2jfnfh.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCbYOIiRU2Hr6NLAWUfJZcAhxq5Etu4Bxk"
+          "current_key": "AIzaSyAjJbjCgST1lZ008J9QmeHZimwFq-MzdSg"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "808142209819-v49fjgjon70egf6j2mc9rov7mcfn8ang.apps.googleusercontent.com",
+              "client_id": "392545068869-4na2tjkrpeset7k9gcl4ge2bub2jfnfh.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "392545068869-78oe97uor9umtlau3oasjb7qpghu3126.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.lenseat.app"
+              }
             }
           ]
         }

@@ -41,52 +41,50 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyByhaMYpLAtkhdGqplfxllMNjHjqsWcCvk',
-    appId: '1:808142209819:web:ae1d126c8032cebba8c9be',
-    messagingSenderId: '808142209819',
-    projectId: 'nutrilens-app-ae2ab',
-    authDomain: 'nutrilens-app-ae2ab.firebaseapp.com',
-    storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
-    measurementId: 'G-X00KFWPLR4',
+    apiKey: 'AIzaSyAjJbjCgST1lZ008J9QmeHZimwFq-MzdSg',
+    appId: '1:392545068869:web:ae1d126c8032cebba8c9be',
+    messagingSenderId: '392545068869',
+    projectId: 'lenseat-app',
+    authDomain: 'lenseat-app.firebaseapp.com',
+    storageBucket: 'lenseat-app.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCbYOIiRU2Hr6NLAWUfJZcAhxq5Etu4Bxk',
-    appId: '1:808142209819:android:9e27aa6353807197a8c9be',
-    messagingSenderId: '808142209819',
-    projectId: 'nutrilens-app-ae2ab',
-    storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
+    apiKey: 'AIzaSyAjJbjCgST1lZ008J9QmeHZimwFq-MzdSg',
+    appId: '1:392545068869:android:bbf62046dde08b730e402c',
+    messagingSenderId: '392545068869',
+    projectId: 'lenseat-app',
+    storageBucket: 'lenseat-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyD6xXoWCB_7lBQQJLYvQTBUqBnpy--hXqA',
-    appId: '1:808142209819:ios:64af1cff4b089e65a8c9be',
-    messagingSenderId: '808142209819',
-    projectId: 'nutrilens-app-ae2ab',
-    storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
-    androidClientId: '808142209819-hppu90dfelcvo4bejjsptf39vmalkltd.apps.googleusercontent.com',
-    iosClientId: '808142209819-5qrdgha994qpksdqqibu26q939vsi8jm.apps.googleusercontent.com',
-    iosBundleId: 'com.bora.nutrilens',
+    apiKey: 'AIzaSyCxP-3j4bQXk58XoQRjqupQEAJOLd230qQ',
+    appId: '1:392545068869:ios:864f263e8aac75d00e402c',
+    messagingSenderId: '392545068869',
+    projectId: 'lenseat-app',
+    storageBucket: 'lenseat-app.firebasestorage.app',
+    androidClientId: '392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com',
+    iosClientId: '392545068869-78oe97uor9umtlau3oasjb7qpghu3126.apps.googleusercontent.com',
+    iosBundleId: 'com.lenseat.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyD6xXoWCB_7lBQQJLYvQTBUqBnpy--hXqA',
-    appId: '1:808142209819:ios:64af1cff4b089e65a8c9be',
-    messagingSenderId: '808142209819',
-    projectId: 'nutrilens-app-ae2ab',
-    storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
-    androidClientId: '808142209819-hppu90dfelcvo4bejjsptf39vmalkltd.apps.googleusercontent.com',
-    iosClientId: '808142209819-5qrdgha994qpksdqqibu26q939vsi8jm.apps.googleusercontent.com',
-    iosBundleId: 'com.bora.nutrilens',
+    apiKey: 'AIzaSyCxP-3j4bQXk58XoQRjqupQEAJOLd230qQ',
+    appId: '1:392545068869:ios:864f263e8aac75d00e402c',
+    messagingSenderId: '392545068869',
+    projectId: 'lenseat-app',
+    storageBucket: 'lenseat-app.firebasestorage.app',
+    androidClientId: '392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com',
+    iosClientId: '392545068869-78oe97uor9umtlau3oasjb7qpghu3126.apps.googleusercontent.com',
+    iosBundleId: 'com.lenseat.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyByhaMYpLAtkhdGqplfxllMNjHjqsWcCvk',
-    appId: '1:808142209819:web:ad6fdd828890ab8ea8c9be',
-    messagingSenderId: '808142209819',
-    projectId: 'nutrilens-app-ae2ab',
-    authDomain: 'nutrilens-app-ae2ab.firebaseapp.com',
-    storageBucket: 'nutrilens-app-ae2ab.firebasestorage.app',
-    measurementId: 'G-X57JFJYD31',
+    apiKey: 'AIzaSyAjJbjCgST1lZ008J9QmeHZimwFq-MzdSg',
+    appId: '1:392545068869:web:ae1d126c8032cebba8c9be',
+    messagingSenderId: '392545068869',
+    projectId: 'lenseat-app',
+    authDomain: 'lenseat-app.firebaseapp.com',
+    storageBucket: 'lenseat-app.firebasestorage.app',
   );
 }

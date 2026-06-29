@@ -3,32 +3,34 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>808142209819-5qrdgha994qpksdqqibu26q939vsi8jm.apps.googleusercontent.com</string>
+	<string>392545068869-78oe97uor9umtlau3oasjb7qpghu3126.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.808142209819-5qrdgha994qpksdqqibu26q939vsi8jm</string>
+	<string>com.googleusercontent.apps.392545068869-78oe97uor9umtlau3oasjb7qpghu3126</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyD6xXoWCB_7lBQQJLYvQTBUqBnpy--hXqA</string>
+	<string>AIzaSyCxP-3j4bQXk58XoQRjqupQEAJOLd230qQ</string>
 	<key>GCM_SENDER_ID</key>
-	<string>808142209819</string>
+	<string>392545068869</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.bora.nutrilens</string>
+	<string>com.lenseat.app</string>
 	<key>PROJECT_ID</key>
-	<string>nutrilens-app-ae2ab</string>
+	<string>lenseat-app</string>
 	<key>STORAGE_BUCKET</key>
-	<string>nutrilens-app-ae2ab.firebasestorage.app</string>
+	<string>lenseat-app.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
-	<false/>
+	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
-	<false/>
+	<false></false>
 	<key>IS_APPINVITE_ENABLED</key>
-	<true/>
+	<true></true>
 	<key>IS_GCM_ENABLED</key>
-	<true/>
+	<true></true>
 	<key>IS_SIGNIN_ENABLED</key>
-	<true/>
+	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:808142209819:ios:64af1cff4b089e65a8c9be</string>
+	<string>1:392545068869:ios:864f263e8aac75d00e402c</string>
 </dict>
 </plist>

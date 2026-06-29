@@ -3007,7 +3007,7 @@ class _VoiceTextEntrySheet extends StatefulWidget {
 }
 
 class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
-  static const _speechChannel = MethodChannel('com.nutrilens.app/speech');
+  static const _speechChannel = MethodChannel('com.lenseat.app/speech');
 
   final _textCtrl = TextEditingController();
   final _picker = ImagePicker();
