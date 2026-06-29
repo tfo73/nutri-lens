@@ -30,6 +30,25 @@ class PromoCodeService {
     }
   }
 
+  Future<bool> markCodeAsUsed(String code) async {
+    try {
+      final db = FirebaseFirestore.instance;
+      final codeRef = db.collection('promo_codes').doc(code.toUpperCase().trim());
+      
+      await db.runTransaction((tx) async {
+        final codeDoc = await tx.get(codeRef);
+        if (!codeDoc.exists) throw Exception('Code not found');
+        
+        final usedCount = codeDoc.data()?['usedCount'] as int? ?? 0;
+        tx.update(codeRef, {'usedCount': usedCount + 1});
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Mark code used error: $e');
+      return false;
+    }
+  }
+
   Future<bool> applyDurationCode(String code, int durationDays) async {
     try {
       final user = FirebaseAuth.instance.currentUser;

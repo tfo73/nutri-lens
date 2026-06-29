@@ -348,6 +348,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   bool _appleLoading = false;
   bool _signUpLoading = false;
   bool _finishLoading = false;
+  bool _showLegalError = false;
   bool _paywallPremiumSelected = true;
   bool _signUpObscure = true;
   bool _isLangExpanded = false;
@@ -2156,8 +2157,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     Expanded(
                       child: Text(
                         _t(
-                          'Tıbbi Feragatname: Nutri Lens bir tıbbi cihaz veya doktor değildir. Sağlanan analiz ve veriler sadece genel bilgilendirme amaçlıdır. Diyetinizde değişiklik yapmadan önce mutlaka bir sağlık profesyoneline danışın.',
-                          'Medical Disclaimer: Nutri Lens is not a medical device or doctor. The data and analysis provided are for general informational purposes only. Always consult a healthcare professional before changing your diet.'
+                          'Tıbbi Feragatname: LensEat bir tıbbi cihaz veya doktor değildir. Sağlanan analiz ve veriler sadece genel bilgilendirme amaçlıdır. Diyetinizde değişiklik yapmadan önce mutlaka bir sağlık profesyoneline danışın.',
+                          'Medical Disclaimer: LensEat is not a medical device or doctor. The data and analysis provided are for general informational purposes only. Always consult a healthcare professional before changing your diet.'
                         ),
                         style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4),
                       ),
@@ -2970,18 +2971,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     required String label,
     required VoidCallback? onTap,
     bool loading = false,
+    bool darkened = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          color: isDark ? _kCard : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isDark ? _kBorder : const Color(0xFFD0D7DE)),
-        ),
+      child: Opacity(
+        opacity: darkened ? 0.5 : 1.0,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            color: isDark ? _kCard : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: isDark ? _kBorder : const Color(0xFFD0D7DE)),
+          ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -3022,8 +3026,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── S2: App intro ──────────────────────────────────────────────────────────
 
@@ -5837,6 +5842,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _stepSignUp() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDarkened = !_acceptedTerms || !_acceptedPrivacy || !_acceptedKVKK;
     return _shell(
       title: _t('İlerlemen kaybolmasın, hesap aç!', 'Don\'t lose your progress, create an account!'),
       subtitle: Text.rich(
@@ -5924,8 +5930,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             width: double.infinity,
             child: GestureDetector(
               onTap: _signUpLoading ? null : _handleCreateAccount,
-              child: Container(
-                height: 56,
+              child: Opacity(
+                opacity: isDarkened ? 0.5 : 1.0,
+                child: Container(
+                  height: 56,
                 decoration: BoxDecoration(
                   color: _tw,
                   borderRadius: BorderRadius.circular(16),
@@ -5944,6 +5952,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ),
             ),
+            ),
           ),
           const SizedBox(height: 16),
           // --- Google Sign In ---
@@ -5952,6 +5961,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             label: _t('Google ile Devam Et', 'Continue with Google'),
             onTap: _googleLoading ? null : _handleGoogleSignIn,
             loading: _googleLoading,
+            darkened: isDarkened,
           ),
           if (Platform.isIOS) ...[
             const SizedBox(height: 12),
@@ -5960,6 +5970,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               label: _t('Apple ile Devam Et', 'Continue with Apple'),
               onTap: _appleLoading ? null : _handleAppleSignIn,
               loading: _appleLoading,
+              darkened: isDarkened,
             ),
           ],
           const SizedBox(height: 16),
@@ -6028,10 +6039,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               children: [
                 TextSpan(
                   text: _t(
-                    'Sağlık verilerim dahil kişisel verilerimin işlenmesine Açık Rıza gösteriyorum.',
-                    'I give my Explicit Consent to the processing of my personal data, including health data.'
+                    'KVKK Açık Rıza Metni',
+                    'KVKK Explicit Consent',
                   ),
+                  style: const TextStyle(color: _kGreen, decoration: TextDecoration.underline),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LegalScreen(
+                            title: _t('KVKK Açık Rıza', 'Explicit Consent'),
+                            trAssetPath: 'assets/legal/kvkk_consent_tr.md',
+                            enAssetPath: 'assets/legal/kvkk_consent_en.md',
+                          ),
+                        ),
+                      );
+                    },
                 ),
+                TextSpan(text: _t('\'ni okudum ve onaylıyorum.', ' read and accepted.')),
               ],
             ),
           ),
@@ -6040,15 +6066,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             // --- Skip Sign Up ---
             GestureDetector(
               onTap: _finishLoading ? null : _skipSignUp,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  _t('Hesap açmadan devam et', 'Continue without creating account'),
-                  style: TextStyle(
-                    color: _kTextSub,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
+              child: Opacity(
+                opacity: isDarkened ? 0.5 : 1.0,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    _t('Hesap açmadan devam et', 'Continue without creating account'),
+                    style: TextStyle(
+                      color: _kTextSub,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ),
@@ -6065,6 +6094,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   bool _checkLegalConsents() {
     if (!_acceptedTerms || !_acceptedPrivacy || !_acceptedKVKK) {
+      setState(() => _showLegalError = true);
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _showLegalError = false);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_t(
@@ -6083,19 +6116,31 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     required ValueChanged<bool?> onChanged,
     required TextSpan textSpan,
   }) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        unselectedWidgetColor: _kTextSub,
+    final hasError = !value && _showLegalError;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        color: hasError ? Colors.red.withOpacity(0.05) : Colors.transparent,
+        border: Border.all(
+          color: hasError ? Colors.red.withOpacity(0.5) : Colors.transparent,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: CheckboxListTile(
-        value: value,
-        onChanged: onChanged,
-        title: RichText(text: textSpan),
-        controlAffinity: ListTileControlAffinity.leading,
-        contentPadding: EdgeInsets.zero,
-        activeColor: _kGreen,
-        checkColor: Colors.white,
-        dense: true,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          unselectedWidgetColor: hasError ? Colors.red : _kTextSub,
+        ),
+        child: CheckboxListTile(
+          value: value,
+          onChanged: onChanged,
+          title: RichText(text: textSpan),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          activeColor: _kGreen,
+          checkColor: Colors.white,
+          dense: true,
+        ),
       ),
     );
   }

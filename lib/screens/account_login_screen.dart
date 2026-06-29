@@ -171,7 +171,7 @@ class AccountLoginScreen extends StatelessWidget {
   Future<void> _signInWithGoogle(BuildContext context) async {
     final navigator = Navigator.of(context);
     final result = await AuthService().signInWithGoogle();
-    if (result.isSuccess) {
+    if (result.success) {
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
         (route) => false,
@@ -188,7 +188,7 @@ class AccountLoginScreen extends StatelessWidget {
   Future<void> _signInWithApple(BuildContext context) async {
     final navigator = Navigator.of(context);
     final result = await AuthService().signInWithApple();
-    if (result.isSuccess) {
+    if (result.success) {
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
         (route) => false,

@@ -39,6 +39,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSendingFeedback = false;
   final TextEditingController _feedbackController = TextEditingController();
   final _authService = AuthService();
+  String _appVersion = '1.0.0';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersionInfo();
+  }
+
+  Future<void> _loadVersionInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = packageInfo.version;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -1037,7 +1055,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
               Center(
                 child: Text(
-                  langProvider.isTurkish ? 'Versiyon 1.0.0' : 'Version 1.0.0',
+                  langProvider.isTurkish ? 'Versiyon $_appVersion' : 'Version $_appVersion',
                   style: TextStyle(
                       color: cs.onSurface.withValues(alpha: 0.3),
                       fontSize: 11,

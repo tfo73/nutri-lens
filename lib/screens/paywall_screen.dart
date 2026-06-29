@@ -22,6 +22,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   int _selectedPlanIndex = 1; // Default to Yearly
   bool _isPurchasing = false;
   int? _appliedDiscountPercent;
+  String? _appliedPromoCode;
 
   bool get _isTr => Provider.of<LanguageProvider>(context).isTurkish;
   String _t(String tr, String en) => _isTr ? tr : en;
@@ -240,35 +241,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: ElevatedButton(
-                          onPressed: _isPurchasing ? null : () async {
-                            final profileProvider = context.read<ProfileProvider>();
-                            if (widget.onComplete != null) {
-                              // Onboarding path: grant temporary premium immediately
-                              await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
-                              widget.onComplete!();
-                              return;
-                            }
-                            final productId = _selectedPlanIndex == 0
-                                ? kProductMonthly
-                                : kProductYearly;
-                            setState(() => _isPurchasing = true);
-                            // Grant premium immediately for smooth UX, revert on failure
-                            await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
-                            final result = await PurchaseService.instance.purchase(productId);
-                            if (!mounted) return;
-                            setState(() => _isPurchasing = false);
-                            if (result == PurchaseResult.success) {
-                                // Save applied discount if any
-                                // Real implementation would send _appliedDiscountPercent to backend
-                                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-                            } else if (result == PurchaseResult.error) {
-                              // Revert premium if purchase failed
-                              profileProvider.updatePremiumStatus(false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(_t('Satın alma başarısız. Lütfen tekrar deneyin.', 'Purchase failed. Please try again.'))),
-                              );
-                            }
-                          },
+                          onPressed: _isPurchasing ? null : _showPurchaseOptions,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -302,21 +275,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             style: TextStyle(
                               color: isDark ? Colors.white54 : Colors.black54,
                               fontSize: 14,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: _applyPromoCode,
-                          child: Text(
-                            _t('Promosyon Kodu Gir', 'Enter Promo Code'),
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
                               decoration: TextDecoration.underline,
                             ),
                           ),
@@ -434,6 +392,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       final percent = data['discountPercent'] as int? ?? 10;
       setState(() {
          _appliedDiscountPercent = percent;
+         _appliedPromoCode = code;
          _isPurchasing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -628,5 +587,90 @@ class _PaywallScreenState extends State<PaywallScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Container(width: 1, height: 12, color: isDark ? Colors.white10 : Colors.black12),
     );
+  }
+
+  void _showPurchaseOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _t('Nasıl Devam Etmek İstersiniz?', 'How would you like to proceed?'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _executePurchase();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.blueAccent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _t('Kredi Kartı / Mağaza ile Satın Al', 'Purchase with Store'),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _applyPromoCode();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _t('Promosyon Kodu Gir', 'Enter Promo Code'),
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _executePurchase() async {
+    final profileProvider = context.read<ProfileProvider>();
+    if (widget.onComplete != null) {
+      await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
+      widget.onComplete!();
+      return;
+    }
+    final productId = _selectedPlanIndex == 0 ? kProductMonthly : kProductYearly;
+    setState(() => _isPurchasing = true);
+    await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
+    final result = await PurchaseService.instance.purchase(productId);
+    if (!mounted) return;
+    setState(() => _isPurchasing = false);
+    if (result == PurchaseResult.success) {
+      if (_appliedPromoCode != null && (_appliedDiscountPercent ?? 0) > 0) {
+         await PromoCodeService.instance.markCodeAsUsed(_appliedPromoCode!);
+      }
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } else if (result == PurchaseResult.error) {
+      profileProvider.updatePremiumStatus(false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('Satın alma başarısız. Lütfen tekrar deneyin.', 'Purchase failed. Please try again.'))),
+      );
+    }
   }
 }

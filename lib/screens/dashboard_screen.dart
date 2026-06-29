@@ -1242,6 +1242,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     DailyLog log,
   ) {
     final isTurkish = context.read<LanguageProvider>().isTurkish;
+    final now = DateTime.now();
+    final isToday = log.date.year == now.year && log.date.month == now.month && log.date.day == now.day;
+    if (!isToday) return const SizedBox.shrink();
+    
     final conflicts = provider.getConflicts(pp.activeProfile, log: log, isTurkish: isTurkish);
     if (conflicts.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
