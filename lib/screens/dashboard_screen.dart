@@ -773,8 +773,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     builder: (_) {
                       final wellness = context.watch<WellnessProvider>();
                       if (wellness.weightEnteredThisWeek) return const SizedBox.shrink();
-                      // Only show on the first day of the current week
+                      // Only show on the first day of the current week AND if we are looking at today
                       final now = DateTime.now();
+                      if (!DateUtils.isSameDay(_selectedDate, now)) return const SizedBox.shrink();
+                      
                       final weekStartDay = context.read<ProfileProvider>().weekStartDay;
                       final diff = (now.weekday - weekStartDay + 7) % 7;
                       final isFirstDayOfWeek = diff == 0;

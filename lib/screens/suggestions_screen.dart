@@ -1,4 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,6 +10,7 @@ import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
 import '../services/saved_foods_service.dart';
+import '../services/config_service.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/recipes_en.dart';
 import 'coach_screen.dart';
@@ -1263,7 +1266,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
               flex: 1,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: _buildRecipeImage(r.gorselUrl, 60, r.renk),
+                child: _buildRecipeImage(r, 60),
               ),
             ),
           ],
@@ -1289,7 +1292,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: _buildRecipeImage(r.gorselUrl, 140, r.renk),
+                child: _buildRecipeImage(r, 140),
               ),
             ),
             Padding(
@@ -1340,7 +1343,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
                 width: 50, height: 50,
-                child: _buildRecipeImage(r.gorselUrl, 50, r.renk),
+                child: _buildRecipeImage(r, 50),
               ),
             ),
             const SizedBox(width: 14),
@@ -1392,7 +1395,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(24),
-                    child: _buildRecipeImage(r.gorselUrl, 250, r.renk),
+                    child: _buildRecipeImage(r, 250),
                   ),
                   Positioned(
                     top: 12, right: 12,
@@ -1692,11 +1695,138 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
     );
   }
 
-  Widget _buildRecipeImage(String url, double height, Color renk) {
-    if (url.isEmpty || !url.startsWith('http')) {
-      // Return a loading effect that never finishes loading
+  Widget _buildRecipeImage(_Tarif r, double height) {
+    return _RecipeImageWidget(recipe: r, height: height);
+  }
+}
+
+class _RecipeImageWidget extends StatefulWidget {
+  final _Tarif recipe;
+  final double height;
+
+  const _RecipeImageWidget({
+    required this.recipe,
+    required this.height,
+  });
+
+  @override
+  _RecipeImageWidgetState createState() => _RecipeImageWidgetState();
+}
+
+class _RecipeImageWidgetState extends State<_RecipeImageWidget> {
+  String? _imageUrl;
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchImage();
+  }
+
+  Future<void> _fetchImage() async {
+    final foodName = widget.recipe.ad;
+    final foodNameEn = enRecipes[foodName]?.ad;
+    final nameForSearch = foodNameEn ?? foodName;
+
+    setState(() => _searching = true);
+
+    try {
+      // 1. Try Pixabay first
+      final pixabayApiKey = ConfigService.pixabayKey;
+      if (pixabayApiKey.isNotEmpty) {
+        final query = Uri.encodeComponent('$nameForSearch food');
+        final response = await http.get(Uri.parse(
+          'https://pixabay.com/api/?key=$pixabayApiKey&q=$query&image_type=photo&per_page=3'
+        )).timeout(const Duration(seconds: 6));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final hits = data['hits'] as List<dynamic>?;
+          if (hits != null && hits.isNotEmpty) {
+            final url = hits[0]['webformatURL'] as String?;
+            if (url != null && url.isNotEmpty) {
+              if (mounted) {
+                setState(() {
+                  _imageUrl = url;
+                  _searching = false;
+                });
+              }
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Pixabay recipe image search error: $e');
+    }
+
+    try {
+      // 2. Fallback to Wikimedia Commons
+      final query = Uri.encodeComponent('$nameForSearch food');
+      final response = await http.get(Uri.parse(
+        'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
+        '&format=json&piprop=thumbnail&pithumbsize=400'
+        '&generator=search&gsrnamespace=6&gsrlimit=5&gsrsearch=$query',
+      )).timeout(const Duration(seconds: 6));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final pages = data['query']?['pages'] as Map<String, dynamic>?;
+        if (pages != null && pages.isNotEmpty) {
+          String? url;
+          for (final page in pages.values) {
+            final thumb = page['thumbnail']?['source'] as String?;
+            if (thumb != null) {
+              final lowerThumb = thumb.toLowerCase();
+              if (lowerThumb.contains('.svg') ||
+                  lowerThumb.contains('flag') ||
+                  lowerThumb.contains('map') ||
+                  lowerThumb.contains('logo') ||
+                  lowerThumb.contains('icon') ||
+                  lowerThumb.contains('diagram') ||
+                  lowerThumb.contains('chart') ||
+                  lowerThumb.contains('portrait') ||
+                  lowerThumb.contains('emblem') ||
+                  lowerThumb.contains('shield') ||
+                  lowerThumb.contains('person') ||
+                  lowerThumb.contains('graph') ||
+                  lowerThumb.contains('blank')) {
+                continue;
+              }
+              url = thumb;
+              break;
+            }
+          }
+          if (url != null && url.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _imageUrl = url;
+                _searching = false;
+              });
+            }
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Wikimedia recipe image search error: $e');
+    }
+
+    // 3. Fallback to hardcoded unsplash URL if both fail
+    if (mounted) {
+      setState(() {
+        _imageUrl = widget.recipe.gorselUrl;
+        _searching = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _imageUrl;
+    if (_searching && url == null) {
       return Container(
-        height: height,
+        height: widget.height,
         width: double.infinity,
         color: Colors.grey.withValues(alpha: 0.1),
         child: const Center(
@@ -1708,13 +1838,23 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
         ),
       );
     }
+
+    if (url == null || url.isEmpty || !url.startsWith('http')) {
+      return Container(
+        height: widget.height,
+        width: double.infinity,
+        color: widget.recipe.renk.withValues(alpha: 0.1),
+        child: Icon(Icons.restaurant, color: widget.recipe.renk, size: widget.height * 0.4),
+      );
+    }
+
     return CachedNetworkImage(
       imageUrl: url,
-      height: height,
+      height: widget.height,
       width: double.infinity,
       fit: BoxFit.cover,
-      errorWidget: (context, url, error) => Container(
-        height: height,
+      placeholder: (context, url) => Container(
+        height: widget.height,
         width: double.infinity,
         color: Colors.grey.withValues(alpha: 0.1),
         child: const Center(
@@ -1725,10 +1865,11 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
           ),
         ),
       ),
-      placeholder: (context, url) => Container(
-        height: height,
-        color: Colors.grey.withValues(alpha: 0.1),
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      errorWidget: (context, url, error) => Container(
+        height: widget.height,
+        width: double.infinity,
+        color: widget.recipe.renk.withValues(alpha: 0.1),
+        child: Icon(Icons.restaurant, color: widget.recipe.renk, size: widget.height * 0.4),
       ),
     );
   }

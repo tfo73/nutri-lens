@@ -10,7 +10,7 @@ class ConfigService {
     try {
       await _rc.setConfigSettings(RemoteConfigSettings(
         fetchTimeout: const Duration(seconds: 10),
-        minimumFetchInterval: const Duration(hours: 1),
+        minimumFetchInterval: Duration.zero,
       ));
       await _rc.setDefaults({
         'ANTHROPIC_API_KEY': '',

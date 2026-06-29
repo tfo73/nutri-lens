@@ -527,6 +527,10 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                   child: TextField(
                     controller: _gramsCtrl,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                    },
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: cs.onSurface.withValues(alpha: 0.7)),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
@@ -549,6 +553,10 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                     onTap: () => _isCalorieManuallyEdited = true,
                     onChanged: (v) => _isCalorieManuallyEdited = true,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                    },
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 32, color: cs.primary),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
@@ -746,14 +754,36 @@ class _EditableMacro extends StatelessWidget {
   final String label;
   final Color color;
   const _EditableMacro({required this.controller, required this.label, required this.color});
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Use high-contrast color choices in Light Mode to ensure accessibility
+    Color displayColor;
+    if (isDark) {
+      displayColor = color;
+    } else {
+      if (color == const Color(0xFF7EE787)) {
+        displayColor = const Color(0xFF1B6A27); // Protein: Dark Green
+      } else if (color == const Color(0xFF58A6FF)) {
+        displayColor = const Color(0xFF0969DA); // Carbs: Dark Blue
+      } else if (color == const Color(0xFFF0A500)) {
+        displayColor = const Color(0xFFB57C00); // Fat: Dark Amber/Gold
+      } else if (color == const Color(0xFFFF6B6B)) {
+        displayColor = const Color(0xFFCF222E); // Fiber: Dark Red
+      } else {
+        displayColor = color;
+      }
+    }
+
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.12 : 0.22),
+          color: displayColor.withValues(alpha: isDark ? 0.12 : 0.08),
           borderRadius: BorderRadius.circular(12),
+          border: isDark ? null : Border.all(color: displayColor.withValues(alpha: 0.18), width: 1),
         ),
         child: Column(
           children: [
@@ -767,7 +797,11 @@ class _EditableMacro extends StatelessWidget {
                     controller: controller,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: color),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                    },
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: displayColor),
                     decoration: const InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
@@ -776,10 +810,10 @@ class _EditableMacro extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 2),
-                Text('g', style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7))),
+                Text('g', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: displayColor.withValues(alpha: 0.8))),
               ],
             ),
-            Text(label, style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.8)), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: displayColor.withValues(alpha: 0.9)), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

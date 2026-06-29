@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/purchase_service.dart';
+import '../services/promo_code_service.dart';
 import 'home_screen.dart';
+import 'legal_screen.dart';
 
 class PaywallScreen extends StatefulWidget {
   final bool fromOnboarding;
@@ -19,6 +21,7 @@ class PaywallScreen extends StatefulWidget {
 class _PaywallScreenState extends State<PaywallScreen> {
   int _selectedPlanIndex = 1; // Default to Yearly
   bool _isPurchasing = false;
+  int? _appliedDiscountPercent;
 
   bool get _isTr => Provider.of<LanguageProvider>(context).isTurkish;
   String _t(String tr, String en) => _isTr ? tr : en;
@@ -188,23 +191,30 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       // Plans
                       _buildPlanCard(
                         index: 0,
-                        title: _t('Haftalık', 'Weekly'),
-                        price: _t('₺199,99 / hafta', '₺199.99 / week'),
-                        subtitle: _t('Sağlıklı yaşama hızlı bir başlangıç', 'A quick start to healthy living'),
+                        title: _t('Aylık Plan', 'Monthly Plan'),
+                        price: _appliedDiscountPercent != null 
+                            ? _t('₺${(99 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(0)}', '\$${(4.99 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(2)}')
+                            : _t('₺99', '\$4.99'),
+                        oldPrice: _appliedDiscountPercent != null ? _t('₺99', '\$4.99') : null,
+                        subtitle: _t('Aylık otomatik yenileme', 'Billed monthly'),
                         selected: _selectedPlanIndex == 0,
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
                       _buildPlanCard(
                         index: 1,
-                        title: _t('Yıllık', 'Yearly'),
-                        price: _t('₺1.749,99 / yıl', '₺1,749.99 / year'),
-                        oldPrice: _t('₺8.800', '₺8,800'), // Strikethrough price
-                        subtitle: _t('Uzun yaşam için en kapsamlı analiz', 'The most comprehensive analysis for longevity'),
+                        title: _t('Yıllık Plan', 'Yearly Plan'),
+                        price: _appliedDiscountPercent != null 
+                            ? _t('₺${(299 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(0)}', '\$${(29.99 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(2)}')
+                            : _t('₺299', '\$29.99'),
+                        oldPrice: _appliedDiscountPercent != null 
+                            ? _t('₺299', '\$29.99')
+                            : _t('₺1188', '\$59.88'),
+                        subtitle: _t('Yılda bir kez faturalandırılır', 'Billed once a year'),
                         selected: _selectedPlanIndex == 1,
                         badge: _t('EN POPÜLER', 'MOST POPULAR'),
                         isBadgeTopCenter: true,
-                        savingsBlue: appBlue, // Blue savings
+                        savingsBlue: const Color(0xFF007AFF),
                         appGreen: appBlue,
                         cardColor: cardColor,
                       ),
@@ -248,6 +258,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             if (!mounted) return;
                             setState(() => _isPurchasing = false);
                             if (result == PurchaseResult.success) {
+                                // Save applied discount if any
+                                // Real implementation would send _appliedDiscountPercent to backend
                                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
                             } else if (result == PurchaseResult.error) {
                               // Revert premium if purchase failed
@@ -295,8 +307,22 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           ),
                         ),
                       ),
-                      
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton(
+                          onPressed: _applyPromoCode,
+                          child: Text(
+                            _t('Promosyon Kodu Gir', 'Enter Promo Code'),
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -313,9 +339,21 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             }
                           }),
                           _buildFooterDivider(),
-                          _buildFooterLink(_t('Gizlilik', 'Privacy')),
+                          _buildFooterLink(_t('Gizlilik', 'Privacy'), onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => LegalScreen(
+                              title: _t('Gizlilik Politikası', 'Privacy Policy'),
+                              trAssetPath: 'assets/legal/privacy_policy_tr.md',
+                              enAssetPath: 'assets/legal/privacy_policy_en.md',
+                            )));
+                          }),
                           _buildFooterDivider(),
-                          _buildFooterLink(_t('Şartlar', 'Terms')),
+                          _buildFooterLink(_t('Şartlar', 'Terms'), onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => LegalScreen(
+                              title: _t('Kullanım Koşulları', 'Terms of Use'),
+                              trAssetPath: 'assets/legal/terms_tr.md',
+                              enAssetPath: 'assets/legal/terms_en.md',
+                            )));
+                          }),
                         ],
                       ),
                       const SizedBox(height: 48),
@@ -331,6 +369,77 @@ class _PaywallScreenState extends State<PaywallScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _applyPromoCode() async {
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: Text(_t('Promosyon Kodu', 'Promo Code')),
+          content: TextField(
+            controller: ctrl,
+            decoration: InputDecoration(
+              hintText: _t('Kodu buraya girin', 'Enter code here'),
+            ),
+            textCapitalization: TextCapitalization.characters,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(_t('İptal', 'Cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: Text(_t('Uygula', 'Apply')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (code == null || code.isEmpty) return;
+
+    setState(() => _isPurchasing = true);
+    final data = await PromoCodeService.instance.validatePromoCode(code);
+    
+    if (!mounted) return;
+
+    if (data == null) {
+      setState(() => _isPurchasing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('Geçersiz veya süresi dolmuş promosyon kodu.', 'Invalid or expired promo code.'))),
+      );
+      return;
+    }
+
+    final type = data['type'] as String?;
+    if (type == 'duration') {
+      final days = data['durationDays'] as int? ?? 30;
+      final success = await PromoCodeService.instance.applyDurationCode(code, days);
+      setState(() => _isPurchasing = false);
+      if (success) {
+        context.read<ProfileProvider>().updatePremiumStatus(true, planName: 'promo_duration');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_t('$days günlük Premium aktif!', '$days days Premium active!'))),
+        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_t('Bir hata oluştu.', 'An error occurred.'))),
+        );
+      }
+    } else if (type == 'discount') {
+      final percent = data['discountPercent'] as int? ?? 10;
+      setState(() {
+         _appliedDiscountPercent = percent;
+         _isPurchasing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('%$percent indirim uygulandı!', '$percent% discount applied!'))),
+      );
+    }
   }
 
   Widget _buildFeatureItem({

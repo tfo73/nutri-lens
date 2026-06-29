@@ -187,12 +187,36 @@ class _HomeScreenState extends State<HomeScreen> {
       final meal = nutritionProvider.lastMealType;
       
       // Sadece ana ekrandaysak (CameraScreen açık değilse) göster
-      // Not: Bu basit bir kontrol, daha sağlamı ModalRoute.of(context).isCurrent
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (ModalRoute.of(context)?.isCurrent ?? false) {
           _showAnalysisResult(context, result, image, meal);
+          nutritionProvider.clearLastResult();
         }
-        nutritionProvider.clearLastResult();
+      });
+    }
+
+    // Listen for background analysis errors
+    if (!nutritionProvider.isAnalyzing && nutritionProvider.analysisError != null) {
+      final errorMsg = nutritionProvider.analysisError!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (ModalRoute.of(context)?.isCurrent ?? false) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(context.tr('Analiz Hatası')),
+              content: Text(errorMsg),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    nutritionProvider.clearAnalysisError();
+                  },
+                  child: Text(context.tr('Tamam')),
+                )
+              ],
+            ),
+          );
+        }
       });
     }
 

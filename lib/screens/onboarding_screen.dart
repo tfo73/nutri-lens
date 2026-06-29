@@ -22,9 +22,13 @@ import '../services/device_id_service.dart';
 import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../services/health_service.dart';
+import '../providers/wellness_provider.dart';
+import '../providers/nutrition_provider.dart';
 import '../widgets/wave_background.dart';
 import 'home_screen.dart';
 import 'paywall_screen.dart';
+import 'legal_screen.dart';
+import 'package:flutter/gestures.dart';
 
 // =============================================================================
 // DATA MODEL
@@ -349,6 +353,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   bool _isLangExpanded = false;
   final TextEditingController _signUpEmailCtrl = TextEditingController();
   final TextEditingController _signUpPasswordCtrl = TextEditingController();
+
+  bool _acceptedTerms = false;
+  bool _acceptedPrivacy = false;
+  bool _acceptedKVKK = false;
 
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
@@ -1030,9 +1038,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
     if (!mounted) return;
-    SyncService.instance.pullUserData();
+    await _syncAndLoadData();
+    if (!mounted) return;
     final profileProv = context.read<ProfileProvider>();
-    await profileProv.loadProfiles();
     if (!mounted) return;
 
     if (profileProv.isPremium) {
@@ -1070,9 +1078,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
     if (!mounted) return;
-    SyncService.instance.pullUserData();
+    await _syncAndLoadData();
+    if (!mounted) return;
     final profileProv = context.read<ProfileProvider>();
-    await profileProv.loadProfiles();
     if (!mounted) return;
 
     if (profileProv.isPremium) {
@@ -1088,6 +1096,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   // Kullanılan yer: _stepSignUp – hesap oluştur akışı
   Future<void> _handleGoogleSignIn() async {
+    if (!_checkLegalConsents()) return;
     setState(() => _googleLoading = true);
     final result = await AuthService().signInWithGoogle();
     if (!mounted) return;
@@ -1113,9 +1122,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('onboarding_done', true);
       if (!mounted) return;
-      SyncService.instance.pullUserData();
+      await _syncAndLoadData();
+      if (!mounted) return;
       final profileProv = context.read<ProfileProvider>();
-      await profileProv.loadProfiles();
       if (!mounted) return;
 
       if (profileProv.isPremium) {
@@ -1148,6 +1157,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _handleAppleSignIn() async {
+    if (!_checkLegalConsents()) return;
     setState(() => _appleLoading = true);
     final result = await AuthService().signInWithApple();
     if (!mounted) return;
@@ -1173,9 +1183,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('onboarding_done', true);
       if (!mounted) return;
-      SyncService.instance.pullUserData();
+      await _syncAndLoadData();
+      if (!mounted) return;
       final profileProv = context.read<ProfileProvider>();
-      await profileProv.loadProfiles();
       if (!mounted) return;
 
       if (profileProv.isPremium) {
@@ -2127,6 +2137,31 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       style: TextStyle(color: textMain, fontWeight: FontWeight.w700),
                     ),
                     TextSpan(text: _t(' ilerle.', ', not guesswork.')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF161B22) : const Color(0xFFF6F8FA),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF8B949E), size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _t(
+                          'Tıbbi Feragatname: Nutri Lens bir tıbbi cihaz veya doktor değildir. Sağlanan analiz ve veriler sadece genel bilgilendirme amaçlıdır. Diyetinizde değişiklik yapmadan önce mutlaka bir sağlık profesyoneline danışın.',
+                          'Medical Disclaimer: Nutri Lens is not a medical device or doctor. The data and analysis provided are for general informational purposes only. Always consult a healthcare professional before changing your diet.'
+                        ),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E), height: 1.4),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -5927,6 +5962,79 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               loading: _appleLoading,
             ),
           ],
+          const SizedBox(height: 16),
+          // --- Legal Checkboxes ---
+          _buildLegalCheckbox(
+            value: _acceptedTerms,
+            onChanged: (val) => setState(() => _acceptedTerms = val ?? false),
+            textSpan: TextSpan(
+              style: const TextStyle(fontSize: 12, color: _kTextSub, height: 1.5),
+              children: [
+                TextSpan(
+                  text: _t('Kullanım Koşulları', 'Terms of Service'),
+                  style: const TextStyle(color: _kGreen, decoration: TextDecoration.underline),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LegalScreen(
+                            title: _t('Kullanım Koşulları', 'Terms of Service'),
+                            trAssetPath: 'assets/legal/terms_tr.md',
+                            enAssetPath: 'assets/legal/terms_en.md',
+                          ),
+                        ),
+                      );
+                    },
+                ),
+                TextSpan(text: _t('\'nı okudum ve kabul ediyorum.', ' read and accepted.')),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildLegalCheckbox(
+            value: _acceptedPrivacy,
+            onChanged: (val) => setState(() => _acceptedPrivacy = val ?? false),
+            textSpan: TextSpan(
+              style: const TextStyle(fontSize: 12, color: _kTextSub, height: 1.5),
+              children: [
+                TextSpan(
+                  text: _t('Gizlilik Politikası (Aydınlatma Metni)', 'Privacy Policy'),
+                  style: const TextStyle(color: _kGreen, decoration: TextDecoration.underline),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LegalScreen(
+                            title: _t('Gizlilik Politikası', 'Privacy Policy'),
+                            trAssetPath: 'assets/legal/privacy_policy_tr.md',
+                            enAssetPath: 'assets/legal/privacy_policy_en.md',
+                          ),
+                        ),
+                      );
+                    },
+                ),
+                TextSpan(text: _t('\'ni okudum.', ' read.')),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildLegalCheckbox(
+            value: _acceptedKVKK,
+            onChanged: (val) => setState(() => _acceptedKVKK = val ?? false),
+            textSpan: TextSpan(
+              style: const TextStyle(fontSize: 12, color: _kTextSub, height: 1.5),
+              children: [
+                TextSpan(
+                  text: _t(
+                    'Sağlık verilerim dahil kişisel verilerimin işlenmesine Açık Rıza gösteriyorum.',
+                    'I give my Explicit Consent to the processing of my personal data, including health data.'
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (widget.mode != OnboardingMode.linkAccount) ...[
             const SizedBox(height: 24),
             // --- Skip Sign Up ---
@@ -5951,7 +6059,49 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
+  Future<void> _syncAndLoadData() async {
+    await _syncAndLoadDataGlobal(context);
+  }
+
+  bool _checkLegalConsents() {
+    if (!_acceptedTerms || !_acceptedPrivacy || !_acceptedKVKK) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_t(
+            'Lütfen Kullanım Koşulları, Gizlilik Politikası ve KVKK Açık Rıza onaylarını işaretleyin.',
+            'Please accept the Terms of Service, Privacy Policy, and Explicit Consent.'
+          )),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  Widget _buildLegalCheckbox({
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    required TextSpan textSpan,
+  }) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        unselectedWidgetColor: _kTextSub,
+      ),
+      child: CheckboxListTile(
+        value: value,
+        onChanged: onChanged,
+        title: RichText(text: textSpan),
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: EdgeInsets.zero,
+        activeColor: _kGreen,
+        checkColor: Colors.white,
+        dense: true,
+      ),
+    );
+  }
+
   Future<void> _skipSignUp() async {
+    if (!_checkLegalConsents()) return;
     setState(() => _finishLoading = true);
     try {
       await _saveProfile();
@@ -5965,6 +6115,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _handleCreateAccount() async {
+    if (!_checkLegalConsents()) return;
+    
     final email = _signUpEmailCtrl.text.trim();
     final password = _signUpPasswordCtrl.text;
 
@@ -7708,7 +7860,7 @@ class _EmailAuthSheetState extends State<_EmailAuthSheet> {
         if (onboardingDone) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('onboarding_done', true);
-          SyncService.instance.pullUserData();
+          await _syncAndLoadDataGlobal(context);
         }
       } catch (_) {}
 
@@ -8467,4 +8619,17 @@ class _LongevityPainter extends CustomPainter {
 extension TranslationStateExtension on State {
   bool get _isTr => Provider.of<LanguageProvider>(context, listen: false).isTurkish;
   String _t(String tr, String en) => _isTr ? tr : en;
+}
+
+Future<void> _syncAndLoadDataGlobal(BuildContext context) async {
+  await SyncService.instance.pullUserData();
+  if (!context.mounted) return;
+  await context.read<ProfileProvider>().loadProfiles();
+  if (!context.mounted) return;
+  await context.read<WellnessProvider>().load();
+  if (!context.mounted) return;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid != null) {
+    context.read<NutritionProvider>().switchProfile(uid);
+  }
 }

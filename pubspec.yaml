@@ -45,6 +45,7 @@ dependencies:
   url_launcher: ^6.3.2
   cached_network_image: ^3.4.1
   sign_in_with_apple: ^8.1.0
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:
@@ -68,3 +69,4 @@ flutter:
     - assets/ibs/
     - assets/onboarding/
     - assets/profilepic/
+    - assets/legal/

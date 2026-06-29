@@ -25,6 +25,7 @@ import 'onboarding_screen.dart';
 import 'profile_screen.dart' show openProfileEditSheet;
 import 'package:device_info_plus/device_info_plus.dart';
 import '../l10n/app_localizations.dart';
+import 'legal_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -895,7 +896,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingsCard(
                 children: [
                   GestureDetector(
-                    onTap: () {}, // TODO: Terms
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LegalScreen(
+                            title: context.tr('Kullanım Koşulları'),
+                            trAssetPath: 'assets/legal/terms_tr.md',
+                            enAssetPath: 'assets/legal/terms_en.md',
+                          ),
+                        ),
+                      );
+                    },
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -912,7 +924,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   Divider(color: cs.outlineVariant, height: 20),
                   GestureDetector(
-                    onTap: () {}, // TODO: Privacy
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LegalScreen(
+                            title: context.tr('Gizlilik Politikası'),
+                            trAssetPath: 'assets/legal/privacy_policy_tr.md',
+                            enAssetPath: 'assets/legal/privacy_policy_en.md',
+                          ),
+                        ),
+                      );
+                    },
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -987,6 +1010,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (FirebaseAuth.instance.currentUser != null &&
+                  !FirebaseAuth.instance.currentUser!.isAnonymous) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isDeleting ? null : _handleDeleteAccount,
+                    icon: const Icon(Icons.delete_forever,
+                        color: Color(0xFFF85149), size: 20),
+                    label: Text(context.tr('Hesabı Sil'),
+                        style: const TextStyle(
+                            color: Color(0xFFF85149),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(
+                          color: Color(0xFFF85149), width: 1),
+                      backgroundColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Center(
                 child: Text(
                   langProvider.isTurkish ? 'Versiyon 1.0.0' : 'Version 1.0.0',

@@ -102,49 +102,196 @@ class FoodAnalysisService {
 
   Future<Map<String, dynamic>> _analyzeImageFast(
       String base64Image, String? hint) async {
-    final json = await _callClaude(
-      messages: [
-        {
-          'role': 'user',
-          'content': [
-            {
-              'type': 'image',
-              'source': {
-                'type': 'base64',
-                'media_type': 'image/jpeg',
-                'data': base64Image,
+    final prompt = '''
+You are a world-class clinical dietitian and advanced computer vision nutrition analyst. Your task is to analyze the food image provided (and utilize any optional user hint) with extreme precision.
+
+User hint/note: "${hint ?? ''}"
+
+STEP 0 — IMAGE QUALITY ASSESSMENT
+Before estimating nutrients:
+- Determine whether the image quality is sufficient.
+- Evaluate: lighting, blur, occlusion, camera angle, visibility of all foods, presence of size reference (plate, fork, hand, cup etc.).
+- Decide the image quality: excellent | good | fair | poor.
+- Decide portion estimation confidence: high | medium | low.
+- Decide food identification confidence: high | medium | low.
+- Decide the general confidence score (0-100). If confidence < 60, explain what limits the estimation in "guven_nedeni" (Turkish) and "guven_nedeni_en" (English).
+
+STEP 1 — IDENTIFICATION & QUANTIFICATION:
+1. Identify the most probable food item based on the visual evidence. If multiple interpretations are possible, choose the most likely one. Write the Turkish name in "yemek_adi" (e.g. "Sade Omlet") and its English name in "yemek_adi_en" (e.g. "Plain Omelette").
+2. You must never refuse because estimation is imperfect. Your goal is to produce the best clinically reasonable estimate from the available visual information. Do not answer "cannot determine" unless the food is completely unrecognizable.
+3. Estimate the portion weight in grams ("porsiyon_gram"). If the food is primarily liquid, prioritize volume estimation (mL) instead of weight and set "porsiyon_gram" to its equivalent weight.
+4. When estimating portion size, consider whether the presentation resembles: a homemade meal, restaurant serving, fast-food serving, or packaged food. Adjust the estimated portion accordingly.
+5. Portion weight estimates should use realistic practical values. Prefer increments of approximately 5–10 g unless there is strong visual evidence for greater precision (e.g. use 150g or 155g, not 153g).
+6. Round values consistently: Weight: nearest 5 g, Calories: nearest whole number, Macronutrients: 1 decimal place, Micronutrients: 1 decimal place (or whole numbers where appropriate).
+7. If multiple identical food items are present (e.g. 6 meatballs, 12 sushi rolls, 3 nuggets), estimate the portion size and calories of one item first, then multiply by the detected count.
+8. If multiple different foods are detected, estimate each component separately and sum all nutrients for the totals.
+9. Do not invent ingredients. Only infer hidden ingredients (like butter, cooking oil, cream, cheese, sugar) that are commonly expected from the identified cooking method. Prefer conservative estimates over aggressive assumptions. When visual evidence is insufficient, choose the most statistically typical value rather than an extreme value.
+10. Estimate cooking oil separately. If oil is visually present, estimate absorbed oil based on cooking method. If uncertain, assume the average oil absorption for that cooking technique.
+11. Unless otherwise indicated, estimate nutrients for the food in its cooked edible form.
+12. Identify the cooking method (raw|boiled|grilled|fried|baked|other) and set "pisirme". Identify the food type (soup|main_dish|salad|dessert|drink|breakfast|snack) and set "yemek_tipi".
+
+STEP 2 — MACRONUTRIENT & CALORIE CALCULATION (PER 100G OF THE FOOD):
+- Calculate all values PER 100G of the food.
+- Calculate protein, carbohydrates, fat, fiber, sugar, saturated fat, etc.
+- Use USDA FoodData Central as the primary reference. If the exact food is unavailable, use the closest nutritionally equivalent food.
+- Protein, fat, carbohydrate and fiber must be internally consistent.
+- Ensure the sum of protein + carbohydrates + fat <= 100g.
+- Ensure the sum of amino acids <= protein.
+
+STEP 3 — MICRONUTRIENT & ESSENTIAL NUTRIENT ESTIMATION (PER 100G OF THE FOOD):
+- Estimate micronutrients proportionally to the estimated ingredients per 100g.
+- Never output zero unless the nutrient is biologically absent from the food.
+- Required nutrients match the schema keys precisely.
+
+STEP 4 — USER HINT HANDLING:
+- If the user provides a hint (food name, restaurant, ingredients, cooking method, or portion size), use it only if it is consistent with the image.
+- Never override obvious visual evidence with the user hint.
+
+STEP 5 — FINAL VALIDATION
+Before returning JSON, verify:
+✓ Macronutrients match the estimated portion per 100g
+✓ Micronutrients are realistic
+✓ No biologically impossible values
+✓ Sodium is plausible
+✓ Sugar is plausible
+✓ Saturated fat <= total fat
+✓ Fiber <= carbohydrate
+✓ All numeric values must be numbers. Do not include units in JSON values. Units belong only to the schema documentation.
+✓ Output MUST match the provided JSON Schema exactly. Do not omit required fields. Do not add extra fields. Populate every field. Use 0.0 only when a value is genuinely inapplicable.
+
+GENERAL PRINCIPLE:
+Favor nutritional realism over visual precision. The objective is to produce the most clinically plausible nutritional estimate rather than an exact visual measurement.
+''';
+
+    final response = await http.post(
+      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      headers: {
+        'Authorization': 'Bearer ${ConfigService.openaiKey}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': 'gpt-4o',
+        'max_tokens': 2000,
+        'temperature': 0.0,
+        'top_p': 1.0,
+        'response_format': {
+          'type': 'json_schema',
+          'json_schema': {
+            'name': 'food_analysis_response',
+            'strict': true,
+            'schema': {
+              'type': 'object',
+              'properties': {
+                'yemek_adi': { 'type': 'string' },
+                'yemek_adi_en': { 'type': 'string' },
+                'yemek_tipi': { 'type': 'string' },
+                'pisirme': { 'type': 'string' },
+                'porsiyon_gram': { 'type': 'number' },
+                'guven_skoru': { 'type': 'number' },
+                'guven_nedeni': { 'type': 'string' },
+                'guven_nedeni_en': { 'type': 'string' },
+                'protein': { 'type': 'number' },
+                'karbonhidrat': { 'type': 'number' },
+                'yag': { 'type': 'number' },
+                'lif': { 'type': 'number' },
+                'seker': { 'type': 'number' },
+                'doymus_yag': { 'type': 'number' },
+                'tekli_doymus_yag': { 'type': 'number' },
+                'coklu_doymus_yag': { 'type': 'number' },
+                'trans_yag': { 'type': 'number' },
+                'kolesterol_mg': { 'type': 'number' },
+                'su': { 'type': 'number' },
+                'kalsiyum_mg': { 'type': 'number' },
+                'demir_mg': { 'type': 'number' },
+                'magnezyum_mg': { 'type': 'number' },
+                'fosfor_mg': { 'type': 'number' },
+                'potasyum_mg': { 'type': 'number' },
+                'sodyum_mg': { 'type': 'number' },
+                'cinko_mg': { 'type': 'number' },
+                'bakir_mg': { 'type': 'number' },
+                'manganez_mg': { 'type': 'number' },
+                'selenyum_mcg': { 'type': 'number' },
+                'iyot_mcg': { 'type': 'number' },
+                'krom_mcg': { 'type': 'number' },
+                'molibden_mcg': { 'type': 'number' },
+                'c_vitamini_mg': { 'type': 'number' },
+                'd_vitamini_mcg': { 'type': 'number' },
+                'e_vitamini_mg': { 'type': 'number' },
+                'k1_vitamini_mcg': { 'type': 'number' },
+                'a_vitamini_mcg': { 'type': 'number' },
+                'beta_karoten_mcg': { 'type': 'number' },
+                'likopen_mcg': { 'type': 'number' },
+                'lutein_zea_mcg': { 'type': 'number' },
+                'b1_tiamin_mg': { 'type': 'number' },
+                'b2_riboflavin_mg': { 'type': 'number' },
+                'b3_niasin_mg': { 'type': 'number' },
+                'b5_pantotenik_mg': { 'type': 'number' },
+                'b6_mg': { 'type': 'number' },
+                'folat_mcg': { 'type': 'number' },
+                'b12_mcg': { 'type': 'number' },
+                'kolin_mg': { 'type': 'number' },
+                'biotin_mcg': { 'type': 'number' },
+                'omega3_g': { 'type': 'number' },
+                'omega6_g': { 'type': 'number' },
+                'epa_g': { 'type': 'number' },
+                'dha_g': { 'type': 'number' },
+                'ala_g': { 'type': 'number' },
+                'linoleik_g': { 'type': 'number' },
+                'losin_g': { 'type': 'number' },
+                'lizin_g': { 'type': 'number' },
+                'valin_g': { 'type': 'number' },
+                'izolosin_g': { 'type': 'number' },
+                'treonin_g': { 'type': 'number' },
+                'metionin_g': { 'type': 'number' },
+                'fenilalanin_g': { 'type': 'number' },
+                'triptofan_g': { 'type': 'number' },
+                'histidin_g': { 'type': 'number' },
+                'sistin_g': { 'type': 'number' },
+                'tirozin_g': { 'type': 'number' }
               },
-            },
-            {
-              'type': 'text',
-              'text': '''
-You are an expert food analyst proficient in "Nutrition5k" and "USDA" data standards. Segment the plate in the image into its distinct components.
-1. Determine the exact name of the food. Set "yemek_adi" to the language used in the user hint if provided (if the user hint is in English, "yemek_adi" MUST be in English; if Turkish, "yemek_adi" MUST be in Turkish; if no hint, default to Turkish). Set "yemek_adi_en" to English.
-2. Calculate the portion size based on the plate or a reference object (fork/spoon).
-3. Select an EXACT USDA standard entry for the main components (e.g., USDA 170456 Cooked Salmon) and calculate by weight while keeping micronutrient ratios constant.
-4. Always round segmentation ratios to the nearest 10% for stability.
-5. If the image is blurry, has multiple items, or the portion is estimated, write a specific warning/recommendation in Turkish in "guven_nedeni" advising the user to add text descriptions or clarify portions (e.g. "Yemeğin içeriğini veya pişirme şeklini yazarak daha kesin sonuçlar alabilirsiniz."). Write the same recommendation in English in "guven_nedeni_en" naturally (e.g. "Try specifying the ingredients or cooking style to get more precise results.").
-
---- IN-CONTEXT TRAINING DATA (CALIBRATION) ---
-Rule 1: Meats shrink when cooked; macros/micros per 100g increase.
-Rule 2: Grains absorb water when cooked; macros/micros per 100g decrease.
-Rule 3: Frying increases fat absorption. Reflect this in the values.
-------------------------------------------------
-${hint != null ? '\nUser note: "$hint"\n' : ''}
-Calculate all values per 100g. Provide the portion size in grams for the entire image.
-
-Return ONLY JSON, nothing else:
-{"yemek_adi":"string","yemek_adi_en":"string","yemek_tipi":"soup|main_dish|salad|dessert|drink|breakfast|snack","pisirme":"raw|boiled|grilled|fried|baked|other","porsiyon_gram":number,"guven_skoru":number,"guven_nedeni":"string","guven_nedeni_en":"string","protein":number,"karbonhidrat":number,"yag":number,"lif":number,"seker":number,"doymus_yag":number,"tekli_doymus_yag":number,"coklu_doymus_yag":number,"trans_yag":number,"kolesterol_mg":number,"su":number,"kalsiyum_mg":number,"demir_mg":number,"magnezyum_mg":number,"fosfor_mg":number,"potasyum_mg":number,"sodyum_mg":number,"cinko_mg":number,"bakir_mg":number,"manganez_mg":number,"selenyum_mcg":number,"iyot_mcg":number,"krom_mcg":number,"molibden_mcg":number,"c_vitamini_mg":number,"d_vitamini_mcg":number,"e_vitamini_mg":number,"k1_vitamini_mcg":number,"a_vitamini_mcg":number,"beta_karoten_mcg":number,"likopen_mcg":number,"lutein_zea_mcg":number,"b1_tiamin_mg":number,"b2_riboflavin_mg":number,"b3_niasin_mg":number,"b5_pantotenik_mg":number,"b6_mg":number,"folat_mcg":number,"b12_mcg":number,"kolin_mg":number,"biotin_mcg":number,"omega3_g":number,"omega6_g":number,"epa_g":number,"dha_g":number,"ala_g":number,"linoleik_g":number,"losin_g":number,"lizin_g":number,"valin_g":number,"izolosin_g":number,"treonin_g":number,"metionin_g":number,"fenilalanin_g":number,"triptofan_g":number,"histidin_g":number,"sistin_g":number,"tirozin_g":number}
-
-Rules: If unknown, write 0. protein+carbs+fat ≤ 100. Sum of amino acids ≤ protein.'''
-            },
-          ],
+              'required': [
+                'yemek_adi', 'yemek_adi_en', 'yemek_tipi', 'pisirme', 'porsiyon_gram', 'guven_skoru', 'guven_nedeni', 'guven_nedeni_en',
+                'protein', 'karbonhidrat', 'yag', 'lif', 'seker', 'doymus_yag', 'tekli_doymus_yag', 'coklu_doymus_yag', 'trans_yag', 'kolesterol_mg', 'su',
+                'kalsiyum_mg', 'demir_mg', 'magnezyum_mg', 'fosfor_mg', 'potasyum_mg', 'sodyum_mg', 'cinko_mg', 'bakir_mg', 'manganez_mg', 'selenyum_mcg', 'iyot_mcg', 'krom_mcg', 'molibden_mcg',
+                'c_vitamini_mg', 'd_vitamini_mcg', 'e_vitamini_mg', 'k1_vitamini_mcg', 'a_vitamini_mcg', 'beta_karoten_mcg', 'likopen_mcg', 'lutein_zea_mcg',
+                'b1_tiamin_mg', 'b2_riboflavin_mg', 'b3_niasin_mg', 'b5_pantotenik_mg', 'b6_mg', 'folat_mcg', 'b12_mcg', 'kolin_mg', 'biotin_mcg',
+                'omega3_g', 'omega6_g', 'epa_g', 'dha_g', 'ala_g', 'linoleik_g', 'losin_g', 'lizin_g', 'valin_g', 'izolosin_g', 'treonin_g', 'metionin_g', 'fenilalanin_g', 'triptofan_g', 'histidin_g', 'sistin_g', 'tirozin_g'
+              ],
+              'additionalProperties': false
+            }
+          }
         },
-      ],
-      maxTokens: 2000,
-      model: 'claude-haiku-4-5-20251001',
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {
+                'type': 'text',
+                'text': prompt,
+              },
+              {
+                'type': 'image_url',
+                'image_url': {
+                  'url': 'data:image/jpeg;base64,$base64Image',
+                },
+              },
+            ],
+          },
+        ],
+      }),
     );
-    return json;
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final text = data['choices'][0]['message']['content'] as String;
+      final clean = text
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+      return jsonDecode(clean) as Map<String, dynamic>;
+    } else {
+      throw Exception('API Hatası: ${response.statusCode} - ${response.body}');
+    }
   }
 
 

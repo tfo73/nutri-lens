@@ -203,11 +203,11 @@ class AuthService {
     final user = currentUser;
     if (user == null) return AuthResult.error('Kullanıcı bulunamadı.');
     try {
-      // Önce Auth'dan sil — requires-recent-login gelirse Firestore'a
-      // dokunulmadan hata döner; böylece partial delete olmaz.
       final uid = user.uid;
-      await user.delete();
+      // Önce Firestore verilerini sil, ardından hesabı sil.
+      // Firestore kuralları auth gerektirdiği için auth silinmeden yapılmalı.
       await _deleteFirestoreData(uid);
+      await user.delete();
       return AuthResult.success(
         user: null,
         isNewUser: false,

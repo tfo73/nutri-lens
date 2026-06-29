@@ -46,11 +46,20 @@ class NutritionProvider extends ChangeNotifier {
   bool _showResultOnHome = false;
   bool get showResultOnHome => _showResultOnHome;
 
+  String? _analysisError;
+  String? get analysisError => _analysisError;
+
+  void clearAnalysisError() {
+    _analysisError = null;
+    notifyListeners();
+  }
+
   void clearLastResult() {
     _lastResult = null;
     _lastAnalyzedImage = null;
     _lastMealType = null;
     _showResultOnHome = false;
+    _analysisError = null;
     notifyListeners();
   }
 
@@ -65,6 +74,7 @@ class NutritionProvider extends ChangeNotifier {
     _lastAnalyzedImage = image;
     _lastMealType = mealType;
     _lastResult = null;
+    _analysisError = null;
     _showResultOnHome = false;
     notifyListeners();
 
@@ -73,6 +83,7 @@ class NutritionProvider extends ChangeNotifier {
       _lastResult = result;
     } catch (e) {
       debugPrint('Background analysis error: $e');
+      _analysisError = e.toString();
     } finally {
       _isAnalyzing = false;
       notifyListeners();
@@ -85,6 +96,7 @@ class NutritionProvider extends ChangeNotifier {
     _lastAnalyzedImage = null;
     _lastMealType = mealType;
     _lastResult = null;
+    _analysisError = null;
     _showResultOnHome = false;
     notifyListeners();
 
@@ -93,6 +105,7 @@ class NutritionProvider extends ChangeNotifier {
       _lastResult = result;
     } catch (e) {
       debugPrint('Background text analysis error: $e');
+      _analysisError = e.toString();
     } finally {
       _isAnalyzing = false;
       notifyListeners();

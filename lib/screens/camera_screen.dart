@@ -26,6 +26,7 @@ import '../services/claude_vision_service.dart';
 import '../services/food_analysis_service.dart';
 import '../services/nutrition_service.dart';
 import '../services/saved_foods_service.dart';
+import '../services/config_service.dart';
 import '../widgets/animated_widgets.dart';
 import '../widgets/analysis_widgets.dart';
 import '../widgets/food_analysis_result_sheet.dart';
@@ -1682,25 +1683,51 @@ class _MacroPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: color)),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 10,
-                  color: color.withValues(alpha: 0.8))),
-        ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Choose high-contrast color choices in Light Mode to ensure accessibility
+    Color displayColor;
+    if (isDark) {
+      displayColor = color;
+    } else {
+      if (color == const Color(0xFF7EE787)) {
+        displayColor = const Color(0xFF1B6A27); // Protein: Dark Green
+      } else if (color == const Color(0xFF58A6FF)) {
+        displayColor = const Color(0xFF0969DA); // Carbs: Dark Blue
+      } else if (color == const Color(0xFFF0A500)) {
+        displayColor = const Color(0xFFB57C00); // Fat: Dark Amber/Gold
+      } else if (color == const Color(0xFFD2A8FF)) {
+        displayColor = const Color(0xFF6F42C1); // Fiber/Purple: Dark Purple
+      } else if (color == const Color(0xFFFF6B6B)) {
+        displayColor = const Color(0xFFCF222E); // Fiber/Red: Dark Red
+      } else {
+        displayColor = color;
+      }
+    }
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: displayColor.withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: isDark ? null : Border.all(color: displayColor.withValues(alpha: 0.18), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(value,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: displayColor)),
+            Text(label,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                    color: displayColor.withValues(alpha: 0.9))),
+          ],
+        ),
       ),
     );
   }
@@ -3180,8 +3207,40 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
   Future<void> _searchFoodImage(String foodName, String? foodNameEn) async {
     if (mounted) setState(() => _photoSearching = true);
     try {
-      final nameForSearch = foodNameEn ?? _translateForImageSearch(foodName);
-      final query = Uri.encodeComponent('$nameForSearch food');
+      final nameForSearch = foodNameEn ?? foodName;
+      
+      // 1. Try Pixabay first if key is available
+      final pixabayApiKey = ConfigService.pixabayKey;
+      if (pixabayApiKey.isNotEmpty) {
+        try {
+          final query = Uri.encodeComponent('$nameForSearch food');
+          final response = await http.get(Uri.parse(
+            'https://pixabay.com/api/?key=$pixabayApiKey&q=$query&image_type=photo&per_page=3'
+          )).timeout(const Duration(seconds: 6));
+          
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body) as Map<String, dynamic>;
+            final hits = data['hits'] as List<dynamic>?;
+            if (hits != null && hits.isNotEmpty) {
+              final url = hits[0]['webformatURL'] as String?;
+              if (url != null && url.isNotEmpty) {
+                if (mounted) {
+                  setState(() {
+                    _foundImageUrl = url;
+                    _photoSearching = false;
+                  });
+                }
+                return; // Found on Pixabay, return immediately
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Pixabay search error: $e');
+        }
+      }
+
+      // 2. Fallback to Wikimedia Commons if not found on Pixabay
+      final query = Uri.encodeComponent('${foodNameEn ?? _translateForImageSearch(foodName)} food');
       final response = await http.get(Uri.parse(
         'https://commons.wikimedia.org/w/api.php?action=query&prop=pageimages'
         '&format=json&piprop=thumbnail&pithumbsize=400'
@@ -3554,6 +3613,10 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   maxLines: 3,
                   minLines: 2,
                   textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
                   decoration: InputDecoration(
                     hintText: _conversationHistory.isEmpty
                         ? context.tr('Yemeği tarif et... gramajı, miktar ve yemek adını yaz')
