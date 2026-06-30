@@ -267,6 +267,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
   }
 
   Future<void> _confirm() async {
+    final isTr = context.read<LanguageProvider>().isTurkish;
     final portionGrams = double.tryParse(_gramsCtrl.text) ?? widget.result.portionGrams;
     final factor = portionGrams / 100;
 
@@ -284,15 +285,13 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
         }
       } catch (_) {}
     }
-
-    final isTr = context.read<LanguageProvider>().isTurkish;
     final entry = FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameCtrl.text.trim().isEmpty 
           ? (isTr ? widget.result.foodName : (widget.result.foodNameEn ?? widget.result.foodName)) 
           : _nameCtrl.text.trim(),
       portionSize: portionGrams,
-      nutritionData: NutritionData(
+      nutritionData: widget.result.nutritionPer100g.copyWith(
         calories: factor > 0 ? (double.tryParse(_calorieCtrl.text) ?? 0.0) / factor : 0,
         protein: factor > 0 ? (double.tryParse(_proteinCtrl.text) ?? 0.0) / factor : 0,
         carbohydrates: factor > 0 ? (double.tryParse(_carbCtrl.text) ?? 0.0) / factor : 0,

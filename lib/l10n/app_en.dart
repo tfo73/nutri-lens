@@ -21,6 +21,8 @@ class AppEn {
     'Kaydet': 'Save',
     'İptal': 'Cancel',
     'Sil': 'Delete',
+    'Hata Raporu Gönderilsin mi?': 'Send Crash Report?',
+    'Uygulama son oturumda beklenmedik bir şekilde kapandı. Hata raporunu geliştiricilere göndererek uygulamanın geliştirilmesine katkıda bulunmak ister misiniz?': 'The app closed unexpectedly in the last session. Would you like to send a crash report to help us fix the issue and improve the app?',
     'Protein': 'Protein',
     'Karbonhidrat': 'Carbohydrates',
     'Karbonhidrat Kaldı': 'Carbs Left',

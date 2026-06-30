@@ -14,14 +14,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.lenseat.app",
-            "certificate_hash": "f9e55a41239afad1b89f5152646c16212329364b"
-          }
-        },
-        {
           "client_id": "392545068869-ki77tjq74qe0f2damtasau8jeqb1djid.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -148,11 +148,11 @@ class OnboardingData {
         'age': age,
         'heightCm': heightCm,
         'weightKg': weightKg,
-        'gender': gender?.index,
-        'weightGoal': weightGoal?.index,
+        'gender': gender?.name,
+        'weightGoal': weightGoal?.name,
         'targetWeightKg': targetWeightKg,
         'weeklyChangeDelta': weeklyChangeDelta,
-        'activityLevel': activityLevel?.index,
+        'activityLevel': activityLevel?.name,
         'dietaryPlan': dietaryPlan,
         'customCarbPct': customCarbPct,
         'customFatPct': customFatPct,
@@ -198,11 +198,34 @@ class OnboardingData {
     d.age = j['age'] as int? ?? 25;
     d.heightCm = (j['heightCm'] as num?)?.toDouble() ?? 170;
     d.weightKg = (j['weightKg'] as num?)?.toDouble() ?? 70;
-    d.gender = j['gender'] != null ? Gender.values[j['gender'] as int] : null;
-    d.weightGoal = j['weightGoal'] != null ? Goal.values[j['weightGoal'] as int] : null;
+    
+    if (j['gender'] != null) {
+      if (j['gender'] is int) {
+        d.gender = Gender.values[j['gender'] as int];
+      } else {
+        d.gender = Gender.values.byName(j['gender'] as String);
+      }
+    }
+
+    if (j['weightGoal'] != null) {
+      if (j['weightGoal'] is int) {
+        d.weightGoal = Goal.values[j['weightGoal'] as int];
+      } else {
+        d.weightGoal = Goal.values.byName(j['weightGoal'] as String);
+      }
+    }
+
     d.targetWeightKg = (j['targetWeightKg'] as num?)?.toDouble() ?? 65;
     d.weeklyChangeDelta = (j['weeklyChangeDelta'] as num?)?.toDouble() ?? 0.5;
-    d.activityLevel = j['activityLevel'] != null ? ActivityLevel.values[j['activityLevel'] as int] : null;
+    
+    if (j['activityLevel'] != null) {
+      if (j['activityLevel'] is int) {
+        d.activityLevel = ActivityLevel.values[j['activityLevel'] as int];
+      } else {
+        d.activityLevel = ActivityLevel.values.byName(j['activityLevel'] as String);
+      }
+    }
+
     d.dietaryPlan = j['dietaryPlan'] as String?;
     d.customCarbPct = (j['customCarbPct'] as num?)?.toDouble() ?? 45;
     d.customFatPct = (j['customFatPct'] as num?)?.toDouble() ?? 30;

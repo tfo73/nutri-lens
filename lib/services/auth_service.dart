@@ -14,7 +14,7 @@ class AuthService {
   GoogleSignIn? _googleInstance;
   GoogleSignIn get _google => _googleInstance ??= GoogleSignIn(
     serverClientId:
-        '808142209819-v49fjgjon70egf6j2mc9rov7mcfn8ang.apps.googleusercontent.com',
+        '392545068869-4na2tjkrpeset7k9gcl4ge2bub2jfnfh.apps.googleusercontent.com',
   );
 
   FirebaseFirestore? _dbInstance;
@@ -280,6 +280,12 @@ class AuthService {
       'fasting_history',
       'weight_history',
       'wellness_logs',
+      'profiles',
+      'logs',
+      'coach',
+      'coach_sessions',
+      'feedbacks',
+      'crashes',
     ];
     for (final sub in subcollections) {
       try {

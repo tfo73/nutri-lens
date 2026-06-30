@@ -360,6 +360,27 @@ class NutritionProvider extends ChangeNotifier {
         logData.remove('waterEntries');
         logData.remove('stepsCount');
         
+        // Scale entries nutrition data for Firestore display and analytics
+        if (logData['entries'] != null) {
+          logData['entries'] = log.entries.map((entry) {
+            final scaled = entry.nutritionData.scaleBy(entry.portionSize / 100);
+            return {
+              'id': entry.id,
+              'name': entry.name,
+              'brand': entry.brand,
+              'portionSize': entry.portionSize,
+              'portionUnit': entry.portionUnit,
+              'mealType': entry.mealType,
+              'timestamp': entry.timestamp.toIso8601String(),
+              'imageUrl': entry.imageUrl,
+              'imagePath': entry.imagePath,
+              'notes': entry.notes,
+              'novaGroup': entry.novaGroup,
+              'nutritionData': scaled.toStructuredJson()
+            };
+          }).toList();
+        }
+        
         await userDoc.collection('logs').doc(key).set(logData);
 
         // 2. Save water log separately

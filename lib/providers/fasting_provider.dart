@@ -22,11 +22,30 @@ class FastingProvider extends ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) return;
     try {
-      final doc = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('fasting').doc('active');
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final doc = userDoc.collection('fasting').doc('active');
       if (_activeSession == null) {
         await doc.delete();
+        await userDoc.update({
+          'fasting.activeSession': FieldValue.delete(),
+          'fasting.isFasting': false,
+        }).catchError((_) => userDoc.set({
+          'fasting': {
+            'isFasting': false,
+          }
+        }, SetOptions(merge: true)));
       } else {
-        await doc.set(_activeSession!.toJson());
+        final sessionData = _activeSession!.toJson();
+        await doc.set(sessionData);
+        await userDoc.update({
+          'fasting.activeSession': sessionData,
+          'fasting.isFasting': true,
+        }).catchError((_) => userDoc.set({
+          'fasting': {
+            'activeSession': sessionData,
+            'isFasting': true,
+          }
+        }, SetOptions(merge: true)));
       }
     } catch (e) {
       debugPrint('Fasting active cloud sync error: $e');
@@ -44,8 +63,22 @@ class FastingProvider extends ChangeNotifier {
         final docRef = userDoc.collection('fasting_history').doc(session.id);
         batch.set(docRef, session.toJson());
       }
+      
+      final historyJson = _history.map((s) => s.toJson()).toList();
+      batch.update(userDoc, {
+        'fasting.history': historyJson,
+      });
+      
       await batch.commit();
     } catch (e) {
+      try {
+        final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        await userDoc.set({
+          'fasting': {
+            'history': _history.map((s) => s.toJson()).toList(),
+          }
+        }, SetOptions(merge: true));
+      } catch (_) {}
       debugPrint('Fasting history cloud sync error: $e');
     }
   }
@@ -178,6 +211,18 @@ class FastingProvider extends ChangeNotifier {
     await _saveHistory(prefs);
     notifyListeners();
     _syncHistoryToCloud();
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('fasting_history')
+            .doc(id)
+            .delete();
+      } catch (_) {}
+    }
   }
 
   double getWeeklyFastingHours() {

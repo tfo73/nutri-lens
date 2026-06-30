@@ -248,7 +248,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       id: widget.existingEntry?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameCtrl.text.trim(),
       portionSize: portionSize,
-      nutritionData: NutritionData(
+      nutritionData: (widget.existingEntry?.nutritionData ?? NutritionData.empty).copyWith(
         calories: factor > 0 ? calories / factor : 0,
         protein: factor > 0 ? protein / factor : 0,
         carbohydrates: factor > 0 ? carbs / factor : 0,

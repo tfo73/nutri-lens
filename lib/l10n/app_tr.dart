@@ -21,6 +21,8 @@ class AppTr {
     'Kaydet': 'Kaydet',
     'İptal': 'İptal',
     'Sil': 'Sil',
+    'Hata Raporu Gönderilsin mi?': 'Hata Raporu Gönderilsin mi?',
+    'Uygulama son oturumda beklenmedik bir şekilde kapandı. Hata raporunu geliştiricilere göndererek uygulamanın geliştirilmesine katkıda bulunmak ister misiniz?': 'Uygulama son oturumda beklenmedik bir şekilde kapandı. Hata raporunu geliştiricilere göndererek uygulamanın geliştirilmesine katkıda bulunmak ister misiniz?',
     'Protein': 'Protein',
     'Karbonhidrat': 'Karbonhidrat',
     'Karbonhidrat Kaldı': 'Karbonhidrat Kaldı',

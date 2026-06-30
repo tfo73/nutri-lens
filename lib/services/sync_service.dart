@@ -140,10 +140,13 @@ class SyncService {
     }
   }
 
-  // Yemek kaydı eklenince Firestore'a da yaz
   Future<void> syncFoodEntry(FoodEntry entry) async {
     if (Platform.isWindows) return;
     if (_uid == null) return;
+    
+    // Scale nutrition values based on portion size (entry.portionSize / 100)
+    final scaled = entry.nutritionData.scaleBy(entry.portionSize / 100);
+    
     await _db
         .collection('users')
         .doc(_uid)
@@ -156,20 +159,7 @@ class SyncService {
       'portionGrams': entry.portionSize,
       'portionUnit': entry.portionUnit,
       'imagePath': entry.imagePath ?? '',
-      'calories': entry.nutritionData.calories,
-      'protein': entry.nutritionData.protein,
-      'carbs': entry.nutritionData.carbohydrates,
-      'fat': entry.nutritionData.fat,
-      'fiber': entry.nutritionData.fiber,
-      'sodium': entry.nutritionData.sodium ?? 0,
-      'micros': {
-        'vitaminD': entry.nutritionData.vitaminD,
-        'vitaminB12': entry.nutritionData.vitaminB12,
-        'iron': entry.nutritionData.iron,
-        'calcium': entry.nutritionData.calcium,
-        'magnesium': entry.nutritionData.magnesium,
-        'omega3': entry.nutritionData.omega3,
-      },
+      'nutritionData': scaled.toStructuredJson(),
       'syncedAt': FieldValue.serverTimestamp(),
     });
   }

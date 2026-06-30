@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -68,12 +69,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final text = _feedbackController.text.trim();
     if (text.isEmpty) return;
 
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+
     setState(() => _isSendingFeedback = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
       final packageInfo = await PackageInfo.fromPlatform();
-      final langProvider = Provider.of<LanguageProvider>(context, listen: false);
-      final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
       
       String deviceModel = 'Unknown';
       String osVersion = 'Unknown';
@@ -89,18 +91,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
         osVersion = 'iOS ${iosInfo.systemVersion}';
       }
 
-      await FirebaseFirestore.instance.collection('feedbacks').add({
-        'isim': profileProvider.activeProfile?.name ?? user?.displayName ?? 'İsimsiz Kullanıcı',
-        'id': user?.uid ?? 'anonymous',
-        'mail': user?.email ?? 'E-posta yok',
-        'tarih': FieldValue.serverTimestamp(),
-        'versiyon': packageInfo.version,
-        'platform': Platform.isAndroid ? 'Android' : 'iOS',
-        'model': deviceModel,
-        'osversiyon': osVersion,
-        'language': langProvider.isTurkish ? 'Türkçe' : 'English',
-        'feedback': text,
-      });
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('feedbacks')
+            .add({
+          'isim': profileProvider.activeProfile?.name ?? user.displayName ?? 'İsimsiz Kullanıcı',
+          'id': user.uid,
+          'mail': user.email ?? 'E-posta yok',
+          'tarih': FieldValue.serverTimestamp(),
+          'versiyon': packageInfo.version,
+          'platform': Platform.isAndroid ? 'Android' : 'iOS',
+          'model': deviceModel,
+          'osversiyon': osVersion,
+          'language': langProvider.isTurkish ? 'Türkçe' : 'English',
+          'feedback': text,
+        });
+      }
+
+      // Also attempt to write to the root collection 'feedbacks' (wrapped in try-catch in case of Firestore rules restrictions)
+      try {
+        await FirebaseFirestore.instance.collection('feedbacks').add({
+          'isim': profileProvider.activeProfile?.name ?? user?.displayName ?? 'İsimsiz Kullanıcı',
+          'id': user?.uid ?? 'anonymous',
+          'mail': user?.email ?? 'E-posta yok',
+          'tarih': FieldValue.serverTimestamp(),
+          'versiyon': packageInfo.version,
+          'platform': Platform.isAndroid ? 'Android' : 'iOS',
+          'model': deviceModel,
+          'osversiyon': osVersion,
+          'language': langProvider.isTurkish ? 'Türkçe' : 'English',
+          'feedback': text,
+        });
+      } catch (e) {
+        debugPrint('Root feedbacks write failed (likely Firestore rules): $e');
+      }
 
       if (!mounted) return;
       _feedbackController.clear();
@@ -1053,6 +1079,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
+
               Center(
                 child: Text(
                   langProvider.isTurkish ? 'Versiyon $_appVersion' : 'Version $_appVersion',

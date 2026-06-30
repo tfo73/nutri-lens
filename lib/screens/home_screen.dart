@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/profile_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/nutrition_provider.dart';
@@ -62,6 +67,205 @@ class _HomeScreenState extends State<HomeScreen> {
       // Profil tamamsa, bekleyen senkronizasyon var mı bak
       SyncService.instance.checkAndSyncPendingOnboarding(profile.activeProfile!);
     }
+    // Oruç verilerini buluttan yükle/senkronize et
+    try {
+      context.read<FastingProvider>().load();
+    } catch (_) {}
+    _checkCrashlytics();
+  }
+
+  Future<void> _checkCrashlytics() async {
+    try {
+      final crashlytics = FirebaseCrashlytics.instance;
+      final hasUnsent = await crashlytics.checkForUnsentReports();
+      if (hasUnsent && mounted) {
+        // Show dialog asking user to send crash reports
+        final sendReport = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            final cardColor = Theme.of(ctx).cardColor;
+            final textColor = Theme.of(ctx).colorScheme.onSurface;
+            final errorColor = Theme.of(ctx).colorScheme.error;
+            final primaryColor = Theme.of(ctx).colorScheme.primary;
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: errorColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.bug_report_rounded,
+                        color: errorColor,
+                        size: 44,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      ctx.tr('Hata Raporu Gönderilsin mi?'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      ctx.tr(
+                        'Uygulama son oturumda beklenmedik bir şekilde kapandı. Hata raporunu geliştiricilere göndererek uygulamanın geliştirilmesine katkıda bulunmak ister misiniz?',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF8B949E) : const Color(0xFF656D76),
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: isDark ? const Color(0xFFE6EDF3) : const Color(0xFF1F2328),
+                              side: BorderSide(
+                                color: isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE),
+                                width: 1.5,
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              ctx.tr('İptal'),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: isDark ? const Color(0xFF0D1117) : Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              ctx.tr('Gönder'),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+
+        final prefs = await SharedPreferences.getInstance();
+        if (sendReport == true) {
+          await crashlytics.sendUnsentReports();
+
+          // Also save the cached crash report to Cloud Firestore crashes collection
+          try {
+            final exception = prefs.getString('last_crash_exception');
+            final stack = prefs.getString('last_crash_stack');
+            final reason = prefs.getString('last_crash_reason') ?? 'Unknown';
+            final user = FirebaseAuth.instance.currentUser;
+            final packageInfo = await PackageInfo.fromPlatform();
+
+            if (user != null) {
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('crashes')
+                  .add({
+                'userId': user.uid,
+                'userEmail': user.email ?? 'no_email',
+                'exception': exception ?? 'Native or unknown crash',
+                'stackTrace': stack ?? '',
+                'reason': reason,
+                'timestamp': FieldValue.serverTimestamp(),
+                'appVersion': packageInfo.version,
+                'platform': Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'Other'),
+              });
+            } else {
+              try {
+                await FirebaseFirestore.instance.collection('crashes').add({
+                  'userId': 'anonymous',
+                  'userEmail': 'no_email',
+                  'exception': exception ?? 'Native or unknown crash',
+                  'stackTrace': stack ?? '',
+                  'reason': reason,
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'appVersion': packageInfo.version,
+                  'platform': Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'Other'),
+                });
+              } catch (_) {}
+            }
+
+            // Also attempt to write to the root collection 'crashes' (wrapped in try-catch in case of Firestore rules restrictions)
+            try {
+              await FirebaseFirestore.instance.collection('crashes').add({
+                'userId': user?.uid ?? 'anonymous',
+                'userEmail': user?.email ?? 'no_email',
+                'exception': exception ?? 'Native or unknown crash',
+                'stackTrace': stack ?? '',
+                'reason': reason,
+                'timestamp': FieldValue.serverTimestamp(),
+                'appVersion': packageInfo.version,
+                'platform': Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'Other'),
+              });
+            } catch (e) {
+              debugPrint('Root crashes write failed (likely Firestore rules): $e');
+            }
+          } catch (_) {}
+        } else {
+          await crashlytics.deleteUnsentReports();
+        }
+
+        // Clear cached crash info regardless of user's choice to start fresh
+        await prefs.remove('last_crash_exception');
+        await prefs.remove('last_crash_stack');
+        await prefs.remove('last_crash_reason');
+      }
+    } catch (_) {}
   }
 
   void _onTabSelected(int index) {
@@ -329,16 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: isTr ? result.foodName : (result.foodNameEn ?? result.foodName),
           portionSize: result.portionGrams,
-          nutritionData: NutritionData(
-            calories: nd.calories,
-            protein: nd.protein,
-            carbohydrates: nd.carbohydrates,
-            fat: nd.fat,
-            fiber: nd.fiber,
-            sugar: nd.sugar,
-            saturatedFat: nd.saturatedFat,
-            sodium: nd.sodium,
-          ),
+          nutritionData: nd,
           nutrition65per100g: result.nutrition65per100g,
           timestamp: DateTime.now(),
           mealType: meal ?? 'kahvaltı',

@@ -4,9 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter/painting.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'providers/nutrition_provider.dart';
 import 'providers/profile_provider.dart';
@@ -54,6 +57,30 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    // Disable automatic crash collection so we can prompt the user to upload it
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+
+    // Pass all uncaught framework errors to Crashlytics
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      _saveCrashToPrefs(
+        exception: errorDetails.exception.toString(),
+        stackTrace: errorDetails.stack?.toString() ?? '',
+        reason: 'Flutter framework error',
+      );
+    };
+
+    // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      _saveCrashToPrefs(
+        exception: error.toString(),
+        stackTrace: stack.toString(),
+        reason: 'PlatformDispatcher error',
+      );
+      return true;
+    };
 
     await FirebaseAppCheck.instance.activate(
       androidProvider: AndroidProvider.playIntegrity,
@@ -249,4 +276,17 @@ class NutriLensApp extends StatelessWidget {
       ),
     );
   }
+}
+
+void _saveCrashToPrefs({
+  required String exception,
+  required String stackTrace,
+  required String reason,
+}) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_crash_exception', exception);
+    await prefs.setString('last_crash_stack', stackTrace);
+    await prefs.setString('last_crash_reason', reason);
+  } catch (_) {}
 }

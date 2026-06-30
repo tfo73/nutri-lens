@@ -455,6 +455,7 @@ class ProfileProvider extends ChangeNotifier {
             'weekStartDay': _weekStartDay,
             'customMicroGoals': _customMicroGoals,
           },
+          if (_activeProfile != null) 'profile': _activeProfile!.toJson(),
           'lastSync': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
