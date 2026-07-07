@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanım Koşulları | LensEat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: #090b0e;
+            --surface: #101419;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent: #ff4757;
+            --accent-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --border: #1e242c;
+            --max-width: 800px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(9, 11, 14, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-links .active {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 2px;
+        }
+
+        .lang-switch {
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .lang-switch:hover {
+            border-color: var(--accent);
+            background-color: rgba(255, 67, 87, 0.05);
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+
+        .doc-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 640px) {
+            .doc-card {
+                padding: 24px;
+                border-radius: 16px;
+            }
+            .header-container {
+                padding: 16px;
+            }
+            .nav-links {
+                gap: 16px;
+            }
+        }
+
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-primary);
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: 34px;
+            margin-top: 0;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: 19px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 24px;
+            padding-left: 24px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: #ff6b81;
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            margin-top: 80px;
+        }
+
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--background);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">LensEat<span class="logo-dot"></span></a>
+            <div class="nav-links">
+                <a href="/">Ana Sayfa</a>
+                <a href="/termandconditions" class="lang-switch">English</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="doc-card">
+            <h1>Kullanım Koşulları</h1>
+<p><strong>Son Güncelleme Tarihi:</strong> 29 Haziran 2026</p>
+<p><strong>Longerix Labs</strong> ("biz", "bize" veya "bizim") tarafından sunulan <strong>LensEat</strong> mobil uygulamasını ("Uygulama") kullandığınız için teşekkür ederiz. Uygulamayı indirerek, kurarak veya kullanarak, bu Kullanım Koşullarını kabul etmiş olursunuz. Eğer bu koşulları kabul etmiyorsanız lütfen Uygulama'yı kullanmayınız.</p>
+<p>---</p>
+<h2>1. Tıbbi Feragatname (ÖNEMLİ)</h2>
+<p><strong>LensEat bir doktor, diyetisyen veya tıbbi bir cihaz değildir.</strong></p>
+<ul>
+  <li>Uygulama tarafından sağlanan besin analizleri, porsiyon tahminleri, kalori hedefleri, makro/mikro değerleri ve beslenme koçu tavsiyeleri <strong>sadece genel bilgilendirme amaçlıdır</strong>.</li>
+  <li>Bu veriler tıbbi bir teşhis, tedavi veya profesyonel diyet tavsiyesi yerine geçmez.</li>
+  <li>Diyetinizi değiştirmeden veya Uygulama'nın önerilerine uymadan önce <strong>mutlaka bir sağlık profesyoneline (doktor veya diyetisyen) danışmalısınız.</strong> Uygulama'nın kullanımından doğabilecek herhangi bir sağlık sorunundan Longerix Labs sorumlu tutulamaz.</li>
+</ul>
+<p>---</p>
+<h2>2. Kullanıcı Yükümlülükleri ve Hesap Güvenliği</h2>
+<ul>
+  <li>Uygulama'yı kullanabilmek için yasal olarak sözleşme yapma ehliyetine sahip olmanız gerekir.</li>
+  <li>Yüklediğiniz yemek fotoğrafları, veriler ve bilgilerin yasalara uygun olmasından ve üçüncü kişilerin haklarını ihlal etmemesinden siz sorumlusunuz.</li>
+  <li>Yapay zeka servislerini (Claude AI) yanıltmaya, suistimal etmeye veya sisteme zarar vermeye yönelik teşebbüslerde bulunmak (tersine mühendislik, API manipülasyonu vb.) kesinlikle yasaktır.</li>
+  <li>Uygulama'yı yasadışı amaçlar için kullanamazsınız.</li>
+</ul>
+<p>---</p>
+<h2>3. Yapay Zeka Sınırlamaları ve Doğruluk Derecesi</h2>
+<p>Uygulama, fotoğraflardaki yemekleri tanımak için gelişmiş Yapay Zeka (AI) teknolojisi kullanır.</p>
+<ul>
+  <li>Yapay zeka <strong>hata yapabilir, bazı yiyecekleri yanlış tanıyabilir veya porsiyon boyutlarını ve besin değerlerini yanlış tahmin edebilir</strong>.</li>
+  <li>Sunulan verilerin %100 doğruluğu garanti edilmez. Kullanıcı, sunulan besin verilerini kendi bilgisi ve süzgecinden geçirerek onaylamaktan sorumludur.</li>
+</ul>
+<p>---</p>
+<h2>4. Abonelikler, Uygulama İçi Satın Alımlar ve İade Politikası</h2>
+<ul>
+  <li><strong>Ödeme Süreçleri:</strong> LensEat Premium abonelikleri Apple App Store veya Google Play Store üzerinden gerçekleştirilir. Ödemeler ve faturalandırma işlemleri ilgili mağazaların şartlarına tabidir.</li>
+  <li><strong>Otomatik Yenileme:</strong> Aboneliğiniz, dönem bitiminden en az 24 saat önce iptal edilmediği sürece otomatik olarak yenilenir.</li>
+  <li><strong>İade Politikası:</strong> Tüketici mevzuatı uyarınca dijital içerikler ve anında ifa edilen hizmetler iade kapsamında değildir. Satın alımlara ilişkin iade talepleri doğrudan <strong>Apple App Store veya Google Play Store</strong> üzerinden yapılmalıdır; Longerix Labs mağaza üzerinden yapılan ödemelerin doğrudan iadesini yapma yetkisine sahip değildir.</li>
+</ul>
+<p>---</p>
+<h2>5. Garanti Muafiyeti (Disclaimer of Warranties)</h2>
+<p>UYGULAMA VE TÜM İÇERİKLER, TIBBİ TAVSİYELER DE DAHİL OLMAK ÜZERE, HİÇBİR AÇIK VEYA ZIMNİ GARANTİ VERİLMEDEN "OLDUĞU GİBİ" (AS IS) VE "MEVCUT OLDUĞU ŞEKİLDE" (AS AVAILABLE) SUNULMAKTADIR. LONGERIX LABS, UYGULAMANIN KESİNTİSİZ, HATASIZ VEYA GÜVENLİ OLACAĞINI, BESİN ANALİZLERİNİN KESİN DOĞRULUĞUNU VEYA SİZİN BELİRLİ BİR SAĞLIK HEDEFİNE ULAŞACAĞINIZI GARANTİ ETMEZ.</p>
+<p>---</p>
+<h2>6. Sorumluluk Sınırlandırması (Limitation of Liability)</h2>
+<p>YASALARIN İZİN VERDİĞİ AZAMİ ÖLÇÜDE, LONGERIX LABS, UYGULAMANIN KULLANIMINDAN VEYA KULLANILAMAMASINDAN DOĞAN HİÇBİR DOLAYLI, TESADÜFİ, ÖZEL VEYA CEZAİ ZARARDAN (SAĞLIK SORUNLARI, VERİ KAYBI VEYA KÂR KAYBI DAHİL) SORUMLU TUTULAMAZ. LONGERIX LABS'İN OLUŞABİLECEK TÜM TALEPLERE İLİŞKİN TOPLAM SORUMLULUĞU, HANGİ HUKUKİ GEREKÇEYE DAYANIRSA DAYANSIN, KULLANICININ UYGULAMA İÇİN SON 12 AYDA ÖDEDİĞİ TOPLAM TUTAR VEYA 50 AMERİKAN DOLARI (USD) -HANGİSİ DAHA YÜKSEKSE- İLE SINIRLIDIR.</p>
+<p>---</p>
+<h2>7. Fikri Mülkiyet Hakları</h2>
+<p>Uygulama'nın tasarımı, logoları, kaynak kodları, metinleri, grafik ve arayüz tasarımları Longerix Labs'e aittir ve telif hakkı yasaları ile korunmaktadır. Önceden yazılı izin alınmaksızın kopyalanamaz, çoğaltılamaz veya dağıtılamaz.</p>
+<p>---</p>
+<h2>8. Uygulanacak Hukuk ve Yetkili Mahkeme</h2>
+<ul>
+  <li><strong>Türkiye Cumhuriyeti Kullanıcıları:</strong> Bu sözleşme Türkiye Cumhuriyeti kanunlarına tabidir. Uyuşmazlıkların çözümünde <strong>İstanbul (Çağlayan) Mahkemeleri ve İcra Daireleri</strong> yetkilidir.</li>
+  <li><strong>Küresel Kullanıcılar:</strong> Tüketicinin ikamet ettiği ülkenin emredici tüketici koruma kanunları saklı kalmak kaydıyla, uyuşmazlıklarda Türk Hukuku uygulanacaktır.</li>
+</ul>
+<p>---</p>
+<h2>9. ABD Kullanıcıları İçin Özel Şartlar (Tahkim ve Toplu Dava Ferakati)</h2>
+<p>Amerika Birleşik Devletleri sınırları içerisindeki kullanıcılarımız için:</p>
+<ul>
+  <li><strong>Bireysel Tahkim:</strong> Longerix Labs ile aranızda çıkabilecek her türlü uyuşmazlık, mahkemede bir hakim veya jüri önünde çözülmek yerine, <strong>bireysel ve bağlayıcı tahkim (binding arbitration)</strong> yoluyla çözülecektir.</li>
+  <li><strong>Toplu Dava Ferakati (Class Action Waiver):</strong> Taleplerinizi yalnızca bireysel olarak ileri sürebileceğinizi, toplu dava (class action) veya temsilci dava hakkınızdan feragat ettiğinizi kabul edersiniz.</li>
+</ul>
+<p>---</p>
+<h2>10. Değişiklikler ve İletişim</h2>
+<p>Bu Kullanım Koşulları zaman zaman güncellenebilir. Önemli değişiklikler Uygulama içerisinden veya e-posta yoluyla bildirilecektir. Koşullara ilişkin her türlü sorunuz için bize <strong>longerixlabs@gmail.com</strong> adresinden ulaşabilirsiniz.</p>
+<p>---</p>
+<h2>11. Hesap Askıya Alma ve Sonlandırma</h2>
+<p>Longerix Labs, aşağıdaki durumlarda önceden bildirimde bulunarak veya ihlal durumunda derhal hesabınızı askıya alabilir ya da kalıcı olarak silebilir:</p>
+<ul>
+  <li>Bu Kullanım Koşullarının ihlali,</li>
+  <li>Sistemi manipüle etmeye yönelik kötüye kullanım girişimleri,</li>
+  <li>Geçersiz ödeme yöntemi veya aboneliğin süresinin dolması,</li>
+  <li>Uygulamanın kalıcı olarak kapatılması kararı.</li>
+</ul>
+<p>Hesap kapatılması durumunda ücretli dönem için orantılı iade hakkınız saklıdır; bu talep ilgili mağaza (App Store / Google Play) aracılığıyla yapılmalıdır.</p>
+<p>---</p>
+<h2>12. Hizmet Değişiklikleri ve Sona Ermesi</h2>
+<p>Longerix Labs, herhangi bir zamanda Uygulama'nın özelliklerini değiştirme, sınırlama veya uygulamayı kalıcı olarak kapatma hakkını saklı tutar. Önemli değişiklikler veya hizmetin sona ermesi halinde kullanıcılara <strong>en az 30 gün öncesinden</strong> bildirim yapılacaktır. Aktif aboneler, kalan abonelik süreleri için orantılı iade hakkına sahiptir.</p>
+<p>---</p>
+<h2>13. Üçüncü Taraf Hizmetleri ve Bağlantılar</h2>
+<p>Uygulama, üçüncü taraf hizmetlerine (Apple HealthKit, Google Health Connect, Anthropic Claude AI, OpenFoodFacts) entegre olabilir ve dış bağlantılar içerebilir. Longerix Labs:</p>
+<ul>
+  <li>Üçüncü taraf hizmetlerin içeriklerinden, gizlilik uygulamalarından veya kullanılabilirliğinden sorumlu değildir.</li>
+  <li>Bu hizmetlerin kendi Gizlilik Politikaları ve Kullanım Koşulları geçerlidir.</li>
+  <li>Entegre hizmetlerde yaşanan kesinti veya veri kaybından doğan zararlar için Longerix Labs sorumlu tutulamaz.</li>
+</ul>
+<p>---</p>
+<h2>14. Promosyon Kodları</h2>
+<ul>
+  <li>Promosyon kodları kişiye özel düzenlenebilir ve devredilemez.</li>
+  <li>Her kodun belirli bir kullanım limiti, indirim oranı veya geçerlilik süresi vardır; belirtilen koşullar dışında kullanılamaz.</li>
+  <li>Bir kez kullanılmış ya da geçerliliği sona ermiş promosyon kodları yeniden aktif edilemez veya iade alınamaz.</li>
+  <li>Promosyon kodları nakit değere dönüştürülemez.</li>
+  <li>Hileli yollarla edinildiği veya kurallara aykırı kullanıldığı tespit edilen promosyon kodları iptal edilir ve ilgili hesap askıya alınabilir.</li>
+</ul>
+<p>---</p>
+<h2>15. Hesap Güvenliği ve Şifre Gizliliği</h2>
+<p>Kullanıcı, hesabının güvenliğinden bizzat sorumludur:</p>
+<ul>
+  <li>Hesap şifrenizi kimseyle paylaşmamalısınız.</li>
+  <li>Şifrenizin yetkisiz üçüncü kişilerin eline geçtiğini fark ettiğinizde derhal <strong>longerixlabs@gmail.com</strong> adresine bildirmeniz ve şifrenizi değiştirmeniz gerekmektedir.</li>
+  <li>Yetkisiz kullanım sebebiyle oluşabilecek zararlardan Longerix Labs sorumlu tutulamaz; ancak bildiriminizin ardından gerekli güvenlik önlemlerini en kısa sürede alacağımızı taahhüt ederiz.</li>
+  <li>Apple Sign-In veya Google Sign-In kullanan hesaplarda güvenlik, ilgili platform tarafından yönetilir.</li>
+</ul>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 Longerix Labs. All rights reserved.
+    </footer>
+</body>
+</html>

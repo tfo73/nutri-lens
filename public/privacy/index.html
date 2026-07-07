@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | LensEat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: #090b0e;
+            --surface: #101419;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent: #ff4757;
+            --accent-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --border: #1e242c;
+            --max-width: 800px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(9, 11, 14, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-links .active {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 2px;
+        }
+
+        .lang-switch {
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .lang-switch:hover {
+            border-color: var(--accent);
+            background-color: rgba(255, 67, 87, 0.05);
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+
+        .doc-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 640px) {
+            .doc-card {
+                padding: 24px;
+                border-radius: 16px;
+            }
+            .header-container {
+                padding: 16px;
+            }
+            .nav-links {
+                gap: 16px;
+            }
+        }
+
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-primary);
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: 34px;
+            margin-top: 0;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: 19px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 24px;
+            padding-left: 24px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: #ff6b81;
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            margin-top: 80px;
+        }
+
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--background);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">LensEat<span class="logo-dot"></span></a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/privacy/tr" class="lang-switch">Türkçe</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="doc-card">
+            <h1>Privacy Policy and Notice on Personal Data</h1>
+<p><strong>Last Updated:</strong> June 29, 2026</p>
+<p>At <strong>Longerix Labs</strong> ("we", "us", or "our"), we deeply value the security and privacy of the personal data we process through the <strong>LensEat</strong> mobile application ("App"). This Privacy Policy and Notice explains how we collect, use, store, and share your personal data, and how you can exercise your privacy rights under the Personal Data Protection Law No. 6698 ("KVKK") in Turkey, the General Data Protection Regulation ("GDPR") in the European Union, and US state privacy laws (including CCPA/CPRA).</p>
+<h2>1. Data Controller</h2>
+<p>For the purposes of applicable data protection laws, the data controller is:</p>
+<ul>
+  <li><strong>Entity:</strong> Longerix Labs</li>
+  <li><strong>Contact Email:</strong> longerixlabs@gmail.com</li>
+</ul>
+<p>---</p>
+<h2>2. Data We Process, Purposes, and Legal Bases</h2>
+<p>To provide you with the services in our App, we process the following categories of data:</p>
+<p>| Personal Data Category | Specific Data Points | Purpose of Processing | Legal Basis (KVKK / GDPR / US) |</p>
+<p>| :--- | :--- | :--- | :--- |</p>
+<p>| <strong>Identity & Account Information</strong> | Name, email address, password, user ID | Account creation, user authentication, and profile management | Performance of a Contract (KVKK Art 5/2-c, GDPR Art 6/1-b) |</p>
+<p>| <strong>Sensitive Personal Data (Health)</strong> | Age, height, weight, gender, physical activity level, nutritional goals, dietary preferences, health conditions/allergies | Calculation of personalized calorie, macro, and micronutrient targets | User's Explicit Consent (KVKK Art 6/2, GDPR Art 9/2-a) |</p>
+<p>| <strong>Visual & Voice Data</strong> | Meal photos, voice inputs (when using voice commands) | Image/voice scanning to detect food items and estimate portion sizes | User's Explicit Consent (KVKK Art 5/1 & 6/2, GDPR Art 9/2-a) |</p>
+<p>| <strong>Integrated Health App Data</strong> | Steps count, exercise logs, active calories burned (synced from Apple HealthKit / Google Health Connect) | Daily calorie balance and target tracking | User's Explicit Consent (KVKK Art 6/2, GDPR Art 9/2-a) |</p>
+<p>| <strong>Device & Usage Data</strong> | IP address, device model, operating system, in-app usage analytics | Optimization of App performance, troubleshooting, security | Legitimate Interests (KVKK Art 5/2-f, GDPR Art 6/1-f) |</p>
+<p>---</p>
+<h2>3. Cross-Border Data Transfers</h2>
+<p>In order to provide our cloud-based and AI services, we work with service providers located outside of your home country:</p>
+<ul>
+  <li><strong>Google Firebase:</strong> User authentication, the Firestore database infrastructure, and analytics are hosted on Google's cloud servers.</li>
+  <li><strong>Anthropic (Claude AI):</strong> Uploaded meal photos and descriptive texts are securely sent via API to Anthropic's servers for nutritional and portion analysis. No identifying information (such as your name or email) is shared with Anthropic.</li>
+</ul>
+<p>Since the servers of these service providers are primarily located in the <strong>United States (US)</strong>, your data is transferred internationally.</p>
+<ul>
+  <li><strong>Under KVKK (Turkey):</strong> The transfer of sensitive health and visual data is based on the <strong>Explicit Consent</strong> you grant in the App.</li>
+  <li><strong>Under GDPR (European Union):</strong> Transfers are secured through <strong>Standard Contractual Clauses (SCCs)</strong> approved by the European Commission, along with appropriate technical safeguards.</li>
+</ul>
+<p>---</p>
+<h2>4. Data Retention and Security</h2>
+<p>Your personal data is retained for as long as you maintain an active account with the App.</p>
+<ul>
+  <li>We secure your data using industry-standard encryption protocols (SSL/TLS, encryption at rest) within Firebase's secure cloud infrastructure.</li>
+  <li><strong>Account Deletion:</strong> You can request the permanent deletion of your account and all associated personal data (photos, health logs, profile information, fasting history, and preferences) at any time. To do this, go to <strong>Settings > Delete Account</strong> inside the App. Alternatively, you can request account deletion by emailing us at <strong>longerixlabs@gmail.com</strong>. Upon request, all data is permanently and irreversibly deleted from our servers within 30 days. (Local photo copies on your physical device are deleted when you uninstall the App).</li>
+</ul>
+<p>---</p>
+<h2>5. Your Privacy Rights</h2>
+<h3>A. Your Rights Under KVKK Article 11 (Turkey)</h3>
+<p>Users residing in Turkey may contact Longerix Labs to:</p>
+<ol>
+  <li>Learn whether their personal data is being processed,</li>
+  <li>Request information if their personal data has been processed,</li>
+  <li>Learn the purpose of data processing and whether it is used appropriately,</li>
+  <li>Know the third parties to whom personal data is transferred (domestically or abroad),</li>
+  <li>Request correction of incomplete or inaccurate data,</li>
+  <li>Request deletion or destruction of personal data under KVKK Article 7 conditions,</li>
+  <li>Request notification of corrections or deletions to third parties to whom data was transferred,</li>
+  <li>Object to negative outcomes resulting from automated systems,</li>
+  <li>Claim compensation for damages arising from unlawful processing.</li>
+</ol>
+<h3>B. Your Rights Under GDPR (European Union)</h3>
+<p>Users residing in the EEA/UK have the following rights:</p>
+<ul>
+  <li><strong>Right to Access & Portability:</strong> Request a copy of your data and transfer it to another service in a structured format.</li>
+  <li><strong>Right to Rectification & Erasure:</strong> Request the correction of inaccurate data or the permanent deletion of your data.</li>
+  <li><strong>Right to Restrict Processing & Object:</strong> Object to or restrict the processing of your data under certain conditions.</li>
+  <li><strong>Withdraw Consent:</strong> Withdraw consent at any time for consent-based activities (e.g., health and visual data processing).</li>
+  <li><strong>Lodge a Complaint:</strong> Lodge a complaint with your local data protection authority.</li>
+</ul>
+<h3>C. Your Rights Under US State Privacy Laws (CCPA/CPRA)</h3>
+<p>US residents (including California) have the following rights:</p>
+<ul>
+  <li><strong>Right to Know & Access:</strong> Request to know what categories of personal data we collect, use, and share.</li>
+  <li><strong>Right to Delete & Correct:</strong> Request deletion or correction of your personal data.</li>
+  <li><strong>Right to Opt-Out of Sale/Sharing:</strong> Request that we do not "sell" or "share" your personal data. <strong>LensEat does NOT sell your personal data or share it with third parties for targeted advertising.</strong></li>
+  <li><strong>Right to Non-Discrimination:</strong> Receive equal service and pricing even if you exercise your privacy rights.</li>
+</ul>
+<p>---</p>
+<h2>6. Children's Privacy</h2>
+<p>LensEat is not intended for use by children under 13 years of age (or under 16 in certain EU jurisdictions). We do not knowingly collect personal data from children. If you believe a child has provided us with personal data without parental consent, please contact us immediately so we can delete it.</p>
+<p>---</p>
+<h2>7. Contact and Requests</h2>
+<p>To exercise any of your rights or ask questions regarding this Privacy Policy, please email us at <strong>longerixlabs@gmail.com</strong>. We will respond to your requests within 30 days, free of charge.</p>
+<p>---</p>
+<h2>8. Cookies, Identifiers, and Tracking Technologies</h2>
+<p>LensEat is a mobile application and does not use traditional browser cookies. However, we use the following device-level identifiers and analytics technologies:</p>
+<ul>
+  <li><strong>Firebase Analytics:</strong> Anonymous usage data is collected to measure user behavior and app performance (e.g., screens visited, error rates). This data is not linked to your personal identity.</li>
+  <li><strong>Firebase Crashlytics:</strong> Anonymous crash reports are collected to detect and fix app crashes.</li>
+  <li><strong>Device Identifiers:</strong> For guest users (who have not created an account), an anonymous device ID is generated locally to store app data. This identifier is not linked to any personally identifiable information.</li>
+</ul>
+<p>We do <strong>NOT</strong> use advertising identifiers (IDFA, GAID) and do <strong>NOT</strong> share any identifiers with advertising networks.</p>
+<p>---</p>
+<h2>9. Data Breach Notification</h2>
+<p>In the event of a security incident involving unauthorized access to, disclosure of, or destruction of your personal data:</p>
+<ul>
+  <li><strong>Under GDPR:</strong> We will notify the relevant supervisory authority (Data Protection Authority / DPA) within <strong>72 hours</strong> of becoming aware of the breach.</li>
+  <li><strong>Under KVKK:</strong> We will notify the Turkish Personal Data Protection Authority (KVKK Kurulu) and affected individuals <strong>as soon as possible</strong>.</li>
+  <li>Affected users will be notified by email at <strong>longerixlabs@gmail.com</strong> as soon as the breach has been confirmed.</li>
+</ul>
+<p>---</p>
+<h2>10. Special Handling of Health Data</h2>
+<p>Your sensitive health data (weight, height, BMI, medical conditions, allergies, health history) is treated with the highest level of protection:</p>
+<ul>
+  <li>This data is processed <strong>only to the extent you voluntarily enter or authorize syncing</strong> from health platforms.</li>
+  <li>Your health data is <strong>never disclosed</strong> to insurance companies, employers, government agencies, or advertising platforms.</li>
+  <li>Users with clinical conditions (diabetes, eating disorders, chronic diseases, etc.) are strongly advised to consult a qualified healthcare professional before following any App recommendations. Longerix Labs cannot be held responsible for health outcomes resulting from reliance on in-app suggestions.</li>
+</ul>
+<p>---</p>
+<h2>11. Data Portability and Export Format</h2>
+<p>To exercise your right to data portability under GDPR Article 20, your personal data will be provided to you in the following structured, machine-readable format:</p>
+<ul>
+  <li>Profile data, nutrition history, and health data: <strong>JSON format</strong></li>
+  <li>Requests can be submitted to <strong>longerixlabs@gmail.com</strong>. Data will be prepared and delivered within 30 days.</li>
+</ul>
+<p>---</p>
+<h2>12. Competent Data Protection Authority (EU/EEA)</h2>
+<p>Users residing in the European Union or EEA may lodge a complaint about our data processing practices with their <strong>local supervisory authority (DPA)</strong>. The full list of EU DPAs is available at: <a href="https://edpb.europa.eu/about-edpb/about-edpb/members_en">https://edpb.europa.eu/about-edpb/about-edpb/members_en</a>. We encourage you to contact us first at <strong>longerixlabs@gmail.com</strong>, as we are committed to resolving privacy concerns amicably.</p>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 Longerix Labs. All rights reserved.
+    </footer>
+</body>
+</html>

@@ -39,7 +39,7 @@ Since the servers of these service providers are primarily located in the **Unit
 ## 4. Data Retention and Security
 Your personal data is retained for as long as you maintain an active account with the App.
 - We secure your data using industry-standard encryption protocols (SSL/TLS, encryption at rest) within Firebase's secure cloud infrastructure.
-- If you request to delete your account via **Settings > Delete Account** in the App, all your associated personal data (photos, health logs, profile information) will be permanently deleted from our servers within 30 days. (Local photo copies on your physical device are deleted when you uninstall the App).
+- **Account Deletion:** You can request the permanent deletion of your account and all associated personal data (photos, health logs, profile information, fasting history, and preferences) at any time. To do this, go to **Settings > Delete Account** inside the App. Alternatively, you can request account deletion by emailing us at **longerixlabs@gmail.com**. Upon request, all data is permanently and irreversibly deleted from our servers within 30 days. (Local photo copies on your physical device are deleted when you uninstall the App).
 
 ---
 

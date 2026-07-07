@@ -39,7 +39,7 @@ Yukarıda belirtilen sağlayıcıların sunucuları ağırlıklı olarak **Ameri
 ## 4. Verilerin Saklanma Süresi ve Güvenliği
 Kişisel verileriniz, Uygulama üzerindeki üyeliğiniz devam ettiği sürece saklanır. 
 - Verilerinizi güvenli şifreleme yöntemleri (SSL/TLS, at-rest şifreleme) kullanarak Firebase bulut altyapısında koruyoruz.
-- Hesabınızı Uygulama içindeki **Ayarlar > Hesabı Sil** bölümünden sildiğinizde, tüm verileriniz (fotoğraflar, sağlık kayıtları, üyelik bilgileri) en geç 30 gün içerisinde veritabanlarımızdan kalıcı olarak silinir. (Yerel olarak cihazınızda saklanan fotoğraflar ise uygulamayı kaldırdığınızda silinir).
+- **Hesap Silme:** İstediğiniz zaman hesabınızın ve hesabınızla ilişkili tüm kişisel verilerin (fotoğraflar, sağlık kayıtları, profil bilgileri, oruç geçmişi ve tercihlerin) kalıcı olarak silinmesini talep edebilirsiniz. Bu işlemi Uygulama içindeki **Ayarlar > Hesabı Sil** bölümünden gerçekleştirebilirsiniz. Alternatif olarak, **longerixlabs@gmail.com** adresine e-posta göndererek de hesabınızın silinmesini talep edebilirsiniz. Talebiniz üzerine tüm verileriniz en geç 30 gün içerisinde veritabanlarımızdan kalıcı ve geri döndürülemez şekilde silinir. (Yerel olarak cihazınızda saklanan fotoğraflar ise uygulamayı kaldırdığınızda silinir).
 
 ---
 

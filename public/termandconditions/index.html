@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms and Conditions | LensEat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: #090b0e;
+            --surface: #101419;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent: #ff4757;
+            --accent-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --border: #1e242c;
+            --max-width: 800px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(9, 11, 14, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-links .active {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 2px;
+        }
+
+        .lang-switch {
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .lang-switch:hover {
+            border-color: var(--accent);
+            background-color: rgba(255, 67, 87, 0.05);
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+
+        .doc-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 640px) {
+            .doc-card {
+                padding: 24px;
+                border-radius: 16px;
+            }
+            .header-container {
+                padding: 16px;
+            }
+            .nav-links {
+                gap: 16px;
+            }
+        }
+
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-primary);
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: 34px;
+            margin-top: 0;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: 19px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 24px;
+            padding-left: 24px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: #ff6b81;
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            margin-top: 80px;
+        }
+
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--background);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">LensEat<span class="logo-dot"></span></a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/termandconditions/tr" class="lang-switch">Türkçe</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="doc-card">
+            <h1>Terms of Service</h1>
+<p><strong>Last Updated:</strong> June 29, 2026</p>
+<p>Thank you for using the <strong>LensEat</strong> mobile application ("App"), published and operated by <strong>Longerix Labs</strong> ("we", "us", or "our"). By downloading, installing, or using the App, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the App.</p>
+<p>---</p>
+<h2>1. Medical Disclaimer (IMPORTANT)</h2>
+<p><strong>LensEat is not a doctor, dietitian, or medical device.</strong></p>
+<ul>
+  <li>All nutritional analysis, calorie goals, portion estimates, macro/micronutrient values, and messages from the AI nutrition coach are <strong>for general informational purposes only</strong>.</li>
+  <li>The App does not provide medical diagnosis, treatment, or professional dietary advice.</li>
+  <li>You <strong>must always consult a healthcare professional (doctor or dietitian)</strong> before starting a new diet or following the App's recommendations. Longerix Labs cannot be held responsible for any health issues resulting from the use of the App.</li>
+</ul>
+<p>---</p>
+<h2>2. User Accounts and Safety</h2>
+<ul>
+  <li>You must have the legal capacity to enter into a binding agreement to use the App.</li>
+  <li>You are solely responsible for ensuring that any photo, data, or description you upload to the App complies with the law and does not infringe upon third-party rights.</li>
+  <li>Any attempt to abuse, deceive, reverse-engineer, or interfere with our AI services (Claude AI) or infrastructure is strictly prohibited.</li>
+  <li>You may not use the App for any illegal or unauthorized purpose.</li>
+</ul>
+<p>---</p>
+<h2>3. AI Limitations and Accuracy Disclaimer</h2>
+<p>The App utilizes advanced Artificial Intelligence (AI) to recognize food in photos.</p>
+<ul>
+  <li>AI <strong>can make mistakes, misidentify items, or generate incorrect nutritional estimations and portion sizes</strong>.</li>
+  <li>100% accuracy of the data provided is not guaranteed. Users must verify and confirm the nutritional values themselves.</li>
+</ul>
+<p>---</p>
+<h2>4. Subscriptions, Purchases, and Refund Policy</h2>
+<ul>
+  <li><strong>Billing:</strong> LensEat Premium subscriptions are purchased through the Apple App Store or Google Play Store. All transactions are subject to the terms and billing policies of Apple or Google.</li>
+  <li><strong>Auto-Renewal:</strong> Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing cycle.</li>
+  <li><strong>Refunds:</strong> Due to the nature of digital content and immediate performance, purchases are generally non-refundable. All refund requests must be made directly to <strong>Apple App Store or Google Play Store</strong>, as Longerix Labs does not control store billing or have the authority to process direct refunds.</li>
+</ul>
+<p>---</p>
+<h2>5. Disclaimer of Warranties</h2>
+<p>THE APP AND ALL OF ITS CONTENT (INCLUDING NUTRITIONAL INFORMATION) ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. LONGERIX LABS DISCLAIMS ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, OR THAT THE NUTRITIONAL ESTIMATES WILL BE COMPLETELY ACCURATE.</p>
+<p>---</p>
+<h2>6. Limitation of Liability</h2>
+<p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, LONGERIX LABS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES (INCLUDING BUT NOT LIMITED TO HEALTH CONFLICTS, LOSS OF PROFITS, OR DATA LOSS) ARISING OUT OF YOUR USE OR INABILITY TO USE THE APP. IN NO EVENT SHALL LONGERIX LABS' TOTAL LIABILITY FOR ALL CLAIMS EXCEED THE AMOUNT PAID BY YOU FOR THE APP IN THE LAST 12 MONTHS, OR FIFTY US DOLLARS ($50 USD), WHICHEVER IS GREATER.</p>
+<p>---</p>
+<h2>7. Intellectual Property</h2>
+<p>The design, logos, source codes, text, graphics, and interface layouts of the App are owned by Longerix Labs and protected by copyright and intellectual property laws. You may not copy, modify, or distribute them without our prior written consent.</p>
+<p>---</p>
+<h2>8. Governing Law and Jurisdiction</h2>
+<ul>
+  <li><strong>For Turkish Users:</strong> These terms are governed by the laws of the Republic of Turkey, and any disputes will be resolved exclusively by the <strong>Courts and Execution Offices of Istanbul (Çağlayan)</strong>.</li>
+  <li><strong>For Global Users:</strong> Except where prohibited by mandatory local consumer protection laws, these terms shall be governed by Turkish Law.</li>
+</ul>
+<p>---</p>
+<h2>9. Special Provisions for US Users (Arbitration and Class Action Waiver)</h2>
+<p>For users residing in the United States:</p>
+<ul>
+  <li><strong>Binding Arbitration:</strong> You and Longerix Labs agree to resolve any dispute arising from these terms or the App through <strong>individual, binding arbitration</strong>, rather than in a court before a judge or jury.</li>
+  <li><strong>Class Action Waiver:</strong> You agree that any dispute resolution proceedings will be conducted only on an individual basis and not in a class, consolidated, or representative action.</li>
+</ul>
+<p>---</p>
+<h2>10. Modifications and Contact</h2>
+<p>We reserves the right to modify these terms from time to time. Significant updates will be notified within the App or via email. For any questions regarding these terms, please contact us at <strong>longerixlabs@gmail.com</strong>.</p>
+<p>---</p>
+<h2>11. Account Suspension and Termination</h2>
+<p>Longerix Labs may, with or without prior notice, suspend or permanently terminate your account in the following situations:</p>
+<ul>
+  <li>Violation of these Terms of Service,</li>
+  <li>Fraudulent or abusive use of the App or its AI systems,</li>
+  <li>Invalid payment method or expiration of subscription,</li>
+  <li>Decision to permanently shut down the App.</li>
+</ul>
+<p>In case of account termination due to Longerix Labs' decision (not user misconduct), you are entitled to a pro-rata refund for any remaining paid subscription period, to be processed through the relevant app store (App Store / Google Play).</p>
+<p>---</p>
+<h2>12. Service Changes and Discontinuation</h2>
+<p>Longerix Labs reserves the right to modify, limit, or permanently discontinue any features of the App at any time. For significant changes or permanent shutdown, users will be notified <strong>at least 30 days in advance</strong>. Active subscribers will be entitled to a pro-rata refund for the remaining subscription period.</p>
+<p>---</p>
+<h2>13. Third-Party Services and Links</h2>
+<p>The App integrates with third-party services (Apple HealthKit, Google Health Connect, Anthropic Claude AI, OpenFoodFacts) and may contain links to external websites. Longerix Labs:</p>
+<ul>
+  <li>Is not responsible for the content, privacy practices, or availability of third-party services.</li>
+  <li>Each third-party service operates under its own Privacy Policy and Terms of Service.</li>
+  <li>Is not liable for any interruption, data loss, or damages arising from third-party service failures.</li>
+</ul>
+<p>---</p>
+<h2>14. Promotional Codes</h2>
+<ul>
+  <li>Promotional codes may be personalized and are non-transferable.</li>
+  <li>Each code has specific usage limits, discount rates, or expiration dates and may not be used outside the stated conditions.</li>
+  <li>Used or expired promotional codes cannot be reactivated or refunded.</li>
+  <li>Promotional codes hold no cash value and cannot be exchanged for money.</li>
+  <li>Promotional codes obtained or used fraudulently will be cancelled and the associated account may be suspended.</li>
+</ul>
+<p>---</p>
+<h2>15. Account Security and Password Confidentiality</h2>
+<p>You are solely responsible for maintaining the security of your account:</p>
+<ul>
+  <li>Do not share your password with anyone.</li>
+  <li>If you suspect that your password has been compromised, you must immediately notify us at <strong>longerixlabs@gmail.com</strong> and change your password.</li>
+  <li>Longerix Labs cannot be held responsible for any damages resulting from unauthorized use of your account; however, we commit to taking necessary security measures promptly upon notification.</li>
+  <li>For accounts using Apple Sign-In or Google Sign-In, account security is managed by the respective platform.</li>
+</ul>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 Longerix Labs. All rights reserved.
+    </footer>
+</body>
+</html>

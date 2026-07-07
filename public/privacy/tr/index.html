@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gizlilik Politikası | LensEat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: #090b0e;
+            --surface: #101419;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent: #ff4757;
+            --accent-gradient: linear-gradient(135deg, #ff4757, #ff6b81);
+            --border: #1e242c;
+            --max-width: 800px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(9, 11, 14, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-links .active {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 2px;
+        }
+
+        .lang-switch {
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .lang-switch:hover {
+            border-color: var(--accent);
+            background-color: rgba(255, 67, 87, 0.05);
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+
+        .doc-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 640px) {
+            .doc-card {
+                padding: 24px;
+                border-radius: 16px;
+            }
+            .header-container {
+                padding: 16px;
+            }
+            .nav-links {
+                gap: 16px;
+            }
+        }
+
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-primary);
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: 34px;
+            margin-top: 0;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: 19px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 24px;
+            padding-left: 24px;
+            color: #d1d5db;
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: #ff6b81;
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            margin-top: 80px;
+        }
+
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--background);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">LensEat<span class="logo-dot"></span></a>
+            <div class="nav-links">
+                <a href="/">Ana Sayfa</a>
+                <a href="/privacy" class="lang-switch">English</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="doc-card">
+            <h1>Gizlilik Politikası ve Aydınlatma Metni</h1>
+<p><strong>Son Güncelleme Tarihi:</strong> 29 Haziran 2026</p>
+<p><strong>Longerix Labs</strong> ("biz", "bize" veya "bizim") olarak, <strong>LensEat</strong> mobil uygulaması ("Uygulama") aracılığıyla işlediğimiz kişisel verilerinizin güvenliğine ve gizliliğine son derece önem veriyoruz. Bu Gizlilik Politikası ve Aydınlatma Metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK"), Avrupa Birliği Genel Veri Koruma Tüzüğü ("GDPR") ve ABD eyalet gizlilik yasaları (CCPA/CPRA vb.) uyarınca verilerinizi nasıl topladığımızı, işlediğimizi, sakladığımızı ve haklarınızı nasıl kullanabileceğinizi açıklar.</p>
+<h2>1. Veri Sorumlusu</h2>
+<p>KVKK ve GDPR kapsamında veri sorumlusu:</p>
+<ul>
+  <li><strong>Ünvan:</strong> Longerix Labs</li>
+  <li><strong>İletişim E-postası:</strong> longerixlabs@gmail.com</li>
+</ul>
+<p>---</p>
+<h2>2. İşlenen Veriler, Amaçları ve Hukuki Sebepleri</h2>
+<p>Uygulamamızın çalışabilmesi için aşağıdaki verileri işlemekteyiz:</p>
+<p>| Kişisel Veri Kategorisi | Veri Kalemleri | İşleme Amacı | Hukuki Sebep (KVKK / GDPR) |</p>
+<p>| :--- | :--- | :--- | :--- |</p>
+<p>| <strong>Kimlik ve Hesap Bilgileri</strong> | Ad, e-posta adresi, şifre, kullanıcı ID | Hesap oluşturma, kimlik doğrulama, kullanıcı profilinin yönetilmesi | Sözleşmenin Kurulması ve İfası (KVKK m.5/2-c, GDPR m.6/1-b) |</p>
+<p>| <strong>Özel Nitelikli Kişisel Veriler (Sağlık)</strong> | Yaş, boy, kilo, cinsiyet, fiziksel aktivite seviyesi, beslenme hedefleri, diyet tercihleri, hastalıklar/alerjiler | Kişiselleştirilmiş kalori ve makro/mikro besin hedeflerinin hesaplanması | Kullanıcının Açık Rızası (KVKK m.6/2, GDPR m.9/2-a) |</p>
+<p>| <strong>Görsel ve Ses Verileri</strong> | Yemek fotoğrafları, ses kayıtları (sesli arama yapıldığında) | Görsel/sesli analiz yoluyla yemeklerin ve porsiyonların tespit edilmesi | Kullanıcının Açık Rızası (KVKK m.5/1 ve m.6/2, GDPR m.9/2-a) |</p>
+<p>| <strong>Entegre Sağlık Verileri</strong> | Adım sayısı, egzersiz kayıtları, yakılan aktif kalori (Apple HealthKit / Google Health Connect) | Günlük kalori dengesinin ve hedeflerin takibi | Kullanıcının Açık Rızası (KVKK m.6/2, GDPR m.9/2-a) |</p>
+<p>| <strong>Cihaz ve Kullanım Verileri</strong> | IP adresi, cihaz modeli, işletim sistemi, uygulama içi kullanım analitiği | Uygulama performansının optimize edilmesi, güvenlik | Meşru Menfaat (KVKK m.5/2-f, GDPR m.6/1-f) |</p>
+<p>---</p>
+<h2>3. Kişisel Verilerin Yurt Dışına Aktarılması</h2>
+<p>Uygulama altyapısı ve yapay zeka entegrasyonlarımız kapsamında yurt dışı merkezli servis sağlayıcılar kullanılmaktadır:</p>
+<ul>
+  <li><strong>Google Firebase:</strong> Kullanıcı kayıtları, Firestore veritabanı altyapısı ve analitik veriler Google sunucularında saklanmaktadır.</li>
+  <li><strong>Anthropic (Claude AI):</strong> Yüklediğiniz yemek fotoğrafları ve tanımlayıcı metinler, besin analizi yapılması amacıyla yapay zeka modelleri tarafından işlenmek üzere güvenli API entegrasyonu ile Anthropic sunucularına gönderilmektedir. Bu işlem esnasında isminiz veya e-postanız gibi kimlik bilgileriniz gönderilmez.</li>
+</ul>
+<p>Yukarıda belirtilen sağlayıcıların sunucuları ağırlıklı olarak <strong>Amerika Birleşik Devletleri (ABD)</strong> sınırları içerisinde yer aldığından, verileriniz yurt dışına aktarılmaktadır.</p>
+<ul>
+  <li><strong>KVKK uyarınca:</strong> Sağlık ve görsel verilerinizin aktarımı onay ekranında verdiğiniz <strong>Açık Rıza</strong> hukuki sebebine dayanmaktadır.</li>
+  <li><strong>GDPR uyarınca:</strong> Aktarımlar, Avrupa Komisyonu tarafından onaylanmış <strong>Standart Sözleşme Maddeleri (SCCs)</strong> ve veri güvenliği önlemleri ile güvence altına alınmıştır.</li>
+</ul>
+<p>---</p>
+<h2>4. Verilerin Saklanma Süresi ve Güvenliği</h2>
+<p>Kişisel verileriniz, Uygulama üzerindeki üyeliğiniz devam ettiği sürece saklanır.</p>
+<ul>
+  <li>Verilerinizi güvenli şifreleme yöntemleri (SSL/TLS, at-rest şifreleme) kullanarak Firebase bulut altyapısında koruyoruz.</li>
+  <li><strong>Hesap Silme:</strong> İstediğiniz zaman hesabınızın ve hesabınızla ilişkili tüm kişisel verilerin (fotoğraflar, sağlık kayıtları, profil bilgileri, oruç geçmişi ve tercihlerin) kalıcı olarak silinmesini talep edebilirsiniz. Bu işlemi Uygulama içindeki <strong>Ayarlar > Hesabı Sil</strong> bölümünden gerçekleştirebilirsiniz. Alternatif olarak, <strong>longerixlabs@gmail.com</strong> adresine e-posta göndererek de hesabınızın silinmesini talep edebilirsiniz. Talebiniz üzerine tüm verileriniz en geç 30 gün içerisinde veritabanlarımızdan kalıcı ve geri döndürülemez şekilde silinir. (Yerel olarak cihazınızda saklanan fotoğraflar ise uygulamayı kaldırdığınızda silinir).</li>
+</ul>
+<p>---</p>
+<h2>5. Kullanıcı Haklarınız</h2>
+<h3>A. KVKK Madde 11 Kapsamındaki Haklarınız (Türkiye)</h3>
+<p>Türkiye'deki kullanıcılarımız Longerix Labs'e başvurarak şu haklarını kullanabilirler:</p>
+<ol>
+  <li>Kişisel verilerinin işlenip işlenmediğini öğrenme,</li>
+  <li>İşlenmişse buna ilişkin bilgi talep etme,</li>
+  <li>İşlenme amacını ve amaca uygun kullanılıp kullanılmadığını öğrenme,</li>
+  <li>Yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme,</li>
+  <li>Eksik veya yanlış işlenmişse düzeltilmesini isteme,</li>
+  <li>KVKK 7. maddesinde öngörülen şartlar çerçevesinde silinmesini/yok edilmesini isteme,</li>
+  <li>Düzeltme veya silme işlemlerinin verilerin aktarıldığı üçüncü kişilere bildirilmesini isteme,</li>
+  <li>Analizlerin münhasıran otomatik sistemler vasıtasıyla yapılması suretiyle aleyhe bir sonucun ortaya çıkmasına itiraz etme,</li>
+  <li>Kanuna aykırı işleme sebebiyle zarara uğraması hâlinde zararın giderilmesini talep etme.</li>
+</ol>
+<h3>B. GDPR Kapsamındaki Haklarınız (Avrupa Birliği)</h3>
+<p>AB sınırları içerisindeki kullanıcılarımız şu haklara sahiptir:</p>
+<ul>
+  <li><strong>Erişim ve Taşıma:</strong> Verilerinizin bir kopyasını talep etme ve yapılandırılmış bir formatta başka bir sağlayıcıya aktarma hakkı.</li>
+  <li><strong>Düzeltme ve Silme (Unutulma Hakkı):</strong> Hatalı verilerin düzeltilmesini veya verilerinizin tamamen silinmesini isteme hakkı.</li>
+  <li><strong>İşlemeyi Kısıtlama ve İtiraz:</strong> Belirli durumlarda verilerinizin işlenmesinin durdurulmasını veya kısıtlanmasını talep etme hakkı.</li>
+  <li><strong>Rızayı Geri Çekme:</strong> Rızaya dayalı veri işleme faaliyetlerinde (sağlık verileri vb.) verdiğiniz rızayı dilediğiniz an geri çekme hakkı.</li>
+  <li><strong>Şikayet Hakkı:</strong> Veri koruma yetkili otoritesine şikayette bulunma hakkı.</li>
+</ul>
+<h3>C. CCPA/CPRA Kapsamındaki Haklarınız (Amerika Birleşik Devletleri)</h3>
+<p>ABD (özellikle California) sakinleri için haklar:</p>
+<ul>
+  <li><strong>Bilgi Edinme ve Erişim:</strong> Hangi kişisel verileri topladığımızı ve kimlerle paylaştığımızı öğrenme hakkı.</li>
+  <li><strong>Silme ve Düzeltme:</strong> Kişisel verilerin silinmesini ve düzeltilmesini talep etme hakkı.</li>
+  <li><strong>Satış/Paylaşım Tercihi (Opt-Out):</strong> Kişisel verilerinizin üçüncü taraflara satılmasını veya hedefli reklamcılık amacıyla paylaşılmasını engelleme hakkı. <strong>LensEat, kişisel verilerinizi kesinlikle satmaz veya üçüncü taraflarla reklam amacıyla paylaşmaz.</strong></li>
+  <li><strong>Ayrımcılık Yapılmaması:</strong> Haklarınızı kullandığınız için hizmet kalitesinde bir düşüş veya fiyat farkı ile karşılaşmama hakkı.</li>
+</ul>
+<p>---</p>
+<h2>6. Çocukların Gizliliği</h2>
+<p>LensEat, 13 yaşın (veya GDPR uyarınca yerel ülke yasalarına göre 16 yaşın) altındaki çocukların kullanımına yönelik değildir. Çocuklardan bilerek veri toplamaz veya işlemeyiz. Bir çocuğun izinsiz şekilde veri paylaştığını fark ederseniz lütfen bizimle iletişime geçin; bu verileri derhal sistemlerimizden sileceğiz.</p>
+<p>---</p>
+<h2>7. İletişim ve Talepler</h2>
+<p>Bu politikaya ilişkin sorularınız veya yukarıda belirtilen haklarınızı kullanmak üzere talepleriniz için bize <strong>longerixlabs@gmail.com</strong> adresinden ulaşabilirsiniz. Talepleriniz en geç 30 gün içerisinde ücretsiz olarak sonuçlandırılacaktır.</p>
+<p>---</p>
+<h2>8. Çerezler, Tanımlayıcılar ve İzleme Teknolojileri</h2>
+<p>LensEat mobil bir uygulama olup klasik web çerezleri kullanmamaktadır. Ancak aşağıdaki cihaz düzeyinde tanımlayıcı ve analitik teknolojilerden yararlanmaktayız:</p>
+<ul>
+  <li><strong>Firebase Analytics:</strong> Kullanıcı davranışlarını ve uygulama performansını ölçmek amacıyla anonim kullanım verileri toplanmaktadır (örn. hangi ekranların açıldığı, hata oranları). Bu veriler kişisel kimliğinizle ilişkilendirilmez.</li>
+  <li><strong>Firebase Crashlytics:</strong> Uygulama çökmelerini tespit etmek ve düzeltmek için anonim hata raporları toplanmaktadır.</li>
+  <li><strong>Cihaz Kimlik Tanımlayıcıları:</strong> Hesap açmadan uygulamayı kullanan misafir kullanıcılar için anonim bir cihaz kimliği (Device ID) oluşturularak yerel verilerin saklanması sağlanır; bu kimlik kişisel verilerinizle ilişkilendirilmez.</li>
+</ul>
+<p>Cihaz düzeyinde reklam tanımlayıcılarını (IDFA, GAID) <strong>kesinlikle kullanmıyor veya reklam amaçlı üçüncü taraflarla paylaşmıyoruz.</strong></p>
+<p>---</p>
+<h2>9. Veri İhlali Bildirimi</h2>
+<p>Kişisel verilerinizin yetkisiz erişim, açıklama veya imhaya maruz kaldığı bir güvenlik ihlali tespit edilmesi durumunda:</p>
+<ul>
+  <li><strong>GDPR uyarınca:</strong> Yetkili veri koruma otoritesine (ilgili AB DPA'sına) tespitten itibaren <strong>72 saat</strong> içinde bildirimde bulunuruz.</li>
+  <li><strong>KVKK uyarınca:</strong> Kişisel Verileri Koruma Kurulu'na ve etkilenen kişilere <strong>en kısa sürede</strong> bildirim yaparız.</li>
+  <li>Etkilenen kullanıcılar, ihlal tespit edildiğinde <strong>longerixlabs@gmail.com</strong> üzerinden e-posta ile bilgilendirilecektir.</li>
+</ul>
+<p>---</p>
+<h2>10. Sağlık Verilerinin Özel İşlenmesi</h2>
+<p>Özel nitelikli kişisel veri niteliğindeki sağlık verilerinizin (kilo, boy, BMI, hastalıklar, alerjiler, sağlık geçmişi) işlenmesine ilişkin önemli bilgiler:</p>
+<ul>
+  <li>Bu veriler <strong>yalnızca bizzat girdiğiniz veya senkronize etmeyi onayladığınız kadarıyla</strong> işlenmektedir.</li>
+  <li>Sağlık verileriniz herhangi bir sigorta şirketine, işverene, hükümet kurumuna veya reklam platformuna <strong>kesinlikle iletilmemektedir.</strong></li>
+  <li>Diyabet, yeme bozuklukları veya kronik hastalıklar gibi klinik durumları olan kullanıcıların Uygulama'nın önerileri konusunda mutlaka sağlık profesyonellerine danışması gerekmektedir; aksi takdirde doğabilecek sonuçlardan Longerix Labs sorumlu tutulamaz.</li>
+</ul>
+<p>---</p>
+<h2>11. Veri Taşınabilirliği ve Dışa Aktarım Formatı</h2>
+<p>GDPR Madde 20 uyarınca veri taşınabilirliği hakkınızı kullanmak istediğinizde, kişisel verileriniz aşağıdaki yapılandırılmış formatlarda tarafınıza iletilir:</p>
+<ul>
+  <li>Profil, beslenme geçmişi ve sağlık verileri: <strong>JSON formatı</strong></li>
+  <li>Talep, <strong>longerixlabs@gmail.com</strong> üzerinden yapılabilir. Veriler en geç 30 gün içerisinde hazırlanarak iletilir.</li>
+</ul>
+<p>---</p>
+<h2>12. AB'de Yetkili Veri Koruma Otoritesi</h2>
+<p>Avrupa Birliği sınırlarındaki kullanıcılarımız, veri işleme uygulamalarımıza ilişkin şikayetlerini ikamet ettikleri ülkedeki <strong>yerel Veri Koruma Otoritesi'ne (DPA)</strong> iletebilirler. AB DPA listesine <a href="https://edpb.europa.eu/about-edpb/about-edpb/members_en">https://edpb.europa.eu/about-edpb/about-edpb/members_en</a> adresinden ulaşabilirsiniz. Bunun yanı sıra her türlü şikayet için öncelikle <strong>longerixlabs@gmail.com</strong> adresine başvurmanızı rica ederiz; uyuşmazlıkları gönüllü olarak çözmeye çalışacağız.</p>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 Longerix Labs. All rights reserved.
+    </footer>
+</body>
+</html>
