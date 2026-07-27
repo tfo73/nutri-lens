@@ -14,8 +14,9 @@ import 'camera_screen.dart';
 class BarcodeScreen extends StatefulWidget {
   final String? selectedMeal;
   final VoidCallback? onFoodAdded;
+  final DateTime? date;
 
-  const BarcodeScreen({super.key, this.selectedMeal, this.onFoodAdded});
+  const BarcodeScreen({super.key, this.selectedMeal, this.onFoodAdded, this.date});
 
   @override
   State<BarcodeScreen> createState() => _BarcodeScreenState();
@@ -227,7 +228,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       imageUrl: product.imageUrl,
     );
 
-    context.read<NutritionProvider>().addFoodEntry(entry);
+    context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

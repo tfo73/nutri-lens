@@ -46,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isMenuOpen = false;
   late PageController _pageController;
+  DateTime _currentDashboardDate = DateTime.now();
 
   @override
   void initState() {
@@ -90,28 +91,106 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<bool> _checkYesterdayLockWarning(BuildContext context, DateTime? date) async {
+    if (date == null) return true;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final compareDate = DateTime(date.year, date.month, date.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (compareDate.isAtSameMomentAs(yesterday)) {
+      if (now.hour > 2 || (now.hour == 2 && now.minute >= 30)) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(context.tr('Süre Doldu'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            content: Text(context.tr('Saat 2:30\'u geçtiği için dün gününe girdi yapamazsınız.')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(context.tr('Tamam')),
+              ),
+            ],
+          ),
+        );
+        return false;
+      }
+      if (now.hour == 2 && now.minute >= 20 && now.minute < 30) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(context.tr('Süre Sınırı Uyarısı'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            content: Text(context.tr('Dün gününe girdi yapmak için son dakikalar! Saat 2:30\'dan sonra dün gününe girdi yapamayacaksınız. Devam etmek istiyor musunuz?')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(context.tr('İptal')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(context.tr('Devam Et')),
+              ),
+            ],
+          ),
+        );
+        return proceed ?? false;
+      }
+    }
+    return true;
+  }
+
   void _showAddMenu() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final limitDate = today.subtract(const Duration(days: 1));
+    final compareDate = DateTime(_currentDashboardDate.year, _currentDashboardDate.month, _currentDashboardDate.day);
+
+    if (compareDate.isBefore(limitDate)) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(context.tr('Girdi Yapılamaz'), style: const TextStyle(fontWeight: FontWeight.w700)),
+          content: Text(context.tr('Bulunduğunuz güne girdi yapınız.')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(context.tr('Tamam')),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isMenuOpen = !_isMenuOpen;
     });
   }
 
-  void _handleMenuAction(String mode, {String? meal}) {
+  void _handleMenuAction(String mode, {String? meal, DateTime? date}) async {
     if (mode == 'saved') {
       setState(() => _isMenuOpen = false);
       _showSavedMealsSheet();
       return;
     }
+
+    final targetDate = date ?? _currentDashboardDate;
+    final proceed = await _checkYesterdayLockWarning(context, targetDate);
+    if (!proceed) return;
+
     // Check fasting
     final fasting = context.read<FastingProvider>();
     if (fasting.isFasting) {
-      _showFastingWarningAndProceed(mode, meal: meal);
+      _showFastingWarningAndProceed(mode, meal: meal, date: targetDate);
       return;
     }
-    _doMenuAction(mode, meal: meal);
+    _doMenuAction(mode, meal: meal, date: targetDate);
   }
 
-  Future<void> _showFastingWarningAndProceed(String mode, {String? meal}) async {
+  Future<void> _showFastingWarningAndProceed(String mode, {String? meal, DateTime? date}) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -134,24 +213,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if ((result ?? false) && context.mounted) {
       setState(() => _isMenuOpen = false);
-      _doMenuAction(mode, meal: meal);
+      _doMenuAction(mode, meal: meal, date: date);
     }
   }
 
-  void _doMenuAction(String mode, {String? meal}) {
+  void _doMenuAction(String mode, {String? meal, DateTime? date}) {
     setState(() => _isMenuOpen = false);
     if (mode == 'camera') {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => CameraScreen(selectedMeal: meal)),
+        MaterialPageRoute(builder: (context) => CameraScreen(selectedMeal: meal, date: date)),
       );
     } else if (mode == 'barcode') {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => BarcodeScreen(selectedMeal: meal)),
+        MaterialPageRoute(builder: (context) => BarcodeScreen(selectedMeal: meal, date: date)),
       );
     } else if (mode == 'manual') {
-      showManualEntrySheet(context, selectedMeal: meal ?? 'kahvaltı');
+      showManualEntrySheet(context, selectedMeal: meal ?? 'kahvaltı', date: date);
     } else if (mode == 'voice') {
-      showVoiceEntrySheet(context, selectedMeal: meal ?? 'kahvaltı');
+      showVoiceEntrySheet(context, selectedMeal: meal ?? 'kahvaltı', date: date);
     }
   }
 
@@ -178,10 +257,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final screens = [
       _KeepAlivePage(child: DashboardScreen(
         isCurrentTab: _selectedIndex == 0,
-        onMealAddPressed: (meal, mode) => _handleMenuAction(mode, meal: meal),
+        onMealAddPressed: (meal, mode, date) => _handleMenuAction(mode, meal: meal, date: date),
         onProfileSetupPressed: () => _onTabSelected(3),
         onFastingPressed: () => _onTabSelected(1),
         onCoachPressed: () => _onTabSelected(2),
+        onDateChanged: (date) => setState(() => _currentDashboardDate = date),
       )),
       const _KeepAlivePage(child: FastingScreen()),
       _KeepAlivePage(child: SuggestionsScreen(

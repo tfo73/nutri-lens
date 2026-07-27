@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -3506,6 +3507,14 @@ class _SleepScoreChart extends StatefulWidget {
 
 class _SleepScoreChartState extends State<_SleepScoreChart> {
   _SleepPeriod _period = _SleepPeriod.week;
+  List<ShowingTooltipIndicators> _showingSpots = [];
+  Timer? _tooltipTimer;
+
+  @override
+  void dispose() {
+    _tooltipTimer?.cancel();
+    super.dispose();
+  }
 
   Color _scoreColor(double? score, ColorScheme cs) {
     if (score == null) return cs.outline.withValues(alpha: 0.12);
@@ -3599,11 +3608,11 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
               ),
-              _PeriodChip(label: '7G', selected: _period == _SleepPeriod.week, onTap: () => setState(() => _period = _SleepPeriod.week), cs: cs),
+              _PeriodChip(label: '7G', selected: _period == _SleepPeriod.week, onTap: () => setState(() { _period = _SleepPeriod.week; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
               const SizedBox(width: 6),
-              _PeriodChip(label: '1A', selected: _period == _SleepPeriod.month, onTap: () => setState(() => _period = _SleepPeriod.month), cs: cs),
+              _PeriodChip(label: '1A', selected: _period == _SleepPeriod.month, onTap: () => setState(() { _period = _SleepPeriod.month; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
               const SizedBox(width: 6),
-              _PeriodChip(label: '1Y', selected: _period == _SleepPeriod.year, onTap: () => setState(() => _period = _SleepPeriod.year), cs: cs),
+              _PeriodChip(label: '1Y', selected: _period == _SleepPeriod.year, onTap: () => setState(() { _period = _SleepPeriod.year; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
             ],
           ),
           const SizedBox(height: 16),
@@ -3617,14 +3626,20 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
           else
             SizedBox(
               height: 130,
-              child: BarChart(
-                BarChartData(
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (values.length - 1).toDouble(),
                   minY: 0,
                   maxY: 5,
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (_) => FlLine(color: cs.outlineVariant.withValues(alpha: 0.4), strokeWidth: 0.8),
+                    drawHorizontalLine: true,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                      strokeWidth: 0.8,
+                    ),
                   ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
@@ -3668,54 +3683,121 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                       ),
                     ),
                   ),
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        final val = rod.toY;
-                        // Requirement: "if value is 0.5 show as 0, but if 1 and above show the number"
-                        return BarTooltipItem(
-                          val <= 0.6 ? '0' : val.toStringAsFixed(1),
-                          TextStyle(color: cs.onSurface, fontSize: 11, fontWeight: FontWeight.w600),
-                        );
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: false,
+                    touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                      if (event.isInterestedForInteractions) {
+                        if (touchResponse != null && touchResponse.lineBarSpots != null && touchResponse.lineBarSpots!.isNotEmpty) {
+                          _tooltipTimer?.cancel();
+                          setState(() {
+                            _showingSpots = [
+                              ShowingTooltipIndicators([
+                                LineBarSpot(
+                                  touchResponse.lineBarSpots!.first.bar,
+                                  touchResponse.lineBarSpots!.first.barIndex,
+                                  touchResponse.lineBarSpots!.first,
+                                )
+                              ])
+                            ];
+                          });
+                        }
+                      } else {
+                        _tooltipTimer?.cancel();
+                        _tooltipTimer = Timer(const Duration(seconds: 1), () {
+                          setState(() {
+                            _showingSpots = [];
+                          });
+                        });
+                      }
+                    },
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipRoundedRadius: 8,
+                      getTooltipColor: (spot) => isDark ? const Color(0xFF21262D) : Colors.black87,
+                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      tooltipMargin: 8,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final val = spot.y;
+                          return LineTooltipItem(
+                            val <= 0.6 ? '0' : val.toStringAsFixed(1),
+                            const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                          );
+                        }).toList();
                       },
                     ),
-                  ),
-                  barGroups: [
-                    for (int i = 0; i < values.length; i++)
-                      BarChartGroupData(
-                        x: i,
-                        barRods: [
-                          BarChartRodData(
-                            toY: values[i] ?? 0.5,
-                            color: values[i] == null 
-                                ? cs.onSurface.withValues(alpha: 0.1)
-                                : _scoreColor(values[i]!, cs).withValues(alpha: i == todayIndex ? 1.0 : 0.7),
-                            width: _period == _SleepPeriod.week ? 24 : (_period == _SleepPeriod.month ? 7 : 20), // Reduced width for monthly and annual for better spacing
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                            backDrawRodData: BackgroundBarChartRodData(
-                              show: true,
-                              toY: 5,
-                              color: cs.outlineVariant.withValues(alpha: 0.1),
+                    getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                      return spotIndexes.map((index) {
+                        return TouchedSpotIndicatorData(
+                          FlLine(
+                            color: const Color(0xFF7EE787).withValues(alpha: 0.2),
+                            strokeWidth: 2,
+                          ),
+                          FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                              radius: 6,
+                              color: const Color(0xFF7EE787),
+                              strokeWidth: 3,
+                              strokeColor: Colors.white,
                             ),
                           ),
-                        ],
+                        );
+                      }).toList();
+                    },
+                  ),
+                  showingTooltipIndicators: _showingSpots,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        for (int i = 0; i < values.length; i++)
+                          if (values[i] != null)
+                            FlSpot(i.toDouble(), values[i]!),
+                      ],
+                      isCurved: true,
+                      barWidth: 3.5,
+                      color: const Color(0xFF7EE787),
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 4.5,
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                            strokeColor: _scoreColor(spot.y, cs),
+                          );
+                        },
                       ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF7EE787).withValues(alpha: 0.25),
+                            const Color(0xFF7EE787).withValues(alpha: 0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
                   ],
                   extraLinesData: ExtraLinesData(
                     horizontalLines: [
                       HorizontalLine(
                           y: 3,
-                          color: cs.primary.withValues(alpha: 0.08), // Lower visibility
+                          color: cs.primary.withValues(alpha: 0.08),
                           strokeWidth: 1,
                           dashArray: [4, 4]),
                       HorizontalLine(
                           y: 5,
-                          color: cs.primary.withValues(alpha: 0.25), // Higher than line 3
+                          color: cs.primary.withValues(alpha: 0.25),
                           strokeWidth: 1,
                           dashArray: [4, 4]),
                     ],
                   ),
                 ),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
               ),
             ),
         ],
@@ -3773,6 +3855,14 @@ class _WeightChart extends StatefulWidget {
 
 class _WeightChartState extends State<_WeightChart> {
   _WeightPeriod _period = _WeightPeriod.weeks;
+  List<ShowingTooltipIndicators> _showingSpots = [];
+  Timer? _tooltipTimer;
+
+  @override
+  void dispose() {
+    _tooltipTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3850,9 +3940,9 @@ class _WeightChartState extends State<_WeightChart> {
           Row(
             children: [
               Expanded(child: Text(context.tr('Kilo Grafiği'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-              _PeriodChip(label: '8H', selected: _period == _WeightPeriod.weeks, onTap: () => setState(() => _period = _WeightPeriod.weeks), cs: cs),
+              _PeriodChip(label: '8H', selected: _period == _WeightPeriod.weeks, onTap: () => setState(() { _period = _WeightPeriod.weeks; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
               const SizedBox(width: 6),
-              _PeriodChip(label: '1Y', selected: _period == _WeightPeriod.year, onTap: () => setState(() => _period = _WeightPeriod.year), cs: cs),
+              _PeriodChip(label: '1Y', selected: _period == _WeightPeriod.year, onTap: () => setState(() { _period = _WeightPeriod.year; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
             ],
           ),
           const SizedBox(height: 16),
@@ -3871,11 +3961,21 @@ class _WeightChartState extends State<_WeightChart> {
           else
             SizedBox(
               height: 130,
-              child: BarChart(
-                BarChartData(
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (values.length - 1).toDouble(),
                   minY: minVal,
                   maxY: maxVal,
-                  gridData: const FlGridData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    drawHorizontalLine: true,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                      strokeWidth: 0.8,
+                    ),
+                  ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
@@ -3914,47 +4014,120 @@ class _WeightChartState extends State<_WeightChart> {
                       ),
                     ),
                   ),
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          '${rod.toY.toStringAsFixed(1)} kg',
-                          TextStyle(color: cs.onSurface, fontSize: 11, fontWeight: FontWeight.w600),
-                        );
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: false,
+                    touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                      if (event.isInterestedForInteractions) {
+                        if (touchResponse != null && touchResponse.lineBarSpots != null && touchResponse.lineBarSpots!.isNotEmpty) {
+                          _tooltipTimer?.cancel();
+                          setState(() {
+                            _showingSpots = [
+                              ShowingTooltipIndicators([
+                                LineBarSpot(
+                                  touchResponse.lineBarSpots!.first.bar,
+                                  touchResponse.lineBarSpots!.first.barIndex,
+                                  touchResponse.lineBarSpots!.first,
+                                )
+                              ])
+                            ];
+                          });
+                        }
+                      } else {
+                        _tooltipTimer?.cancel();
+                        _tooltipTimer = Timer(const Duration(seconds: 1), () {
+                          setState(() {
+                            _showingSpots = [];
+                          });
+                        });
+                      }
+                    },
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipRoundedRadius: 8,
+                      getTooltipColor: (spot) => isDark ? const Color(0xFF21262D) : Colors.black87,
+                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      tooltipMargin: 8,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          return LineTooltipItem(
+                            '${spot.y.toStringAsFixed(1)} kg',
+                            const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                          );
+                        }).toList();
                       },
                     ),
-                  ),
-                  barGroups: [
-                    for (int i = 0; i < values.length; i++)
-                      BarChartGroupData(
-                        x: i,
-                        barRods: [
-                          BarChartRodData(
-                            toY: values[i] ?? currentWeight, // Fallback to onboarding weight
-                            color: values[i] == null 
-                                ? cs.onSurface.withValues(alpha: 0.1)
-                                : cs.primary.withValues(alpha: i == todayIndex ? 1.0 : 0.6),
-                            width: _period == _WeightPeriod.weeks ? 24 : 16, // Thicker bars
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                      return spotIndexes.map((index) {
+                        return TouchedSpotIndicatorData(
+                          FlLine(
+                            color: cs.primary.withValues(alpha: 0.2),
+                            strokeWidth: 2,
                           ),
-                        ],
+                          FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                              radius: 6,
+                              color: cs.primary,
+                              strokeWidth: 3,
+                              strokeColor: Colors.white,
+                            ),
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                  showingTooltipIndicators: _showingSpots,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        for (int i = 0; i < values.length; i++)
+                          if (values[i] != null)
+                            FlSpot(i.toDouble(), values[i]!),
+                      ],
+                      isCurved: true,
+                      barWidth: 3.5,
+                      color: cs.primary,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 4.5,
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                            strokeColor: cs.primary,
+                          );
+                        },
                       ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            cs.primary.withValues(alpha: 0.25),
+                            cs.primary.withValues(alpha: 0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
                   ],
                   extraLinesData: ExtraLinesData(
                     horizontalLines: [
                       HorizontalLine(
                           y: lowerB5,
-                          color: cs.primary.withValues(alpha: 0.08), // Match Line 3 of Sleep Chart
+                          color: cs.primary.withValues(alpha: 0.08),
                           strokeWidth: 1,
                           dashArray: [4, 4]),
                       HorizontalLine(
                           y: upperB5,
-                          color: cs.primary.withValues(alpha: 0.08), // Match Line 3 of Sleep Chart
+                          color: cs.primary.withValues(alpha: 0.08),
                           strokeWidth: 1,
                           dashArray: [4, 4]),
                     ],
                   ),
                 ),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
               ),
             ),
           const SizedBox(height: 12),

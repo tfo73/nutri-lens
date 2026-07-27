@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,6 +22,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   List<DailyLog> _recentLogs = [];
   bool _loading = true;
   late UserProfile _profile;
+  List<ShowingTooltipIndicators> _showingSpots = [];
+  Timer? _tooltipTimer;
+
+  @override
+  void dispose() {
+    _tooltipTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -647,8 +656,22 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   Widget _buildWeeklyChartCard(BuildContext context) {
-    final spots = _buildChartSpots();
-    if (spots.isEmpty) return const SizedBox.shrink();
+    if (_recentLogs.isEmpty) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF161B22) : Colors.white;
+
+    final spots = _recentLogs.asMap().entries.map((entry) {
+      final calories = entry.value.totalNutrition.calories;
+      return FlSpot(entry.key.toDouble(), calories);
+    }).toList();
+
+    final caloriesList = _recentLogs.map((l) => l.totalNutrition.calories).toList();
+    final maxCal = caloriesList.reduce((a, b) => a > b ? a : b);
+    final minCal = caloriesList.reduce((a, b) => a < b ? a : b);
+    final double padding = (maxCal - minCal) * 0.15;
+    final minY = (minCal - padding).clamp(0.0, double.infinity);
+    final maxY = maxCal + (padding > 0 ? padding : 500.0);
 
     return Card(
       child: Padding(
@@ -664,9 +687,85 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 160,
-              child: BarChart(
-                BarChartData(
-                  barGroups: spots,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (_recentLogs.length - 1).toDouble(),
+                  minY: minY,
+                  maxY: maxY,
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    drawHorizontalLine: true,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                      strokeWidth: 0.8,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: false,
+                    touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                      if (event.isInterestedForInteractions) {
+                        if (touchResponse != null && touchResponse.lineBarSpots != null && touchResponse.lineBarSpots!.isNotEmpty) {
+                          _tooltipTimer?.cancel();
+                          setState(() {
+                            _showingSpots = [
+                              ShowingTooltipIndicators([
+                                LineBarSpot(
+                                  touchResponse.lineBarSpots!.first.bar,
+                                  touchResponse.lineBarSpots!.first.barIndex,
+                                  touchResponse.lineBarSpots!.first,
+                                )
+                              ])
+                            ];
+                          });
+                        }
+                      } else {
+                        _tooltipTimer?.cancel();
+                        _tooltipTimer = Timer(const Duration(seconds: 1), () {
+                          setState(() {
+                            _showingSpots = [];
+                          });
+                        });
+                      }
+                    },
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipRoundedRadius: 8,
+                      getTooltipColor: (spot) => isDark ? const Color(0xFF21262D) : Colors.black87,
+                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      tooltipMargin: 8,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          return LineTooltipItem(
+                            '${spot.y.toStringAsFixed(0)} kcal',
+                            const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                          );
+                        }).toList();
+                      },
+                    ),
+                    getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                      return spotIndexes.map((index) {
+                        return TouchedSpotIndicatorData(
+                          FlLine(
+                            color: cs.primary.withValues(alpha: 0.2),
+                            strokeWidth: 2,
+                          ),
+                          FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                              radius: 6,
+                              color: cs.primary,
+                              strokeWidth: 3,
+                              strokeColor: Colors.white,
+                            ),
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                  showingTooltipIndicators: _showingSpots,
                   titlesData: FlTitlesData(
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -677,10 +776,21 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                             return const SizedBox.shrink();
                           }
                           final date = _recentLogs[idx].date;
-                          final days = [context.tr('Pzt'), context.tr('Sal'), context.tr('Çar'), context.tr('Per'), context.tr('Cum'), context.tr('Cmt'), context.tr('Paz')];
-                          return Text(
-                            days[date.weekday - 1],
-                            style: const TextStyle(fontSize: 10),
+                          final days = [
+                            context.tr('Pzt'),
+                            context.tr('Sal'),
+                            context.tr('Çar'),
+                            context.tr('Per'),
+                            context.tr('Cum'),
+                            context.tr('Cmt'),
+                            context.tr('Paz')
+                          ];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              days[date.weekday - 1],
+                              style: const TextStyle(fontSize: 10),
+                            ),
                           );
                         },
                       ),
@@ -692,34 +802,45 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     rightTitles: const AxisTitles(
                         sideTitles: SideTitles(showTitles: false)),
                   ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barTouchData: BarTouchData(enabled: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      barWidth: 3.5,
+                      color: cs.primary,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 4.5,
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                            strokeColor: cs.primary,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            cs.primary.withValues(alpha: 0.25),
+                            cs.primary.withValues(alpha: 0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  List<BarChartGroupData> _buildChartSpots() {
-    final color = Theme.of(context).colorScheme.primary;
-    return _recentLogs.asMap().entries.map((entry) {
-      final calories = entry.value.totalNutrition.calories;
-      return BarChartGroupData(
-        x: entry.key,
-        barRods: [
-          BarChartRodData(
-            toY: calories,
-            color: color,
-            width: 16,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ],
-      );
-    }).toList();
   }
 
   Widget _buildWeeklySummaryCard(BuildContext context) {

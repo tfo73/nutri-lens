@@ -42,7 +42,7 @@ enum _FlashMode { off, on, auto }
 enum CameraStartMode { normal, voice, manual }
 
 /// Opens the voice/text entry sheet without launching the camera.
-void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı', VoidCallback? onDone}) {
+void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı', DateTime? date, VoidCallback? onDone}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -51,7 +51,7 @@ void showVoiceEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı
     builder: (_) => _VoiceTextEntrySheet(
       selectedMeal: selectedMeal,
       onSave: (entry) {
-        context.read<NutritionProvider>().addFoodEntry(entry);
+        context.read<NutritionProvider>().addFoodEntry(entry, date: date);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)), behavior: SnackBarBehavior.floating),
         );
@@ -133,7 +133,7 @@ Map<String, dynamic> buildPrefillMap(FoodAnalysisResult result, {bool isTr = tru
 }
 
 /// Opens the manual entry sheet without launching the camera.
-void showManualEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı', VoidCallback? onDone}) {
+void showManualEntrySheet(BuildContext context, {String selectedMeal = 'kahvaltı', DateTime? date, VoidCallback? onDone}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -148,7 +148,7 @@ void showManualEntrySheet(BuildContext context, {String selectedMeal = 'kahvalt�
         scrollCtrl: scrollCtrl,
         selectedMeal: selectedMeal,
         onSave: (entry) {
-          context.read<NutritionProvider>().addFoodEntry(entry);
+          context.read<NutritionProvider>().addFoodEntry(entry, date: date);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)), behavior: SnackBarBehavior.floating),
           );
@@ -166,8 +166,16 @@ class CameraScreen extends StatefulWidget {
   final VoidCallback? onBack;
   final String? selectedMeal;
   final CameraStartMode startMode;
+  final DateTime? date;
 
-  const CameraScreen({super.key, this.onFoodAdded, this.onBack, this.selectedMeal, this.startMode = CameraStartMode.normal});
+  const CameraScreen({
+    super.key,
+    this.onFoodAdded,
+    this.onBack,
+    this.selectedMeal,
+    this.startMode = CameraStartMode.normal,
+    this.date,
+  });
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -579,7 +587,7 @@ class _CameraScreenState extends State<CameraScreen>
           });
         },
         onConfirm: (entry) {
-          context.read<NutritionProvider>().addFoodEntry(entry);
+          context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
           Navigator.pop(context);
           _resetToScanning();
           widget.onFoodAdded?.call();
@@ -754,7 +762,7 @@ class _CameraScreenState extends State<CameraScreen>
           prefill: buildPrefillMap(result, isTr: ctx.read<LanguageProvider>().isTurkish),
           onSave: (entry) {
             _analysisService.saveCorrection(result.foodName, entry.nutritionData);
-            context.read<NutritionProvider>().addFoodEntry(entry);
+            context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                   content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
@@ -782,7 +790,7 @@ class _CameraScreenState extends State<CameraScreen>
       imagePath: _capturedImage?.path,
       novaGroup: result.offProduct?.novaGroup,
     );
-    context.read<NutritionProvider>().addFoodEntry(entry);
+    context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
@@ -804,7 +812,7 @@ class _CameraScreenState extends State<CameraScreen>
       mealType: mealType,
       imageUrl: product.imageUrl,
     );
-    context.read<NutritionProvider>().addFoodEntry(entry);
+    context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
@@ -824,7 +832,7 @@ class _CameraScreenState extends State<CameraScreen>
       builder: (_) => _VoiceTextEntrySheet(
         selectedMeal: _selectedMeal,
         onSave: (entry) {
-          context.read<NutritionProvider>().addFoodEntry(entry);
+          context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),
@@ -858,7 +866,7 @@ class _CameraScreenState extends State<CameraScreen>
           selectedMeal: _selectedMeal,
           prefill: prefill,
           onSave: (entry) {
-            context.read<NutritionProvider>().addFoodEntry(entry);
+            context.read<NutritionProvider>().addFoodEntry(entry, date: widget.date);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                   content: Text(context.tr('{} eklendi').replaceFirst('{}', entry.name)),

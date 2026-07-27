@@ -36,11 +36,31 @@ import 'onboarding_screen.dart';
 import 'paywall_screen.dart';
 import 'manual_entry_screen.dart';
 
+bool isDateEditable(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final compareDate = DateTime(date.year, date.month, date.day);
+  
+  if (compareDate.isAtSameMomentAs(today)) {
+    return true;
+  }
+  
+  final yesterday = today.subtract(const Duration(days: 1));
+  if (compareDate.isAtSameMomentAs(yesterday)) {
+    if (now.hour < 2 || (now.hour == 2 && now.minute < 30)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 class DashboardScreen extends StatefulWidget {
-  final void Function(String meal, String mode)? onMealAddPressed;
+  final void Function(String meal, String mode, DateTime date)? onMealAddPressed;
   final VoidCallback? onProfileSetupPressed;
   final VoidCallback? onCoachPressed;
   final VoidCallback? onFastingPressed;
+  final ValueChanged<DateTime>? onDateChanged;
   final bool isCurrentTab;
 
   const DashboardScreen({
@@ -49,6 +69,7 @@ class DashboardScreen extends StatefulWidget {
     this.onProfileSetupPressed,
     this.onCoachPressed,
     this.onFastingPressed,
+    this.onDateChanged,
     this.isCurrentTab = true,
   });
 
@@ -83,6 +104,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateTimer = Timer.periodic(const Duration(minutes: 30), (_) {
       _loadSteps();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onDateChanged?.call(_selectedDate);
+    });
   }
 
   @override
@@ -92,6 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _selectedDate = DateTime.now();
       });
+      widget.onDateChanged?.call(_selectedDate);
       _loadSteps();
     }
   }
@@ -647,6 +672,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   selectedDate: _selectedDate,
                   onDateSelected: (date) {
                     setState(() => _selectedDate = date);
+                    widget.onDateChanged?.call(date);
                     _loadSteps(); // Refresh steps for selected date
                   },
                 ),
@@ -849,7 +875,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: _WaterSummaryCard(
                         consumed: selectedLog.waterIntakeMl,
                         goal: profileProvider.waterGoalMl,
-                        isReadOnly: !isToday,
+                        isReadOnly: !isDateEditable(_selectedDate),
                         onAdd: (ml) => provider.updateWater(
                           selectedLog.waterIntakeMl + ml,
                           deltaAmount: ml,
@@ -926,7 +952,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: FadeInSlide(
                       delay: const Duration(milliseconds: 460),
-                      child: _buildMealSections(context, provider, l10n, selectedLog, isToday),
+                      child: _buildMealSections(context, provider, l10n, selectedLog, isDateEditable(_selectedDate)),
                     ),
                   ),
                   const SizedBox(height: 160),
@@ -1190,8 +1216,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 totalCal: totalCal,
                 cs: cs,
                 l10n: l10n,
-                isToday: isToday,
-                onAddPressed: (mode) => widget.onMealAddPressed?.call(meal, mode),
+                isToday: isDateEditable(_selectedDate),
+                onAddPressed: (mode) => widget.onMealAddPressed?.call(meal, mode, _selectedDate),
                 onTap: () =>
                     _showMealDetail(context, meal, mealName, entries, l10n, _selectedDate),
               ),
@@ -5055,7 +5081,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
   Widget build(BuildContext context) {
     final wellness = context.watch<WellnessProvider>();
     final log = wellness.getLogForDate(widget.selectedDate);
-    final isToday = DateUtils.isSameDay(widget.selectedDate, DateTime.now());
+    final isToday = isDateEditable(widget.selectedDate);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     final cardBg = isDark ? const Color(0xFF161B22) : Colors.white;
@@ -5064,6 +5090,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
       required String title,
       required Widget body,
       VoidCallback? onHistoryTap,
+      double spacing = 10,
     }) => Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -5111,7 +5138,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                 ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: spacing),
           body,
         ],
       ),
@@ -5407,43 +5434,88 @@ class _WellnessSectionState extends State<_WellnessSection> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          final val = _symptomCtrl.text.trim();
-                          if (val.isEmpty) return;
-                          if (!_isValidSymptom(val)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
-                                duration: const Duration(seconds: 3),
-                                behavior: SnackBarBehavior.floating,
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  title: Row(
+                                    children: [
+                                      Icon(Icons.info_outline_rounded, color: cs.primary),
+                                      const SizedBox(width: 10),
+                                      Expanded(child: Text(context.tr('Semptom Takibi Nedir?'), style: const TextStyle(fontWeight: FontWeight.w700))),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    context.tr('Semptom Takibi; gün içinde yaşadığınız baş ağrısı, şişkinlik, yorgunluk gibi belirtileri kaydetmenizi sağlar. Bu sayede, tükettiğiniz gıdalar ile vücudunuzun gösterdiği tepkiler arasındaki ilişkiyi gözlemleyebilirsiniz.')
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: Text(context.tr('Tamam')),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: cs.primary.withValues(alpha: 0.1),
                               ),
-                            );
-                            return;
-                          }
-                          wellness.addSymptom(val);
-                          _symptomCtrl.clear();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(context.tr('Semptom kaydedildi')),
-                              duration: const Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 18,
+                                color: cs.primary,
+                              ),
                             ),
-                          );
-                        },
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: cs.primary,
                           ),
-                          child: const Icon(
-                            Icons.add_rounded,
-                            size: 22,
-                            color: Colors.white,
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                            onTap: () {
+                              final val = _symptomCtrl.text.trim();
+                              if (val.isEmpty) return;
+                              if (!_isValidSymptom(val)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
+                                    duration: const Duration(seconds: 3),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+                              wellness.addSymptom(val);
+                              _symptomCtrl.clear();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('Semptom kaydedildi')),
+                                  duration: const Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: cs.primary,
+                              ),
+                              child: const Icon(
+                                Icons.add_rounded,
+                                size: 22,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -6296,7 +6368,7 @@ class _DashboardFoodCardState extends State<_DashboardFoodCard>
                                           ),
                                         ),
                                       ),
-                                      if (DateUtils.isSameDay(widget.selectedDate, DateTime.now()))
+                                      if (isDateEditable(widget.selectedDate))
                                         IconButton(
                                           onPressed: () => Navigator.push(
                                             context,
@@ -6788,8 +6860,8 @@ class _CalendarStripState extends State<_CalendarStrip> {
         final waterGoalMl = profileProvider.waterGoalMl.toDouble();
 
         return Container(
-          height: 110,
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          height: 125,
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF8F9FA),
             boxShadow: [
@@ -6807,100 +6879,166 @@ class _CalendarStripState extends State<_CalendarStrip> {
               final weekOffset = pageIndex - _maxWeeksBack;
               final weekStart = _currentWeekStart.add(Duration(days: weekOffset * 7));
 
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(7, (dayIndex) {
-                  final date = weekStart.add(Duration(days: dayIndex));
-                  
-                  // Strip time from 'now' to compare dates properly
-                  final todayDate = DateTime(now.year, now.month, now.day);
-                  final compareDate = DateTime(date.year, date.month, date.day);
-                  
-                  final isSelected = compareDate.year == widget.selectedDate.year && compareDate.month == widget.selectedDate.month && compareDate.day == widget.selectedDate.day;
-                  final isToday = compareDate.isAtSameMomentAs(todayDate);
-                  final isFuture = compareDate.isAfter(todayDate);
-                  final isPast = compareDate.isBefore(todayDate);
-                  
-                  final goalMet = provider.isGoalMet(
-                    date,
-                    calorieGoal: calorieGoal,
-                    proteinGoal: proteinGoal,
-                    carbGoal: carbGoal,
-                    fatGoal: fatGoal,
-                    waterGoalMl: waterGoalMl,
-                  );
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final double totalWidth = constraints.maxWidth;
+                  final double dayWidth = 46.0;
+                  final double totalDayWidth = 7 * dayWidth;
+                  final double remainingSpace = totalWidth - totalDayWidth;
+                  final double gap = remainingSpace / 8; // spacing between days
 
-                  Widget dayWidget = Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        DateFormat('E', AppLocalizations.of(context).isTurkish ? 'tr_TR' : 'en_US').format(date).toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isSelected ? Colors.black54 : Colors.grey.shade500,
-                          fontWeight: FontWeight.w700,
+                  final List<Widget> rowChildren = [];
+
+                  for (int dayIndex = 0; dayIndex < 7; dayIndex++) {
+                    final date = weekStart.add(Duration(days: dayIndex));
+                    
+                    // Strip time from 'now' to compare dates properly
+                    final todayDate = DateTime(now.year, now.month, now.day);
+                    final compareDate = DateTime(date.year, date.month, date.day);
+                    
+                    final isSelected = compareDate.year == widget.selectedDate.year && compareDate.month == widget.selectedDate.month && compareDate.day == widget.selectedDate.day;
+                    final isToday = compareDate.isAtSameMomentAs(todayDate);
+                    final isFuture = compareDate.isAfter(todayDate);
+                    final isPast = compareDate.isBefore(todayDate);
+                    
+                    final goalMet = provider.isGoalMet(
+                      date,
+                      calorieGoal: calorieGoal,
+                      proteinGoal: proteinGoal,
+                      carbGoal: carbGoal,
+                      fatGoal: fatGoal,
+                      waterGoalMl: waterGoalMl,
+                    );
+
+                    final bool isFirstDay = compareDate.day == 1;
+
+                    Widget selectionContainer = Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('E', AppLocalizations.of(context).isTurkish ? 'tr_TR' : 'en_US').format(date).toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isSelected ? Colors.black54 : Colors.grey.shade500,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: 38,
-                        height: 38,
-                        child: CustomPaint(
-                          painter: isSelected && isPast
-                            ? _DashedBorderPainter(
-                                color: const Color(0xFF58A6FF),
-                                strokeWidth: 2.0,
-                              )
-                            : null,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: isToday 
-                                  ? Border.all(color: isDark ? const Color(0xFF30363D) : Colors.grey.shade400, width: 2.0)
-                                  : (!isSelected && isPast) 
-                                      ? Border.all(color: const Color(0xFF58A6FF).withValues(alpha: 0.3), width: 1.5)
-                                      : null,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              DateFormat('dd').format(date),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: isSelected 
-                                    ? Colors.black 
-                                    : (isDark ? const Color(0xFF8B949E) : Colors.black87),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CustomPaint(
+                            painter: isSelected && isPast
+                              ? _DashedBorderPainter(
+                                  color: const Color(0xFF58A6FF),
+                                  strokeWidth: 2.0,
+                                )
+                              : null,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: isToday 
+                                    ? Border.all(color: const Color(0xFFFFA000), width: 2.0)
+                                    : (!isSelected && isPast) 
+                                        ? Border.all(color: const Color(0xFF58A6FF).withValues(alpha: 0.3), width: 1.5)
+                                        : null,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                DateFormat('dd').format(date),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: isSelected 
+                                      ? Colors.black 
+                                      : (isToday 
+                                          ? (isDark ? const Color(0xFFFFB300) : const Color(0xFFE65100))
+                                          : (isDark ? const Color(0xFFC9D1D9) : Colors.black87)),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
+                      ],
+                    );
 
-                  return GestureDetector(
-                    onTap: isFuture ? null : () => widget.onDateSelected(date),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      width: 50,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected 
-                          ? (isDark ? const Color(0xFFC9D1D9) : Colors.white) 
-                          : Colors.transparent,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: isSelected ? [
-                          BoxShadow(
-                            color: const Color(0xFF58A6FF).withValues(alpha: 0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          )
-                        ] : null,
+                    Widget clickableDay = GestureDetector(
+                      onTap: isFuture ? null : () => widget.onDateSelected(date),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        width: dayWidth,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                            ? (isDark ? const Color(0xFFC9D1D9) : Colors.white) 
+                            : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: isSelected ? [
+                            BoxShadow(
+                              color: const Color(0xFF58A6FF).withValues(alpha: 0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            )
+                          ] : null,
+                        ),
+                        child: selectionContainer,
                       ),
-                      child: dayWidget,
-                    ),
+                    );
+
+                    Widget dayCell = Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        clickableDay,
+                        if (isFirstDay)
+                          Positioned(
+                            left: -gap / 2 - 3.0,
+                            top: 8,
+                            bottom: 8,
+                            width: 6,
+                            child: CustomPaint(
+                              painter: _WavyLinePainter(
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+
+                    Widget fullDayColumn = Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 14,
+                          width: dayWidth,
+                          child: (dayIndex == 0)
+                            ? FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  DateFormat('MMMM', AppLocalizations.of(context).isTurkish ? 'tr_TR' : 'en_US').format(date).toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: isDark ? const Color(0xFF8B949E) : Colors.black54,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(height: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        dayCell,
+                      ],
+                    );
+
+                    rowChildren.add(fullDayColumn);
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: rowChildren,
                   );
-                }),
+                },
               );
             },
           ),
@@ -6908,4 +7046,45 @@ class _CalendarStripState extends State<_CalendarStrip> {
       },
     );
   }
+}
+
+class _WavyLinePainter extends CustomPainter {
+  final Color color;
+  _WavyLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    path.moveTo(size.width / 2, 0);
+
+    double y = 0;
+    double amplitude = 2.0;
+    double wavelength = 12.0;
+
+    while (y < size.height) {
+      path.relativeQuadraticBezierTo(
+        amplitude,
+        wavelength / 4,
+        0,
+        wavelength / 2,
+      );
+      path.relativeQuadraticBezierTo(
+        -amplitude,
+        wavelength / 4,
+        0,
+        wavelength / 2,
+      );
+      y += wavelength;
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
