@@ -46,7 +46,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '392545068869',
     projectId: 'lenseat-app',
     authDomain: 'lenseat-app.firebaseapp.com',
-    storageBucket: 'lenseat-app.firebasestorage.app',
+    storageBucket: 'lenseat-app.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -54,7 +54,7 @@ class DefaultFirebaseOptions {
     appId: '1:392545068869:android:bbf62046dde08b730e402c',
     messagingSenderId: '392545068869',
     projectId: 'lenseat-app',
-    storageBucket: 'lenseat-app.firebasestorage.app',
+    storageBucket: 'lenseat-app.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -62,7 +62,7 @@ class DefaultFirebaseOptions {
     appId: '1:392545068869:ios:864f263e8aac75d00e402c',
     messagingSenderId: '392545068869',
     projectId: 'lenseat-app',
-    storageBucket: 'lenseat-app.firebasestorage.app',
+    storageBucket: 'lenseat-app.appspot.com',
     androidClientId: '392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com',
     iosClientId: '392545068869-78oe97uor9umtlau3oasjb7qpghu3126.apps.googleusercontent.com',
     iosBundleId: 'com.lenseat.app',
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     appId: '1:392545068869:ios:864f263e8aac75d00e402c',
     messagingSenderId: '392545068869',
     projectId: 'lenseat-app',
-    storageBucket: 'lenseat-app.firebasestorage.app',
+    storageBucket: 'lenseat-app.appspot.com',
     androidClientId: '392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com',
     iosClientId: '392545068869-78oe97uor9umtlau3oasjb7qpghu3126.apps.googleusercontent.com',
     iosBundleId: 'com.lenseat.app',
@@ -85,6 +85,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '392545068869',
     projectId: 'lenseat-app',
     authDomain: 'lenseat-app.firebaseapp.com',
-    storageBucket: 'lenseat-app.firebasestorage.app',
+    storageBucket: 'lenseat-app.appspot.com',
   );
 }

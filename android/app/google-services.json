@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "392545068869",
     "project_id": "lenseat-app",
-    "storage_bucket": "lenseat-app.firebasestorage.app"
+    "storage_bucket": "lenseat-app.appspot.com"
   },
   "client": [
     {
@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "392545068869-6bn3aenuiofsjbi68j8javgos22gv2m8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lenseat.app",
+            "certificate_hash": "f9e55a41239afad1b89f5152646c16212329364b"
+          }
+        },
+        {
           "client_id": "392545068869-ki77tjq74qe0f2damtasau8jeqb1djid.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.lenseat.app",
             "certificate_hash": "0cf367e5175e2b825da00f0358db2bc077167b33"
+          }
+        },
+        {
+          "client_id": "392545068869-lc7st97finc8s40vc7gmgfoodu7e12m6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lenseat.app",
+            "certificate_hash": "95e02399ee3413b5cd38cba02a300730c8c2d741"
           }
         },
         {

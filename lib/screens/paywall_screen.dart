@@ -8,6 +8,7 @@ import '../services/purchase_service.dart';
 import '../services/promo_code_service.dart';
 import 'home_screen.dart';
 import 'legal_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PaywallScreen extends StatefulWidget {
   final bool fromOnboarding;
@@ -43,6 +44,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profileProvider = context.watch<ProfileProvider>();
+    final isPremium = profileProvider.isPremium;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -237,37 +240,44 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         width: double.infinity,
                         height: 64,
                         decoration: BoxDecoration(
-                          gradient: primaryGradient,
+                          gradient: isPremium 
+                              ? LinearGradient(
+                                  colors: [Colors.grey.shade600, Colors.grey.shade700],
+                                )
+                              : primaryGradient,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: ElevatedButton(
-                          onPressed: _isPurchasing ? null : _showPurchaseOptions,
+                          onPressed: (isPremium || _isPurchasing) ? null : _executePurchase,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           ),
                           child: Text(
-                            _t('Devam Et', 'Continue'),
-                            style: const TextStyle(
-                              color: Colors.black,
+                            isPremium 
+                                ? _t('Aktif Premium Üyeliğiniz Var', 'You Have Active Premium')
+                                : _t('Devam Et', 'Continue'),
+                            style: TextStyle(
+                              color: isPremium ? Colors.white70 : Colors.black,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
                       Center(
                         child: TextButton(
-                          onPressed: () {
-                            if (widget.onComplete != null) {
-                              widget.onComplete!();
-                            } else if (widget.fromOnboarding) {
-                              Navigator.pushReplacement(
-                                  context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+                          onPressed: () async {
+                            final hadPremium = profileProvider.activeProfile?.hadPremiumBefore ?? false;
+                            final prefs = await SharedPreferences.getInstance();
+                            final freeTrialShown = prefs.getBool('free_trial_shown') ?? false;
+
+                            if (hadPremium || freeTrialShown) {
+                              _closePaywall();
                             } else {
-                              Navigator.pop(context);
+                              await prefs.setBool('free_trial_shown', true);
+                              _showFreeTrialDialog();
                             }
                           },
                           child: Text(
@@ -296,6 +306,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               );
                             }
                           }),
+                          _buildFooterDivider(),
+                          _buildFooterLink(_t('Promosyon Kodu', 'Promo Code'), onTap: _applyPromoCode),
                           _buildFooterDivider(),
                           _buildFooterLink(_t('Gizlilik', 'Privacy'), onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => LegalScreen(
@@ -589,88 +601,239 @@ class _PaywallScreenState extends State<PaywallScreen> {
     );
   }
 
-  void _showPurchaseOptions() {
-    showModalBottomSheet(
+
+  Future<void> _executePurchase() async {
+    final profileProvider = context.read<ProfileProvider>();
+    final String productId;
+    if (_selectedPlanIndex == 0) {
+      productId = kProductMonthly;
+    } else if (_selectedPlanIndex == 2) {
+      productId = kProductLifetime;
+    } else {
+      productId = kProductYearly;
+    }
+    setState(() => _isPurchasing = true);
+    final result = await PurchaseService.instance.purchase(productId);
+    if (!mounted) return;
+    setState(() => _isPurchasing = false);
+    if (result == PurchaseResult.success) {
+      await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
+      if (_appliedPromoCode != null && (_appliedDiscountPercent ?? 0) > 0) {
+         await PromoCodeService.instance.markCodeAsUsed(_appliedPromoCode!);
+      }
+      _closePaywall();
+    } else if (result == PurchaseResult.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('Satın alma başarısız. Lütfen tekrar deneyin.', 'Purchase failed. Please try again.'))),
+      );
+    } else if (result == PurchaseResult.cancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('Satın alma iptal edildi.', 'Purchase cancelled.'))),
+      );
+    }
+  }
+
+  void _closePaywall() {
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+    } else if (widget.fromOnboarding) {
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } else {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+      }
+    }
+  }
+
+  Future<void> _showFreeTrialDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appBlue = const Color(0xFF58A6FF);
+    final primaryGradient = LinearGradient(
+      colors: [appBlue.withValues(alpha: 0.8), appBlue],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
+    final bool? startTrial = await showGeneralDialog<bool>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  _t('Nasıl Devam Etmek İstersiniz?', 'How would you like to proceed?'),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return ScaleTransition(
+          scale: curve,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF161B22) : Colors.white,
+              elevation: 24,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(
+                  color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+                  width: 1.5,
                 ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _executePurchase();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Image
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Image.network(
+                        'https://cdn-icons-png.flaticon.com/512/4213/4213958.png',
+                        height: 90,
+                        width: 90,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF4D80).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.card_giftcard_rounded,
+                            color: Color(0xFFFF4D80),
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Text(
-                    _t('Kredi Kartı / Mağaza ile Satın Al', 'Purchase with Store'),
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  const SizedBox(height: 16),
+                  
+                  // Title
+                  Text(
+                    _t('3 Gün Ücretsiz Deneme!', '3-Day Free Trial!'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _applyPromoCode();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const SizedBox(height: 12),
+                  
+                  // Description
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'LensEat',
+                          style: TextStyle(
+                            color: appBlue,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        TextSpan(
+                          text: _t(
+                            ' Premium\'u 3 gün boyunca tamamen ücretsiz deneyin. Daha fazla besin analizi yapıp hücrelerinizi besleyin. Deneme süresi sonunda dilediğiniz an iptal edebilirsiniz.',
+                            ' Premium completely free for 3 days. Do more nutrient analysis to feed your cells. Cancel anytime before the trial ends.',
+                          ),
+                          style: TextStyle(
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
                   ),
-                  child: Text(
-                    _t('Promosyon Kodu Gir', 'Enter Promo Code'),
-                    style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16),
+                  const SizedBox(height: 8),
+                  
+                  // Disclosure
+                  Text(
+                    _t(
+                      '3 gün ücretsiz, sonra Aylık ₺99',
+                      '3 days free, then \$4.99/month',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  
+                  // Action Button
+                  Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: primaryGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: appBlue.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Text(
+                        _t('Ücretsiz Denemeyi Başlat', 'Start Free Trial'),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Reject Action Button
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white54 : Colors.black54,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: Text(
+                      _t('İstemiyorum, Ücretsiz Devam Et', 'No Thanks, Continue Free'),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
-  }
 
-  Future<void> _executePurchase() async {
-    final profileProvider = context.read<ProfileProvider>();
-    if (widget.onComplete != null) {
-      await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
-      widget.onComplete!();
-      return;
-    }
-    final productId = _selectedPlanIndex == 0 ? kProductMonthly : kProductYearly;
-    setState(() => _isPurchasing = true);
-    await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
-    final result = await PurchaseService.instance.purchase(productId);
     if (!mounted) return;
-    setState(() => _isPurchasing = false);
-    if (result == PurchaseResult.success) {
-      if (_appliedPromoCode != null && (_appliedDiscountPercent ?? 0) > 0) {
-         await PromoCodeService.instance.markCodeAsUsed(_appliedPromoCode!);
-      }
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-    } else if (result == PurchaseResult.error) {
-      profileProvider.updatePremiumStatus(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('Satın alma başarısız. Lütfen tekrar deneyin.', 'Purchase failed. Please try again.'))),
-      );
+
+    if (startTrial == true) {
+      setState(() {
+        _selectedPlanIndex = 0; // Set to monthly for free trial
+      });
+      await _executePurchase();
+    } else if (startTrial == false) {
+      _closePaywall();
     }
   }
 }

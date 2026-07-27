@@ -20,11 +20,13 @@ import '../providers/language_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/wellness_provider.dart';
+import '../providers/coach_provider.dart';
 import '../providers/fasting_provider.dart';
 import '../services/device_id_service.dart';
 import '../services/health_service.dart';
 import '../services/saved_foods_service.dart';
 import '../services/sync_service.dart';
+import '../services/conflict_detection_service.dart';
 import '../widgets/animated_widgets.dart';
 import '../widgets/combined_chart.dart';
 import '../widgets/wave_background.dart';
@@ -63,7 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _lastHealthSyncEnabled = false;
   String? _deviceId;
-  bool _isPremium = false;
 
   @override
   void initState() {
@@ -98,12 +99,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadDeviceInfo() async {
     try {
       final uid = await DeviceIdService.instance.ensureFirebaseUser();
-      final premium = await DeviceIdService.instance.getPremiumStatus();
       if (mounted) {
         setState(() {
           // Show first 8 characters of the UID as the short device ID
           _deviceId = uid.length > 8 ? uid.substring(0, 8).toUpperCase() : uid.toUpperCase();
-          _isPremium = premium;
         });
       }
     } catch (_) {}
@@ -159,7 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
       try {
-        final hasPerms = await HealthService.requestPermissions();
+        final hasPerms = await HealthService.hasPermissionsOnly();
         if (!hasPerms) return;
 
         final data = await HealthService.getTodayHealthData();
@@ -368,7 +367,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showWeightPickerSheet(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final current = context.read<WellnessProvider>().thisWeekWeight ?? 70.0;
+    final wellness = context.read<WellnessProvider>();
+    final profile = context.read<ProfileProvider>();
+    final lastRecorded = wellness.lastRecordedWeight;
+    final profileWeight = profile.weight;
+    final current = wellness.thisWeekWeight ?? lastRecorded ?? (profileWeight > 0 ? profileWeight : 70.0);
     double selected = current;
 
     showModalBottomSheet(
@@ -520,8 +523,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             elevation: 0,
             scrolledUnderElevation: 0,
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
+            title: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Text(
                   'LensEat',
@@ -532,61 +535,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(width: 8),
-                if (_isPremium)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                if (profileProvider.isPremium)
+                  const Positioned(
+                    top: -4,
+                    right: -10,
+                    child: Text(
+                      '+',
+                      style: TextStyle(
+                        color: Color(0xFFFFD700), // Gold
+                        fontWeight: FontWeight.w900,
+                        fontSize: 24,
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_awesome, size: 11, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          'PRO',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
               ],
             ),
             centerTitle: false,
             actions: [
-              // Koç butonu
-              if (widget.onCoachPressed != null)
-                GestureDetector(
-                  onTap: widget.onCoachPressed,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: surface2,
-                    ),
-                    child: Transform.flip(
-                      flipX: true,
-                      child: Icon(
-                        Icons.psychology,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 8),
+
               
               // Streak UI (Suspended for now)
               if (false)
@@ -619,6 +585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (false)
               const SizedBox(width: 8),
               // Premium butonu
+              if (!profileProvider.isPremium)
               GestureDetector(
                 onTap: () => Navigator.push(
                   context,
@@ -1253,39 +1220,122 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       children: [
         ...conflicts.map((c) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: redBg.withValues(alpha: isDark ? 0.18 : 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: redBg.withValues(alpha: 0.35),
-                width: 0.8,
+          return GestureDetector(
+            onTap: () {
+              final prompt = _getPromptForConflict(c, isTurkish);
+              context.read<CoachProvider>().setPrefilledMessage(prompt);
+              widget.onCoachPressed?.call();
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: redBg.withValues(alpha: isDark ? 0.18 : 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: redBg.withValues(alpha: 0.35),
+                  width: 0.8,
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Text(c.icon, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    c.message,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? const Color(0xFFFF6B6B)
-                          : const Color(0xFFCC2200),
+              child: Row(
+                children: [
+                  Text(c.icon, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      c.message,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark
+                            ? const Color(0xFFFF6B6B)
+                            : const Color(0xFFCC2200),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: isDark
+                        ? const Color(0xFFFF6B6B).withValues(alpha: 0.7)
+                        : const Color(0xFFCC2200).withValues(alpha: 0.7),
+                  ),
+                ],
+              ),
             ),
           );
         }),
         const SizedBox(height: 4),
       ],
     );
+  }
+
+  String _getPromptForConflict(NutritionConflict c, bool isTurkish) {
+    if (isTurkish) {
+      if (c.icon == '🌾' || c.message.contains('Lif')) {
+        return 'Lif alımımı artırmak için bana nasıl bir beslenme önerirsin?';
+      }
+      if (c.icon == '💪' || c.message.contains('Protein')) {
+        return 'Günlük protein ihtiyacımı karşılamak için pratik ve sağlıklı hangi gıdaları eklemeliyim?';
+      }
+      if (c.icon == '☀️' || c.message.contains('D vitamini')) {
+        return 'D vitamini eksikliğimi gidermek için neler yapabilirim? Beslenme veya yaşam tarzı önerilerin nelerdir?';
+      }
+      if (c.icon == '🩸' || c.message.contains('Demir')) {
+        return 'Demir alımımı artırmak ve vücudumdaki demir emilimini desteklemek için ne tür besinler tüketmeliyim?';
+      }
+      if (c.icon == '🦷' || c.message.contains('Kalsiyum')) {
+        return 'Kalsiyum alımımı doğal yollarla artırmak için beslenmeme neler ekleyebilirim?';
+      }
+      if (c.icon == '🌿' || c.message.contains('Magnezyum')) {
+        return 'Magnezyum eksikliğimi gidermek için hangi sağlıklı besinleri tüketmemi önerirsin?';
+      }
+      if (c.icon == '⚡' || c.message.contains('Çinko')) {
+        return 'Çinko alımımı desteklemek için beslenme düzenime hangi gıdaları eklemeliyim?';
+      }
+      if (c.icon == '🍌' || c.message.contains('Potasyum')) {
+        return 'Potasyum alımımı artırmak için bana hangi potasyum zengini besinleri önerirsin?';
+      }
+      if (c.icon == '💊' || c.message.contains('B12')) {
+        return 'B12 vitamini alımımı artırmak için hangi gıdaları tüketmeliyim?';
+      }
+      if (c.icon == '🐟' || c.message.contains('Omega-3')) {
+        return 'Omega-3 alımımı artırmak için ceviz, keten tohumu veya balık dışında neler tüketebilirim?';
+      }
+      return 'Bugün aldığım şu uyarı hakkında beslenme önerileri alabilir miyim: "${c.message}"';
+    } else {
+      if (c.icon == '🌾' || c.message.toLowerCase().contains('fiber')) {
+        return 'How can I increase my fiber intake? What do you recommend?';
+      }
+      if (c.icon == '💪' || c.message.toLowerCase().contains('protein')) {
+        return 'What are some practical and healthy foods to help me meet my daily protein needs?';
+      }
+      if (c.icon == '☀️' || c.message.toLowerCase().contains('vitamin d')) {
+        return 'What can I do to improve my Vitamin D levels? What are your diet or lifestyle suggestions?';
+      }
+      if (c.icon == '🩸' || c.message.toLowerCase().contains('iron')) {
+        return 'What foods should I eat to boost my iron intake and improve absorption?';
+      }
+      if (c.icon == '🦷' || c.message.toLowerCase().contains('calcium')) {
+        return 'What can I add to my diet to naturally increase my calcium intake?';
+      }
+      if (c.icon == '🌿' || c.message.toLowerCase().contains('magnesium')) {
+        return 'What healthy foods do you recommend to boost my magnesium levels?';
+      }
+      if (c.icon == '⚡' || c.message.toLowerCase().contains('zinc')) {
+        return 'Which foods should I include in my diet to support my zinc intake?';
+      }
+      if (c.icon == '🍌' || c.message.toLowerCase().contains('potassium')) {
+        return 'What potassium-rich foods do you suggest to increase my intake?';
+      }
+      if (c.icon == '💊' || c.message.toLowerCase().contains('b12')) {
+        return 'What foods should I consume to increase my Vitamin B12 intake?';
+      }
+      if (c.icon == '🐟' || c.message.toLowerCase().contains('omega-3')) {
+        return 'Besides fish and walnuts, what can I consume to boost my omega-3 intake?';
+      }
+      return 'Can you give me nutrition advice regarding this warning: "${c.message}"';
+    }
   }
 }
 
@@ -1764,20 +1814,26 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    widget.nutrition.calories.toStringAsFixed(0),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                      color: textPrimary,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      widget.nutrition.calories.toStringAsFixed(0),
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: textPrimary,
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    context.tr('ALINAN'),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF7EE787),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      context.tr('ALINAN'),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF7EE787),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1881,20 +1937,26 @@ class _DashboardPage1State extends State<_DashboardPage1> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    widget.totalBurned.toStringAsFixed(0),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                      color: textPrimary,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      widget.totalBurned.toStringAsFixed(0),
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: textPrimary,
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    context.tr('Yakılan').toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFFFFA726), // Changed to orange/burned color
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      context.tr('Yakılan').toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFFFFA726), // Changed to orange/burned color
+                                      ),
                                     ),
                                   ),
                                 ],

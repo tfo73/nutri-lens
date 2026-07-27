@@ -207,6 +207,10 @@ class NutritionProvider extends ChangeNotifier {
     _loadSavedMeals();
   }
 
+  Future<void> forceCloudSync() async {
+    await _loadData();
+  }
+
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final todayKey = _dateKey(DateTime.now());
@@ -282,8 +286,12 @@ class NutritionProvider extends ChangeNotifier {
 
             final cloudLog = DailyLog.fromJson(data);
             
-            // If not in local or cloud is newer
-            if (!_historyLogs.containsKey(key)) {
+            final localLog = _historyLogs[key];
+            final needsRepair = localLog != null && 
+                localLog.entries.isNotEmpty && 
+                localLog.entries.any((e) => e.nutritionData.potassium == null && e.nutritionData.calcium == null);
+
+            if (localLog == null || needsRepair) {
               _historyLogs[key] = cloudLog;
               await prefs.setString(_storageKey(key), jsonEncode(cloudLog.toJson()));
               if (!keys.contains(key)) keys.add(key);

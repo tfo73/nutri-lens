@@ -59,6 +59,19 @@ class HealthService {
     }
   }
 
+  /// Sadece izinlerin durumunu kontrol eder, kullanıcıya izin isteği penceresi açmaz.
+  static Future<bool> hasPermissionsOnly() async {
+    try {
+      await initialize();
+      final permissions = _types.map((_) => HealthDataAccess.READ).toList();
+      final bool? has =
+          await _health.hasPermissions(_types, permissions: permissions);
+      return has == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Bugünün sağlık verilerini çeker.
   /// KESİNLİKLE kendi hesaplamamız yok — Health Connect'ten geleni döner.
   /// Veri yoksa 0 döner.

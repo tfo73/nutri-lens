@@ -107,8 +107,8 @@ class ConflictDetectionService {
     addIfDeficient(consumed.omega3 ?? 0, profile.omega3Goal,
       NutritionConflict(
         message: isTurkish
-            ? 'Omega-3 açığınız var. Balık, ceviz veya keten tohumu ekleyin.'
-            : 'You have an omega-3 deficiency. Add fish, walnuts, or flaxseed.',
+            ? 'Omega-3 alımını biraz destekleyebilirsin.'
+            : 'You could boost your omega-3 intake.',
         severity: 'warning',
         icon: '🐟',
       ),
@@ -118,8 +118,8 @@ class ConflictDetectionService {
     addIfDeficient(consumed.protein, profile.proteinGoal,
       NutritionConflict(
         message: isTurkish
-            ? 'Protein alımınız düşük (${consumed.protein.toStringAsFixed(0)}g / ${profile.proteinGoal.toStringAsFixed(0)}g). Tavuk, balık veya baklagil ekleyin.'
-            : 'Your protein intake is low (${consumed.protein.toStringAsFixed(0)}g / ${profile.proteinGoal.toStringAsFixed(0)}g). Add chicken, fish, or legumes.',
+            ? 'Protein alımını biraz destekleyebilirsin. (${consumed.protein.toStringAsFixed(0)}g / ${profile.proteinGoal.toStringAsFixed(0)}g)'
+            : 'You could support your protein intake. (${consumed.protein.toStringAsFixed(0)}g / ${profile.proteinGoal.toStringAsFixed(0)}g)',
         severity: 'info',
         icon: '💪',
       ),
@@ -131,8 +131,8 @@ class ConflictDetectionService {
       addIfDeficient(consumed.vitaminD ?? 0, profile.vitaminDGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'D vitamini çok düşük. Güneş ışığı veya takviye düşünün.'
-              : 'Vitamin D is very low. Consider sunlight or supplements.',
+              ? 'D vitamini alımını destekleyebilirsin.'
+              : 'You could support your Vitamin D.',
           severity: 'warning',
           icon: '☀️',
         ),
@@ -143,8 +143,8 @@ class ConflictDetectionService {
       addIfDeficient(ironC, profile.ironGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'Demir alımınız düşük (${ironC.toStringAsFixed(1)}mg / ${profile.ironGoal.toStringAsFixed(0)}mg). Kırmızı et veya baklagil ekleyin.'
-              : 'Your iron intake is low (${ironC.toStringAsFixed(1)}mg / ${profile.ironGoal.toStringAsFixed(0)}mg). Add red meat or legumes.',
+              ? 'Demir alımını destekleyebilirsin. (${ironC.toStringAsFixed(1)}mg / ${profile.ironGoal.toStringAsFixed(0)}mg)'
+              : 'You could support your iron intake. (${ironC.toStringAsFixed(1)}mg / ${profile.ironGoal.toStringAsFixed(0)}mg)',
           severity: 'warning',
           icon: '🩸',
         ),
@@ -155,8 +155,8 @@ class ConflictDetectionService {
       addIfDeficient(calcC, profile.calciumGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'Kalsiyum alımınız düşük (${calcC.toStringAsFixed(0)}mg / ${profile.calciumGoal.toStringAsFixed(0)}mg). Süt ürünleri veya yeşil yapraklı sebzeler ekleyin.'
-              : 'Your calcium intake is low (${calcC.toStringAsFixed(0)}mg / ${profile.calciumGoal.toStringAsFixed(0)}mg). Add dairy or leafy greens.',
+              ? 'Kalsiyum alımını destekleyebilirsin. (${calcC.toStringAsFixed(0)}mg / ${profile.calciumGoal.toStringAsFixed(0)}mg)'
+              : 'You could support your calcium intake. (${calcC.toStringAsFixed(0)}mg / ${profile.calciumGoal.toStringAsFixed(0)}mg)',
           severity: 'info',
           icon: '🦷',
         ),
@@ -167,8 +167,8 @@ class ConflictDetectionService {
       addIfDeficient(mgC, profile.magnesiumGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'Magnezyum alımınız düşük (${mgC.toStringAsFixed(0)}mg / ${profile.magnesiumGoal.toStringAsFixed(0)}mg). Fındık, tohumlar veya koyu yeşil sebzeler ekleyin.'
-              : 'Your magnesium intake is low (${mgC.toStringAsFixed(0)}mg / ${profile.magnesiumGoal.toStringAsFixed(0)}mg). Add nuts, seeds, or dark leafy greens.',
+              ? 'Magnezyum alımını destekleyebilirsin. (${mgC.toStringAsFixed(0)}mg / ${profile.magnesiumGoal.toStringAsFixed(0)}mg)'
+              : 'You could support your magnesium. (${mgC.toStringAsFixed(0)}mg / ${profile.magnesiumGoal.toStringAsFixed(0)}mg)',
           severity: 'info',
           icon: '🌿',
         ),
@@ -179,8 +179,8 @@ class ConflictDetectionService {
       addIfDeficient(zincC, profile.zincGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'Çinko alımınız düşük (${zincC.toStringAsFixed(1)}mg / ${profile.zincGoal.toStringAsFixed(0)}mg). Et, kabuklu deniz ürünleri veya baklagil ekleyin.'
-              : 'Your zinc intake is low (${zincC.toStringAsFixed(1)}mg / ${profile.zincGoal.toStringAsFixed(0)}mg). Add meat, shellfish, or legumes.',
+              ? 'Çinko alımını destekleyebilirsin. (${zincC.toStringAsFixed(1)}mg / ${profile.zincGoal.toStringAsFixed(0)}mg)'
+              : 'You could support your zinc intake. (${zincC.toStringAsFixed(1)}mg / ${profile.zincGoal.toStringAsFixed(0)}mg)',
           severity: 'info',
           icon: '⚡',
         ),
@@ -191,8 +191,8 @@ class ConflictDetectionService {
       addIfDeficient(potC, profile.potassiumGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'Potasyum alımınız düşük (${potC.toStringAsFixed(0)}mg / ${profile.potassiumGoal.toStringAsFixed(0)}mg). Muz, patates veya domates ekleyin.'
-              : 'Your potassium intake is low (${potC.toStringAsFixed(0)}mg / ${profile.potassiumGoal.toStringAsFixed(0)}mg). Add bananas, potatoes, or tomatoes.',
+              ? 'Potasyum alımını destekleyebilirsin. (${potC.toStringAsFixed(0)}mg / ${profile.potassiumGoal.toStringAsFixed(0)}mg)'
+              : 'You could support your potassium. (${potC.toStringAsFixed(0)}mg / ${profile.potassiumGoal.toStringAsFixed(0)}mg)',
           severity: 'info',
           icon: '🍌',
         ),
@@ -203,8 +203,8 @@ class ConflictDetectionService {
       addIfDeficient(b12C, profile.vitaminB12Goal,
         NutritionConflict(
           message: isTurkish
-              ? 'B12 vitamini düşük (${b12C.toStringAsFixed(1)}mcg / ${profile.vitaminB12Goal.toStringAsFixed(1)}mcg). Et, yumurta veya süt ürünleri ekleyin.'
-              : 'Vitamin B12 is low (${b12C.toStringAsFixed(1)}mcg / ${profile.vitaminB12Goal.toStringAsFixed(1)}mcg). Add meat, eggs, or dairy.',
+              ? 'B12 vitamini alımını destekleyebilirsin. (${b12C.toStringAsFixed(1)}mcg / ${profile.vitaminB12Goal.toStringAsFixed(1)}mcg)'
+              : 'You could support your Vitamin B12. (${b12C.toStringAsFixed(1)}mcg / ${profile.vitaminB12Goal.toStringAsFixed(1)}mcg)',
           severity: 'warning',
           icon: '💊',
         ),
@@ -216,8 +216,8 @@ class ConflictDetectionService {
       addIfDeficient(consumed.fiber, profile.fiberGoal,
         NutritionConflict(
           message: isTurkish
-              ? 'Lif alımınız düşük (${consumed.fiber.toStringAsFixed(1)}g / ${profile.fiberGoal.toStringAsFixed(0)}g). Sebze ve tahıl ekleyin.'
-              : 'Your fiber intake is low (${consumed.fiber.toStringAsFixed(1)}g / ${profile.fiberGoal.toStringAsFixed(0)}g). Add vegetables and whole grains.',
+              ? 'Lif alımını biraz destekleyebilirsin. (${consumed.fiber.toStringAsFixed(1)}g / ${profile.fiberGoal.toStringAsFixed(0)}g)'
+              : 'You could support your fiber intake. (${consumed.fiber.toStringAsFixed(1)}g / ${profile.fiberGoal.toStringAsFixed(0)}g)',
           severity: 'info',
           icon: '🌾',
         ),

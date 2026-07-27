@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/profile_provider.dart';
+import '../providers/coach_provider.dart';
 import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
@@ -724,6 +725,15 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
         setState(() {});
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final coachProv = context.watch<CoachProvider>();
+    if (coachProv.prefilledMessage != null) {
+      _tabController.index = 1;
+    }
   }
 
   @override

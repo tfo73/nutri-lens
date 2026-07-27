@@ -64,47 +64,51 @@ class NotificationService {
     required bool dinnerEnabled,
     required TimeOfDay dinnerTime,
   }) async {
-    for (var i = 100; i < 110; i++) {
-      await _plugin.cancel(i);
-    }
-    if (!enabled) return;
+    try {
+      for (var i = 100; i < 110; i++) {
+        await _plugin.cancel(i);
+      }
+      if (!enabled) return;
 
-    int id = 100;
-    if (breakfastEnabled) {
-      final targetHour = (breakfastTime.hour + 1) % 24;
-      await _scheduleDailyNotification(
-        id: id++,
-        channelId: _waterChannelId,
-        channelName: 'Su Hatırlatıcısı',
-        title: '💧 Su İçme Zamanı!',
-        body: 'Günde en az 8 bardak su içmeyi unutma!',
-        hour: targetHour,
-        minute: breakfastTime.minute,
-      );
-    }
-    if (lunchEnabled) {
-      final targetHour = (lunchTime.hour + 1) % 24;
-      await _scheduleDailyNotification(
-        id: id++,
-        channelId: _waterChannelId,
-        channelName: 'Su Hatırlatıcısı',
-        title: '💧 Su İçme Zamanı!',
-        body: 'Günde en az 8 bardak su içmeyi unutma!',
-        hour: targetHour,
-        minute: lunchTime.minute,
-      );
-    }
-    if (dinnerEnabled) {
-      final targetHour = (dinnerTime.hour + 1) % 24;
-      await _scheduleDailyNotification(
-        id: id++,
-        channelId: _waterChannelId,
-        channelName: 'Su Hatırlatıcısı',
-        title: '💧 Su İçme Zamanı!',
-        body: 'Günde en az 8 bardak su içmeyi unutma!',
-        hour: targetHour,
-        minute: dinnerTime.minute,
-      );
+      int id = 100;
+      if (breakfastEnabled) {
+        final targetHour = (breakfastTime.hour + 1) % 24;
+        await _scheduleDailyNotification(
+          id: id++,
+          channelId: _waterChannelId,
+          channelName: 'Su Hatırlatıcısı',
+          title: '💧 Su İçme Zamanı!',
+          body: 'Günde en az 8 bardak su içmeyi unutma!',
+          hour: targetHour,
+          minute: breakfastTime.minute,
+        );
+      }
+      if (lunchEnabled) {
+        final targetHour = (lunchTime.hour + 1) % 24;
+        await _scheduleDailyNotification(
+          id: id++,
+          channelId: _waterChannelId,
+          channelName: 'Su Hatırlatıcısı',
+          title: '💧 Su İçme Zamanı!',
+          body: 'Günde en az 8 bardak su içmeyi unutma!',
+          hour: targetHour,
+          minute: lunchTime.minute,
+        );
+      }
+      if (dinnerEnabled) {
+        final targetHour = (dinnerTime.hour + 1) % 24;
+        await _scheduleDailyNotification(
+          id: id++,
+          channelId: _waterChannelId,
+          channelName: 'Su Hatırlatıcısı',
+          title: '💧 Su İçme Zamanı!',
+          body: 'Günde en az 8 bardak su içmeyi unutma!',
+          hour: targetHour,
+          minute: dinnerTime.minute,
+        );
+      }
+    } catch (e) {
+      debugPrint('scheduleWaterReminder error: $e');
     }
   }
 
@@ -116,58 +120,66 @@ class NotificationService {
     required bool dinner,
     required TimeOfDay dinnerTime,
   }) async {
-    await _plugin.cancel(200);
-    await _plugin.cancel(201);
-    await _plugin.cancel(202);
+    try {
+      await _plugin.cancel(200);
+      await _plugin.cancel(201);
+      await _plugin.cancel(202);
 
-    if (breakfast) {
-      await _scheduleDailyNotification(
-        id: 200,
-        channelId: _mealChannelId,
-        channelName: 'Öğün Hatırlatıcısı',
-        title: '🍳 Kahvaltı Zamanı!',
-        body: 'Güne sağlıklı bir kahvaltı ile başla.',
-        hour: breakfastTime.hour,
-        minute: breakfastTime.minute,
-      );
-    }
-    if (lunch) {
-      await _scheduleDailyNotification(
-        id: 201,
-        channelId: _mealChannelId,
-        channelName: 'Öğün Hatırlatıcısı',
-        title: '🥗 Öğle Yemeği Zamanı!',
-        body: 'Öğle yemeğini takip etmeyi unutma.',
-        hour: lunchTime.hour,
-        minute: lunchTime.minute,
-      );
-    }
-    if (dinner) {
-      await _scheduleDailyNotification(
-        id: 202,
-        channelId: _mealChannelId,
-        channelName: 'Öğün Hatırlatıcısı',
-        title: '🍽️ Akşam Yemeği Zamanı!',
-        body: 'Akşam yemeğini kaydetmeyi unutma.',
-        hour: dinnerTime.hour,
-        minute: dinnerTime.minute,
-      );
+      if (breakfast) {
+        await _scheduleDailyNotification(
+          id: 200,
+          channelId: _mealChannelId,
+          channelName: 'Öğün Hatırlatıcısı',
+          title: '🍳 Kahvaltı Zamanı!',
+          body: 'Güne sağlıklı bir kahvaltı ile başla.',
+          hour: breakfastTime.hour,
+          minute: breakfastTime.minute,
+        );
+      }
+      if (lunch) {
+        await _scheduleDailyNotification(
+          id: 201,
+          channelId: _mealChannelId,
+          channelName: 'Öğün Hatırlatıcısı',
+          title: '🥗 Öğle Yemeği Zamanı!',
+          body: 'Öğle yemeğini takip etmeyi unutma.',
+          hour: lunchTime.hour,
+          minute: lunchTime.minute,
+        );
+      }
+      if (dinner) {
+        await _scheduleDailyNotification(
+          id: 202,
+          channelId: _mealChannelId,
+          channelName: 'Öğün Hatırlatıcısı',
+          title: '🍽️ Akşam Yemeği Zamanı!',
+          body: 'Akşam yemeğini kaydetmeyi unutma.',
+          hour: dinnerTime.hour,
+          minute: dinnerTime.minute,
+        );
+      }
+    } catch (e) {
+      debugPrint('scheduleMealReminder error: $e');
     }
   }
 
   static Future<void> scheduleDailySummary(bool enabled) async {
-    await _plugin.cancel(300);
-    if (!enabled) return;
+    try {
+      await _plugin.cancel(300);
+      if (!enabled) return;
 
-    await _scheduleDailyNotification(
-      id: 300,
-      channelId: _summaryChannelId,
-      channelName: 'Günlük Özet',
-      title: '📊 Günlük Beslenme Özeti',
-      body: 'Bugünkü beslenme durumunu kontrol et!',
-      hour: 21,
-      minute: 0,
-    );
+      await _scheduleDailyNotification(
+        id: 300,
+        channelId: _summaryChannelId,
+        channelName: 'Günlük Özet',
+        title: '📊 Günlük Beslenme Özeti',
+        body: 'Bugünkü beslenme durumunu kontrol et!',
+        hour: 21,
+        minute: 0,
+      );
+    } catch (e) {
+      debugPrint('scheduleDailySummary error: $e');
+    }
   }
 
   static Future<void> showCalorieGoalReached() async {
@@ -273,26 +285,26 @@ class NotificationService {
     required int month,
     required String name,
   }) async {
-    await _plugin.cancel(600);
-
-    final now = tz.TZDateTime.now(tz.local);
-    var nextBirthday = tz.TZDateTime(tz.local, now.year, month, day, 9, 0);
-    if (nextBirthday.isBefore(now)) {
-      nextBirthday = tz.TZDateTime(tz.local, now.year + 1, month, day, 9, 0);
-    }
-
-    const details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _birthdayChannelId,
-        'Doğum Günü',
-        channelDescription: 'Yıllık doğum günü kutlama bildirimi',
-        importance: Importance.high,
-        priority: Priority.high,
-      ),
-      iOS: DarwinNotificationDetails(),
-    );
-
     try {
+      await _plugin.cancel(600);
+
+      final now = tz.TZDateTime.now(tz.local);
+      var nextBirthday = tz.TZDateTime(tz.local, now.year, month, day, 9, 0);
+      if (nextBirthday.isBefore(now)) {
+        nextBirthday = tz.TZDateTime(tz.local, now.year + 1, month, day, 9, 0);
+      }
+
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _birthdayChannelId,
+          'Doğum Günü',
+          channelDescription: 'Yıllık doğum günü kutlama bildirimi',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      );
+
       await _plugin.zonedSchedule(
         600,
         '🎂 Mutlu Yıllar, $name!',

@@ -14,6 +14,9 @@
     
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    
+    <!-- Google Play Billing Permission for subscriptions/in-app purchases -->
+    <uses-permission android:name="com.android.vending.BILLING"/>
 
     <application
         android:label="LensEat"

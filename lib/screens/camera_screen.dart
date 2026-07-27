@@ -302,23 +302,102 @@ class _CameraScreenState extends State<CameraScreen>
         );
       } else {
         setState(() {
-          _errorMessage = context.tr('Ürün bulunamadı. Manuel giriş yapabilirsiniz.');
-          _viewState = _ViewState.error;
+          _viewState = _ViewState.scanning;
           _barcodeDetected = false;
           _barcodeHandling = false;
-          _capturedImage = null;
         });
+        _showProductNotFoundDialog();
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Barkod okunamadı: $e';
-        _viewState = _ViewState.error;
+        _viewState = _ViewState.scanning;
         _barcodeDetected = false;
         _barcodeHandling = false;
-        _capturedImage = null;
       });
+      _showProductNotFoundDialog();
     }
+  }
+
+  void _showProductNotFoundDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        icon: const Icon(Icons.search_off_rounded, color: Colors.orange, size: 48),
+        title: Text(
+          context.tr('Ürün Bulunamadı'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          context.tr('Bu barkoda ait ürün bulunamadı. Alternatif yöntemlerle analiz edebilirsiniz:'),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsOverflowDirection: VerticalDirection.down,
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.camera_alt_rounded),
+              label: Text(context.tr('Görselden Analiz')),
+              onPressed: () async {
+                Navigator.pop(ctx); // Close dialog
+                await _scanner.start();
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.mic_rounded),
+              label: Text(context.tr('Tarif Ederek Analiz')),
+              onPressed: () {
+                Navigator.pop(ctx); // Close dialog
+                Navigator.pop(context); // Close CameraScreen
+                showVoiceEntrySheet(
+                  context,
+                  selectedMeal: _selectedMeal ?? 'kahvaltı',
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx); // Close dialog
+                await _scanner.start(); // Restart scanner
+              },
+              child: Text(
+                context.tr('Tamam'),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Helper to crop the full screen capture to a central square (the food boundary)

@@ -1,11 +1,13 @@
 import 'dart:ui' as ui;
 import 'dart:io';
+import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/nutrition_data.dart';
 import '../services/device_id_service.dart';
 import '../models/nutrition_data_65.dart';
@@ -20,6 +22,11 @@ import 'settings_screen.dart';
 import 'image_crop_screen.dart';
 import '../providers/fasting_provider.dart';
 import '../l10n/app_localizations.dart';
+import '../services/auth_service.dart';
+import '../services/report_generator_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
@@ -3130,8 +3137,44 @@ Widget _nutrientRow(String label, double value, String unit, double target) {
 
 // ─── Email Report Card ────────────────────────────────────────────────────────
 
-class _EmailReportCard extends StatelessWidget {
+class _EmailReportCard extends StatefulWidget {
   const _EmailReportCard();
+
+  @override
+  State<_EmailReportCard> createState() => _EmailReportCardState();
+}
+
+class _EmailReportCardState extends State<_EmailReportCard> {
+  BuildContext? _loadingDlgCtx;
+
+  void _showLoadingDialog(BuildContext context, String message) {
+    _dismissLoadingDialog();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        _loadingDlgCtx = ctx;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(message, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _dismissLoadingDialog() {
+    if (_loadingDlgCtx != null && _loadingDlgCtx!.mounted) {
+      Navigator.of(_loadingDlgCtx!).pop();
+    }
+    _loadingDlgCtx = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3153,7 +3196,7 @@ class _EmailReportCard extends StatelessWidget {
                   color: const Color(0xFF58A6FF).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.email_outlined,
+                child: const Icon(Icons.analytics_outlined,
                     color: Color(0xFF58A6FF), size: 22),
               ),
               const SizedBox(width: 14),
@@ -3193,7 +3236,7 @@ class _EmailReportCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.email_outlined, color: Color(0xFF58A6FF)),
+            const Icon(Icons.analytics_outlined, color: Color(0xFF58A6FF)),
             const SizedBox(width: 10),
             Text(context.tr('Rapor Gönder')),
           ],
@@ -3210,7 +3253,7 @@ class _EmailReportCard extends StatelessWidget {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _showPasswordStep(context);
+              _startReauthFlow(context);
             },
             child: Text(context.tr('Devam Et')),
           ),
@@ -3219,11 +3262,27 @@ class _EmailReportCard extends StatelessWidget {
     );
   }
 
+  void _startReauthFlow(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.isAnonymous) {
+      _generateAndUpload(context);
+      return;
+    }
+
+    final providers = user.providerData.map((p) => p.providerId).toList();
+    if (providers.contains('password')) {
+      _showPasswordStep(context);
+    } else {
+      _generateAndUpload(context);
+    }
+  }
+
   void _showPasswordStep(BuildContext context) {
     final ctrl = TextEditingController();
     bool obscure = true;
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           shape: RoundedRectangleBorder(
@@ -3265,20 +3324,169 @@ class _EmailReportCard extends StatelessWidget {
               child: Text(context.tr('İptal')),
             ),
             FilledButton(
-              onPressed: () {
+              onPressed: () async {
+                final password = ctrl.text.trim();
+                if (password.isEmpty) return;
+
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        context.tr('Rapor gönderildi! (Yakında aktif olacak)')),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                _showLoadingDialog(context, context.tr('Güvenlik için doğrulanıyor...'));
+
+                try {
+                  final res = await AuthService().reauthenticateWithEmail(password: password);
+                  _dismissLoadingDialog();
+
+                  if (!mounted) return;
+
+                  if (res.success) {
+                    _generateAndUpload(context);
+                  } else {
+                    _showError(context, res.errorMessage ?? context.tr('Kimlik doğrulama başarısız.'));
+                  }
+                } catch (e) {
+                  _dismissLoadingDialog();
+                  if (!mounted) return;
+                  _showError(context, e.toString());
+                }
               },
               child: Text(context.tr('Gönder')),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _generateAndUpload(BuildContext context) async {
+    _showLoadingDialog(context, context.tr('Rapor oluşturuluyor...'));
+
+    try {
+      await context.read<NutritionProvider>().forceCloudSync();
+
+      final profile = context.read<ProfileProvider>().activeProfile;
+      if (profile == null) {
+        throw Exception(context.tr('Aktif profil bulunamadı.'));
+      }
+      final dailyLogs = context.read<NutritionProvider>().allLogs;
+      final wellnessLogs = context.read<WellnessProvider>().allLogs;
+
+      // Read supplements from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final answersStr = prefs.getString('onboarding_answers');
+      List<String> supplements = [];
+      if (answersStr != null) {
+        try {
+          final answers = jsonDecode(answersStr);
+          final list = answers['supplements'] as List?;
+          if (list != null) {
+            supplements = list.cast<String>().toList();
+          }
+          final other = answers['supplementsOther'] as String?;
+          if (other != null && other.trim().isNotEmpty) {
+            supplements.add(other.trim());
+          }
+        } catch (e) {
+          debugPrint('Error parsing onboarding supplements: $e');
+        }
+      }
+
+      final url = await ReportGeneratorService.generateAndUploadReport(
+        profile: profile,
+        dailyLogs: dailyLogs,
+        wellnessLogs: wellnessLogs,
+        supplements: supplements,
+      );
+
+      _dismissLoadingDialog();
+      if (!mounted) return;
+      _showSuccessDialog(context, url);
+    } catch (e) {
+      _dismissLoadingDialog();
+      if (!mounted) return;
+      _showError(context, e.toString());
+    }
+  }
+
+  void _showSuccessDialog(BuildContext context, String url) {
+    final linkController = TextEditingController(text: url);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Color(0xFF34C759)),
+            const SizedBox(width: 10),
+            Text(context.tr('Rapor Bağlantısı Hazır')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.tr('Bağlantıyı kopyalayarak tarayıcınızda açabilir ve raporunuzu inceleyebilirsiniz.'),
+              style: const TextStyle(fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: linkController,
+              readOnly: true,
+              style: const TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: url));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr('Bağlantı kopyalandı!')),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.tr('*Bu bağlantı güvenlik nedeniyle 12 saat boyunca geçerlidir.'),
+              style: const TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('İptal')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final uri = Uri.parse(url);
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (e) {
+                debugPrint('Could not launch URL: $e');
+              }
+            },
+            child: Text(context.tr('Tarayıcıda Aç')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

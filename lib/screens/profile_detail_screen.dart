@@ -422,19 +422,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
     if (bmi < 18.5) {
       bmiColor = Colors.blue;
-      bmiLabel = context.tr('Zayıf — Kilo almanız önerilir');
+      bmiLabel = context.tr('Zayıf');
       bmiProgress = bmi / 18.5 * 0.25;
     } else if (bmi < 25) {
       bmiColor = Colors.green;
-      bmiLabel = context.tr('Normal — Sağlıklı kilodayı!');
+      bmiLabel = context.tr('Normal');
       bmiProgress = 0.25 + (bmi - 18.5) / 6.5 * 0.25;
     } else if (bmi < 30) {
       bmiColor = Colors.amber;
-      bmiLabel = context.tr('Fazla Kilolu — Dikkat edilmeli');
+      bmiLabel = context.tr('Fazla Kilolu');
       bmiProgress = 0.5 + (bmi - 25) / 5 * 0.25;
     } else {
       bmiColor = Colors.red;
-      bmiLabel = context.tr('Obez — Doktor tavsiyesi önerilir');
+      bmiLabel = context.tr('Obez');
       bmiProgress = (0.75 + (bmi - 30) / 10 * 0.25).clamp(0.75, 1.0);
     }
 

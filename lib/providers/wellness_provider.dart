@@ -109,6 +109,12 @@ class WellnessProvider extends ChangeNotifier {
 
   bool get weightEnteredThisWeek => thisWeekWeight != null;
 
+  double? get lastRecordedWeight {
+    if (_weightLogs.isEmpty) return null;
+    final sortedKeys = _weightLogs.keys.toList()..sort();
+    return _weightLogs[sortedKeys.last];
+  }
+
   /// Returns (weight kg, isEstimated) for last [weeks] weeks, oldest first.
   /// Missing weeks are estimated by subtracting [weeklyDelta] from the last known value.
   List<(double?, bool)> weightForWeeks(

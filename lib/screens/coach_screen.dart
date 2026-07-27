@@ -305,6 +305,18 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final coachProv = context.watch<CoachProvider>();
+    if (coachProv.prefilledMessage != null) {
+      _textController.text = coachProv.prefilledMessage!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<CoachProvider>().clearPrefilledMessage();
+      });
+    }
+  }
+
+  @override
   void deactivate() {
     FocusScope.of(context).unfocus();
     super.deactivate();

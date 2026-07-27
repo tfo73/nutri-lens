@@ -68,6 +68,19 @@ class CoachProvider extends ChangeNotifier {
   List<CoachMessage> _currentMessages = [];
   List<CoachSession> _history = [];
   Timer? _midnightTimer;
+  String? _prefilledMessage;
+
+  String? get prefilledMessage => _prefilledMessage;
+
+  void setPrefilledMessage(String? msg) {
+    _prefilledMessage = msg;
+    notifyListeners();
+  }
+
+  void clearPrefilledMessage() {
+    _prefilledMessage = null;
+    notifyListeners();
+  }
 
   CoachProvider(this.profileId) {
     _load();
