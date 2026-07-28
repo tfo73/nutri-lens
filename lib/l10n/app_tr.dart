@@ -1,5 +1,7 @@
 class AppTr {
   static const Map<String, String> strings = {
+    'past_day_lock_title': 'Geçmişe Dokunamıyoruz 🥺',
+    'past_day_lock_content': 'Geçmiş günlerin defterini kapattık bile! 📖✨ Yeni hedeflerin için lütfen bugün veya dünün sayfasına geçip oraya kayıt ekleyelim. 💕',
     'Özet': 'Özet',
     'Fotoğraf': 'Fotoğraf',
     'Öneriler': 'Öneriler',

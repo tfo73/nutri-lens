@@ -5091,9 +5091,11 @@ class _WellnessSectionState extends State<_WellnessSection> {
       required Widget body,
       VoidCallback? onHistoryTap,
       double spacing = 10,
+      EdgeInsetsGeometry? padding,
+      Widget? titleAction,
     }) => Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: padding ?? const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xFF21262D).withValues(alpha: 0.4)
@@ -5120,7 +5122,9 @@ class _WellnessSectionState extends State<_WellnessSection> {
                   letterSpacing: 0.5,
                 ),
               ),
-              if (onHistoryTap != null)
+              if (titleAction != null)
+                titleAction
+              else if (onHistoryTap != null)
                 GestureDetector(
                   onTap: onHistoryTap,
                   child: Container(
@@ -5377,6 +5381,50 @@ class _WellnessSectionState extends State<_WellnessSection> {
           // ── Semptom Takibi ────────────────────────────────────────────────
           subCard(
             title: context.tr('SEMPTOM TAKİBİ'),
+            spacing: 4,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            titleAction: Padding(
+              padding: const EdgeInsets.only(right: 3),
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: cs.primary),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(context.tr('Semptom Takibi Nedir?'), style: const TextStyle(fontWeight: FontWeight.w700))),
+                        ],
+                      ),
+                      content: Text(
+                        context.tr('Semptom Takibi; gün içinde yaşadığınız baş ağrısı, şişkinlik, yorgunluk gibi belirtileri kaydetmenizi sağlar. Bu sayede, tükettiğiniz gıdalar ile vücudunuzun gösterdiği tepkiler arasındaki ilişkiyi gözlemleyebilirsiniz.')
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(context.tr('Tamam')),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: cs.primary.withValues(alpha: 0.1),
+                  ),
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+            ),
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -5434,88 +5482,43 @@ class _WellnessSectionState extends State<_WellnessSection> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                  title: Row(
-                                    children: [
-                                      Icon(Icons.info_outline_rounded, color: cs.primary),
-                                      const SizedBox(width: 10),
-                                      Expanded(child: Text(context.tr('Semptom Takibi Nedir?'), style: const TextStyle(fontWeight: FontWeight.w700))),
-                                    ],
-                                  ),
-                                  content: Text(
-                                    context.tr('Semptom Takibi; gün içinde yaşadığınız baş ağrısı, şişkinlik, yorgunluk gibi belirtileri kaydetmenizi sağlar. Bu sayede, tükettiğiniz gıdalar ile vücudunuzun gösterdiği tepkiler arasındaki ilişkiyi gözlemleyebilirsiniz.')
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(context.tr('Tamam')),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: cs.primary.withValues(alpha: 0.1),
+                      GestureDetector(
+                        onTap: () {
+                          final val = _symptomCtrl.text.trim();
+                          if (val.isEmpty) return;
+                          if (!_isValidSymptom(val)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
+                                duration: const Duration(seconds: 3),
+                                behavior: SnackBarBehavior.floating,
                               ),
-                              child: Icon(
-                                Icons.info_outline_rounded,
-                                size: 18,
-                                color: cs.primary,
-                              ),
+                            );
+                            return;
+                          }
+                          wellness.addSymptom(val);
+                          _symptomCtrl.clear();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(context.tr('Semptom kaydedildi')),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
                             ),
+                          );
+                        },
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: cs.primary,
                           ),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () {
-                              final val = _symptomCtrl.text.trim();
-                              if (val.isEmpty) return;
-                              if (!_isValidSymptom(val)) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(context.tr('Lütfen geçerli bir semptom girin (örn: baş ağrısı, bulantı, yorgunluk)')),
-                                    duration: const Duration(seconds: 3),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                return;
-                              }
-                              wellness.addSymptom(val);
-                              _symptomCtrl.clear();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(context.tr('Semptom kaydedildi')),
-                                  duration: const Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: cs.primary,
-                              ),
-                              child: const Icon(
-                                Icons.add_rounded,
-                                size: 22,
-                                color: Colors.white,
-                              ),
-                            ),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            size: 22,
+                            color: Colors.white,
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),

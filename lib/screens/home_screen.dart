@@ -152,8 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(context.tr('Girdi Yapılamaz'), style: const TextStyle(fontWeight: FontWeight.w700)),
-          content: Text(context.tr('Bulunduğunuz güne girdi yapınız.')),
+          title: Text(context.tr('past_day_lock_title'), style: const TextStyle(fontWeight: FontWeight.w700)),
+          content: Text(context.tr('past_day_lock_content')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),

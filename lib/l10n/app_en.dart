@@ -1,5 +1,7 @@
 class AppEn {
   static const Map<String, String> strings = {
+    'past_day_lock_title': 'We can\'t touch the past 🥺',
+    'past_day_lock_content': 'We have already closed the notebook of past days! 📖✨ For your new goals, please switch to today\'s or yesterday\'s page and add entries there. 💕',
     'Özet': 'Summary',
     'Fotoğraf': 'Photo',
     'Öneriler': 'Tips',
