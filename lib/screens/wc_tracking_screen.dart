@@ -23,13 +23,13 @@ class StoolType {
 }
 
 List<StoolType> wcStoolTypes(BuildContext context) => [
-  StoolType(value: -3, emoji: '🪨', assetPath: 'assets/ibs/type1.webp', name: context.tr('Sert Topaklar'), desc: context.tr('Ayrı sert topaklar, geçirmesi zor'),  color: Color(0xFFF85149)),
-  StoolType(value: -2, emoji: '🥔', assetPath: 'assets/ibs/type2.webp', name: context.tr('Topak Sosis'), desc: context.tr('Sosis şeklinde, yüzeyi parçalı'),     color: Color(0xFFFF8C42)),
-  StoolType(value: -1, emoji: '🌭', assetPath: 'assets/ibs/type3.webp', name: context.tr('Çatlak Yüzey'), desc: context.tr('Sosis şekli, yüzeyinde çatlaklar'),   color: Color(0xFFFFCC00)),
-  StoolType(value:  0, emoji: '✅', assetPath: 'assets/ibs/type4.webp', name: context.tr('Normal'), desc: context.tr('Düzgün, yumuşak, kolay geçer'),       color: Color(0xFF3FB950)),
-  StoolType(value:  1, emoji: '💩', assetPath: 'assets/ibs/type5.webp', name: context.tr('Yumuşak Topaklar'), desc: context.tr('Net kenarlı yumuşak parçalar'),        color: Color(0xFFFFCC00)),
-  StoolType(value:  2, emoji: '💧', assetPath: 'assets/ibs/type6.webp', name: context.tr('Parçalı Sıvı'), desc: context.tr('Akıcı, yumuşak parçalar'),            color: Color(0xFFFF8C42)),
-  StoolType(value:  3, emoji: '🌊', assetPath: 'assets/ibs/type7.webp', name: context.tr('Sıvı'), desc: context.tr('Tamamen sıvı, katı yok'),             color: Color(0xFFF85149)),
+  StoolType(value: -3, emoji: '🪨', assetPath: 'assets/ibs/type1.webp', name: context.tr('wc_stool_type_1_name'), desc: context.tr('wc_stool_type_1_desc'),  color: Color(0xFFF85149)),
+  StoolType(value: -2, emoji: '🥔', assetPath: 'assets/ibs/type2.webp', name: context.tr('wc_stool_type_2_name'), desc: context.tr('wc_stool_type_2_desc'),     color: Color(0xFFFF8C42)),
+  StoolType(value: -1, emoji: '🌭', assetPath: 'assets/ibs/type3.webp', name: context.tr('wc_stool_type_3_name'), desc: context.tr('wc_stool_type_3_desc'),   color: Color(0xFFFFCC00)),
+  StoolType(value:  0, emoji: '✅', assetPath: 'assets/ibs/type4.webp', name: context.tr('wc_stool_type_4_name'), desc: context.tr('wc_stool_type_4_desc'),       color: Color(0xFF3FB950)),
+  StoolType(value:  1, emoji: '💩', assetPath: 'assets/ibs/type5.webp', name: context.tr('wc_stool_type_5_name'), desc: context.tr('wc_stool_type_5_desc'),        color: Color(0xFFFFCC00)),
+  StoolType(value:  2, emoji: '💧', assetPath: 'assets/ibs/type6.webp', name: context.tr('wc_stool_type_6_name'), desc: context.tr('wc_stool_type_6_desc'),            color: Color(0xFFFF8C42)),
+  StoolType(value:  3, emoji: '🌊', assetPath: 'assets/ibs/type7.webp', name: context.tr('wc_stool_type_7_name'), desc: context.tr('wc_stool_type_7_desc'),             color: Color(0xFFF85149)),
 ];
 
 // Category for each type index

@@ -116,7 +116,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _selectedDate = DateTime.now();
       });
-      widget.onDateChanged?.call(_selectedDate);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onDateChanged?.call(_selectedDate);
+        }
+      });
       _loadSteps();
     }
   }
@@ -5713,7 +5717,7 @@ class _WellnessSectionState extends State<_WellnessSection> {
                                                 ),
                                               ),
                                               Text(
-                                                '${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')} — ${log.stoolType == 0 ? context.tr('Normal') : (log.stoolType < 0 ? context.tr('Kabızlık') : context.tr('İshal'))}',
+                                                '${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')} — ${log.stoolType == 0 ? context.tr('wc_stool_type_4_name') : (log.stoolType < 0 ? context.tr('Kabızlık') : context.tr('İshal'))}',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: isDark ? Colors.white70 : Colors.black54,
