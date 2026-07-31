@@ -284,6 +284,39 @@ class NutritionProvider extends ChangeNotifier {
               data['stepsCount'] = stepsMap[key]!['steps'];
             }
 
+            // Preprocess and unscale/repair entries if they are in the old scaled format
+            if (data['entries'] != null) {
+              final entriesList = List<dynamic>.from(data['entries'] as List);
+              for (var i = 0; i < entriesList.length; i++) {
+                final entryMap = Map<String, dynamic>.from(entriesList[i] as Map);
+                final portionSize = (entryMap['portionSize'] as num?)?.toDouble() ?? 100.0;
+                final factor = portionSize / 100.0;
+
+                if (factor > 0 && factor != 1.0) {
+                  // If it doesn't have nutritionDataScaled, it is the old format (where nutritionData was stored scaled)
+                  if (!entryMap.containsKey('nutritionDataScaled')) {
+                    final nutritionJson = entryMap['nutritionData'] as Map<String, dynamic>?;
+                    if (nutritionJson != null) {
+                      var currentND = NutritionData.fromJson(nutritionJson);
+                      
+                      // 1. Unscale by dividing by factor once (reversing the normal scaleBy done on save)
+                      currentND = currentND.scaleBy(1.0 / factor);
+                      
+                      // 2. Self-Repair Heuristic: if portion calories are still abnormally high (> 1500 kcal),
+                      // it was scaled multiple times. Divide by factor until portion calories <= 1000 kcal.
+                      while ((currentND.calories * factor) > 1000.0) {
+                        currentND = currentND.scaleBy(1.0 / factor);
+                      }
+                      
+                      entryMap['nutritionData'] = currentND.toStructuredJson();
+                    }
+                  }
+                }
+                entriesList[i] = entryMap;
+              }
+              data['entries'] = entriesList;
+            }
+
             final cloudLog = DailyLog.fromJson(data);
             
             final localLog = _historyLogs[key];
@@ -368,7 +401,7 @@ class NutritionProvider extends ChangeNotifier {
         logData.remove('waterEntries');
         logData.remove('stepsCount');
         
-        // Scale entries nutrition data for Firestore display and analytics
+        // Save both original and portion-scaled values for display and analytics
         if (logData['entries'] != null) {
           logData['entries'] = log.entries.map((entry) {
             final scaled = entry.nutritionData.scaleBy(entry.portionSize / 100);
@@ -384,7 +417,8 @@ class NutritionProvider extends ChangeNotifier {
               'imagePath': entry.imagePath,
               'notes': entry.notes,
               'novaGroup': entry.novaGroup,
-              'nutritionData': scaled.toStructuredJson()
+              'nutritionData': entry.nutritionData.toStructuredJson(), // Store original unscaled
+              'nutritionDataScaled': scaled.toStructuredJson() // Store scaled version separately
             };
           }).toList();
         }
