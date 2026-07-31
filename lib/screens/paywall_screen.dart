@@ -1,11 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/purchase_service.dart';
-import '../services/promo_code_service.dart';
 import 'home_screen.dart';
 import 'legal_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,8 +24,7 @@ class PaywallScreen extends StatefulWidget {
 class _PaywallScreenState extends State<PaywallScreen> {
   int _selectedPlanIndex = 1; // Default to Yearly
   bool _isPurchasing = false;
-  int? _appliedDiscountPercent;
-  String? _appliedPromoCode;
+
 
   bool get _isTr => Provider.of<LanguageProvider>(context).isTurkish;
   String _t(String tr, String en) => _isTr ? tr : en;
@@ -196,10 +197,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       _buildPlanCard(
                         index: 0,
                         title: _t('Aylık Plan', 'Monthly Plan'),
-                        price: _appliedDiscountPercent != null 
-                            ? _t('₺${(99 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(0)}', '\$${(4.99 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(2)}')
-                            : _t('₺99', '\$4.99'),
-                        oldPrice: _appliedDiscountPercent != null ? _t('₺99', '\$4.99') : null,
+                        price: _t('₺99', '\$4.99'),
                         subtitle: _t('Aylık otomatik yenileme', 'Billed monthly'),
                         selected: _selectedPlanIndex == 0,
                         appGreen: appBlue,
@@ -208,12 +206,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       _buildPlanCard(
                         index: 1,
                         title: _t('Yıllık Plan', 'Yearly Plan'),
-                        price: _appliedDiscountPercent != null 
-                            ? _t('₺${(299 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(0)}', '\$${(29.99 * (100 - _appliedDiscountPercent!) / 100).toStringAsFixed(2)}')
-                            : _t('₺299', '\$29.99'),
-                        oldPrice: _appliedDiscountPercent != null 
-                            ? _t('₺299', '\$29.99')
-                            : _t('₺1188', '\$59.88'),
+                        price: _t('₺299', '\$29.99'),
+                        oldPrice: _t('₺1188', '\$59.88'),
                         subtitle: _t('Yılda bir kez faturalandırılır', 'Billed once a year'),
                         selected: _selectedPlanIndex == 1,
                         badge: _t('EN POPÜLER', 'MOST POPULAR'),
@@ -231,6 +225,111 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         badge: _t('SINIRLI SÜRELİĞİNE TEKLİF', 'LIMITED TIME OFFER'),
                         appGreen: appBlue,
                         cardColor: cardColor,
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      // Google Play Promo Code Card
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.08),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.redeem_rounded, color: Color(0xFF34A853), size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _t('Google Play Promosyon Kodu', 'Google Play Promo Code'),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 48,
+                                    child: TextField(
+                                      controller: _promoCodeController,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: _t('Kodunuzu girin', 'Enter your code'),
+                                        hintStyle: TextStyle(
+                                          color: isDark ? Colors.white38 : Colors.black38,
+                                          fontSize: 13,
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(color: appBlue),
+                                        ),
+                                        filled: true,
+                                        fillColor: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
+                                      ),
+                                      textCapitalization: TextCapitalization.characters,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                SizedBox(
+                                  height: 48,
+                                  child: ElevatedButton(
+                                    onPressed: _redeemGooglePlayPromoCode,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF34A853), // Google Green
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    ),
+                                    child: Text(
+                                      _t('Kullan', 'Redeem'),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _t(
+                                'Kodunuzu onayladıktan sonra "Satın Alımı Geri Yükle" butonuna basarak Premium\'u başlatabilirsiniz.',
+                                'After redeeming your code, tap "Restore Purchase" to activate Premium.',
+                              ),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? Colors.white38 : Colors.black45,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       
                       const SizedBox(height: 32),
@@ -295,19 +394,48 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildFooterLink(_t('Satın Alımı Geri Yükle', 'Restore Purchase'), onTap: () async {
-                            final restored = await PurchaseService.instance.restorePurchases();
-                            if (!mounted) return;
-                            if (restored) {
-                              context.read<ProfileProvider>().updatePremiumStatus(true, planName: 'restored');
-                              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-                            } else {
+                            _showLoadingDialog(_t('Satın alımlarınız geri yükleniyor...', 'Restoring your purchases...'));
+                            try {
+                              final activePurchases = await PurchaseService.instance.queryActivePurchasesSilently();
+                              if (!mounted) return;
+                              Navigator.pop(context); // Dismiss loading dialog
+                              
+                              if (activePurchases.isNotEmpty) {
+                                PurchaseDetails? matchedPurchase;
+                                for (final p in activePurchases) {
+                                  if (p.productID == kProductMonthly || 
+                                      p.productID == kProductYearly || 
+                                      p.productID == kProductLifetime) {
+                                    matchedPurchase = p;
+                                    break;
+                                  }
+                                }
+                                
+                                if (matchedPurchase != null) {
+                                  final plan = matchedPurchase.productID == kProductMonthly 
+                                      ? 'monthly' 
+                                      : (matchedPurchase.productID == kProductLifetime ? 'lifetime' : 'yearly');
+                                  await context.read<ProfileProvider>().updatePremiumStatus(true, planName: plan);
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(_t('Premium başarıyla geri yüklendi!', 'Premium successfully restored!'))),
+                                  );
+                                  _closePaywall();
+                                  return;
+                                }
+                              }
+                              
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(_t('Geri yüklenecek satın alım bulunamadı.', 'No purchase found to restore.'))),
+                                SnackBar(content: Text(_t('Aktif bir premium abonelik bulunamadı.', 'No active premium subscription found.'))),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              Navigator.pop(context); // Dismiss loading dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(_t('Satın alım geri yüklenirken hata oluştu.', 'Error restoring purchase.'))),
                               );
                             }
                           }),
-                          _buildFooterDivider(),
-                          _buildFooterLink(_t('Promosyon Kodu', 'Promo Code'), onTap: _applyPromoCode),
                           _buildFooterDivider(),
                           _buildFooterLink(_t('Gizlilik', 'Privacy'), onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => LegalScreen(
@@ -341,76 +469,67 @@ class _PaywallScreenState extends State<PaywallScreen> {
     );
   }
 
-  Future<void> _applyPromoCode() async {
-    final code = await showDialog<String>(
+  void _showLoadingDialog(String message) {
+    showDialog(
       context: context,
-      builder: (ctx) {
-        final ctrl = TextEditingController();
-        return AlertDialog(
-          title: Text(_t('Promosyon Kodu', 'Promo Code')),
-          content: TextField(
-            controller: ctrl,
-            decoration: InputDecoration(
-              hintText: _t('Kodu buraya girin', 'Enter code here'),
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: AlertDialog(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF161B22) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            content: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFF58A6FF)),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            textCapitalization: TextCapitalization.characters,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(_t('İptal', 'Cancel')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: Text(_t('Uygula', 'Apply')),
-            ),
-          ],
-        );
-      },
+        ),
+      ),
     );
+  }
 
-    if (code == null || code.isEmpty) return;
+  final TextEditingController _promoCodeController = TextEditingController();
 
-    setState(() => _isPurchasing = true);
-    final data = await PromoCodeService.instance.validatePromoCode(code);
+  Future<void> _redeemGooglePlayPromoCode() async {
+    final code = _promoCodeController.text.trim();
     
-    if (!mounted) return;
+    // Launch Google Play redeem link using url_launcher
+    final String urlStr = code.isNotEmpty
+        ? 'https://play.google.com/store/redeem?code=$code'
+        : 'https://play.google.com/store/redeem';
+    final Uri url = Uri.parse(urlStr);
 
-    if (data == null) {
-      setState(() => _isPurchasing = false);
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Could not launch Play Store redeem link: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('Geçersiz veya süresi dolmuş promosyon kodu.', 'Invalid or expired promo code.'))),
-      );
-      return;
-    }
-
-    final type = data['type'] as String?;
-    if (type == 'duration') {
-      final days = data['durationDays'] as int? ?? 30;
-      final success = await PromoCodeService.instance.applyDurationCode(code, days);
-      setState(() => _isPurchasing = false);
-      if (success) {
-        context.read<ProfileProvider>().updatePremiumStatus(true, planName: 'promo_duration');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_t('$days günlük Premium aktif!', '$days days Premium active!'))),
-        );
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_t('Bir hata oluştu.', 'An error occurred.'))),
-        );
-      }
-    } else if (type == 'discount') {
-      final percent = data['discountPercent'] as int? ?? 10;
-      setState(() {
-         _appliedDiscountPercent = percent;
-         _appliedPromoCode = code;
-         _isPurchasing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('%$percent indirim uygulandı!', '$percent% discount applied!'))),
+        SnackBar(content: Text(_t('Google Play Store açılamadı.', 'Could not open Google Play Store.'))),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _promoCodeController.dispose();
+    super.dispose();
   }
 
   Widget _buildFeatureItem({
@@ -618,9 +737,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
     setState(() => _isPurchasing = false);
     if (result == PurchaseResult.success) {
       await profileProvider.updatePremiumStatus(true, planName: _selectedPlanName);
-      if (_appliedPromoCode != null && (_appliedDiscountPercent ?? 0) > 0) {
-         await PromoCodeService.instance.markCodeAsUsed(_appliedPromoCode!);
-      }
       _closePaywall();
     } else if (result == PurchaseResult.error) {
       ScaffoldMessenger.of(context).showSnackBar(

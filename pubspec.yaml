@@ -2,7 +2,7 @@ name: lens_eat
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.2+11
+version: 1.0.3+12
 
 environment:
   sdk: ^3.11.3
@@ -49,6 +49,7 @@ dependencies:
   firebase_crashlytics: ^5.2.4
   in_app_purchase: ^3.3.0
   share_plus: ^12.0.2
+  in_app_purchase_android: ^0.5.2
 
 dev_dependencies:
   flutter_test:

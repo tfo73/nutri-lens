@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -431,6 +432,8 @@ class UserProfile {
 class ProfileProvider extends ChangeNotifier {
   List<UserProfile> _profiles = [];
   UserProfile? _activeProfile;
+  String? _premiumPurchaseId;
+  String? get premiumPurchaseId => _premiumPurchaseId;
 
   // Custom overrides (0 = use auto-calculated value)
   int _customCalorieGoal = 0;
@@ -472,6 +475,7 @@ class ProfileProvider extends ChangeNotifier {
             'customMicroGoals': _customMicroGoals,
           },
           if (_activeProfile != null) 'profile': _activeProfile!.toJson(),
+          if (_premiumPurchaseId != null) 'premiumPurchaseId': _premiumPurchaseId,
           'lastSync': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -492,8 +496,24 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  StreamSubscription<User?>? _authSubscription;
+
   ProfileProvider() {
     loadProfiles();
+    _listenToAuthChanges();
+  }
+
+  void _listenToAuthChanges() {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      debugPrint('[ProfileProvider] Auth state changed. Reloading profiles and syncing premium.');
+      await loadProfiles();
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   List<UserProfile> get profiles => _profiles;
@@ -678,7 +698,7 @@ class ProfileProvider extends ChangeNotifier {
     await prefs.setInt('water_goal', waterGoalMl);
   }
 
-  Future<void> updatePremiumStatus(bool val, {String? planName}) async {
+  Future<void> updatePremiumStatus(bool val, {String? planName, String? purchaseId}) async {
     if (_activeProfile == null) return;
     
     DateTime? expDate;
@@ -692,6 +712,24 @@ class ProfileProvider extends ChangeNotifier {
         expDate = DateTime(2099, 12, 31);
       }
     }
+
+    if (val && purchaseId == null) {
+      try {
+        final activePurchases = await PurchaseService.instance.queryActivePurchasesSilently();
+        for (final p in activePurchases) {
+          if (p.productID == kProductMonthly || 
+              p.productID == p.productID || // kProductYearly
+              p.productID == kProductLifetime) {
+            purchaseId = p.purchaseID;
+            break;
+          }
+        }
+      } catch (e) {
+        debugPrint('[ProfileProvider] Error fetching purchase ID in updatePremiumStatus: $e');
+      }
+    }
+
+    _premiumPurchaseId = val ? (purchaseId ?? _premiumPurchaseId) : null;
 
     _activeProfile = _activeProfile!.copyWith(
       isPremium: val,
@@ -712,6 +750,30 @@ class ProfileProvider extends ChangeNotifier {
     await _syncToFirestore();
   }
 
+  Future<bool> _isPurchaseTokenClaimedByAnother(String purchaseID, String currentUserUid) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.isAnonymous) return false;
+    
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('users')
+          .where('premiumPurchaseId', isEqualTo: purchaseID)
+          .limit(1)
+          .get(const GetOptions(source: Source.serverAndCache));
+          
+      if (query.docs.isNotEmpty) {
+        final doc = query.docs.first;
+        if (doc.id != currentUserUid) {
+          debugPrint('[ProfileProvider] Purchase $purchaseID is already claimed by user: ${doc.id}');
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ProfileProvider] Error checking purchase token claim: $e');
+    }
+    return false;
+  }
+
   Future<void> _saveAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(
@@ -720,6 +782,11 @@ class ProfileProvider extends ChangeNotifier {
     );
     if (_activeProfile != null) {
       await prefs.setString('active_profile_id', _activeProfile!.id);
+    }
+    if (_premiumPurchaseId != null) {
+      await prefs.setString('premium_purchase_id', _premiumPurchaseId!);
+    } else {
+      await prefs.remove('premium_purchase_id');
     }
   }
 
@@ -745,6 +812,7 @@ class ProfileProvider extends ChangeNotifier {
       await prefs.remove('profiles');
     }
     final data = prefs.getStringList('all_profiles') ?? [];
+    _premiumPurchaseId = prefs.getString('premium_purchase_id');
     _profiles = data
         .map((e) => UserProfile.fromJson(jsonDecode(e) as Map<String, dynamic>))
         .toList();
@@ -799,6 +867,9 @@ class ProfileProvider extends ChangeNotifier {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists) {
           final data = doc.data()!;
+          if (data.containsKey('premiumPurchaseId')) {
+            _premiumPurchaseId = data['premiumPurchaseId'] as String?;
+          }
           final settings = data['settings'] as Map<String, dynamic>?;
           if (settings != null) {
             _customCalorieGoal = settings['customCalorieGoal'] ?? _customCalorieGoal;
@@ -843,123 +914,138 @@ class ProfileProvider extends ChangeNotifier {
     _checkPremiumExpiration();
   }
   Future<void> _checkPremiumExpiration() async {
-    // Only check if they are currently marked as premium
-    if (_activeProfile == null || !_activeProfile!.isPremium) return;
+    if (_activeProfile == null) return;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // 1. Check promo code expiration from Firestore root user document
-    if (!user.isAnonymous) {
-      try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-          final data = doc.data()!;
-          final premiumData = data['premium'] as Map<String, dynamic>?;
-          if (premiumData != null) {
-            final isPremiumDoc = premiumData['isPremium'] as bool? ?? false;
-            final expirationStr = premiumData['expirationDate'] as String?;
-            if (expirationStr != null) {
-              final expiration = DateTime.parse(expirationStr);
-              if (expiration.isBefore(DateTime.now())) {
-                debugPrint('[ProfileProvider] Promo code premium expired! Expiration: $expiration');
-                await updatePremiumStatus(false);
-                return; // Exited early since premium is now false
-              }
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('[ProfileProvider] Error checking promo code expiration: $e');
-      }
-    }
+    // Check subscription status against Google Play / App Store
+    // On Android, we check even if isPremium is false to sync offline/outside purchases (like Play Store promo codes).
+    // On iOS, we only check if they are already premium to avoid annoying Apple ID login prompts.
+    final shouldCheckStore = (defaultTargetPlatform == TargetPlatform.android) ||
+        (defaultTargetPlatform == TargetPlatform.iOS && _activeProfile!.isPremium);
 
-    // 2. Check subscription status against Google Play Store
-    if (_activeProfile != null && 
-        _activeProfile!.isPremium && 
-        (_activeProfile!.premiumPlan == 'monthly' || _activeProfile!.premiumPlan == 'yearly')) {
+    if (shouldCheckStore) {
       try {
         final activePurchases = await PurchaseService.instance.queryActivePurchasesSilently();
         
-        // Find if our subscription product is in the active purchases list
-        PurchaseDetails? subPurchase;
+        // Find if our subscription/lifetime product is in the active purchases list
+        PurchaseDetails? matchedPurchase;
         for (final p in activePurchases) {
-          if (p.productID == kProductMonthly || p.productID == kProductYearly) {
-            subPurchase = p;
+          if (p.productID == kProductMonthly || 
+              p.productID == kProductYearly || 
+              p.productID == kProductLifetime) {
+            matchedPurchase = p;
             break;
           }
         }
 
-        if (subPurchase == null) {
+        if (matchedPurchase == null) {
           // Store doesn't return the purchase at all!
-          // We check local premiumExpirationDate. If it is null or passed, we deactivate.
-          final expDate = _activeProfile!.premiumExpirationDate;
-          if (expDate == null || expDate.isBefore(DateTime.now())) {
-            debugPrint('[ProfileProvider] Store returned no purchases and expiration date has passed. Deactivating.');
-            await updatePremiumStatus(false);
-          } else {
-            debugPrint('[ProfileProvider] Store returned no purchases but paid cycle is still valid until: $expDate. Keeping active.');
+          if (_activeProfile!.isPremium) {
+            final plan = _activeProfile!.premiumPlan;
+            if (plan == 'monthly' || plan == 'yearly' || plan == 'lifetime' || plan == 'restored') {
+              final expDate = _activeProfile!.premiumExpirationDate;
+              if (expDate == null || expDate.isBefore(DateTime.now())) {
+                debugPrint('[ProfileProvider] Store returned no purchases and expiration date has passed/is null. Deactivating.');
+                await updatePremiumStatus(false);
+              } else {
+                debugPrint('[ProfileProvider] Store returned no purchases but paid cycle is still valid until: $expDate. Keeping active.');
+              }
+            }
           }
         } else {
           // Store returned the purchase!
-          // Let's check Google Play specific details (isAutoRenewing and purchaseTime)
-          bool autoRenewing = true;
-          int purchaseTime = DateTime.now().millisecondsSinceEpoch;
-
-          if (defaultTargetPlatform == TargetPlatform.android && subPurchase is GooglePlayPurchaseDetails) {
-            autoRenewing = subPurchase.billingClientPurchase.isAutoRenewing;
-            purchaseTime = subPurchase.billingClientPurchase.purchaseTime;
+          final purchaseId = matchedPurchase.purchaseID;
+          final currentUserUid = user.uid;
+          final isClaimedByAnother = await _isPurchaseTokenClaimedByAnother(purchaseId ?? '', currentUserUid);
+          
+          if (isClaimedByAnother) {
+            debugPrint('[ProfileProvider] Subscription found in store but already claimed by another account. Revoking premium for this user.');
+            if (_activeProfile!.isPremium) {
+              await updatePremiumStatus(false);
+            }
+            return;
           }
 
-          if (autoRenewing) {
-            // Subscription is still active and auto-renewing.
-            // We extend the local expiration date dynamically!
-            final isMonthly = subPurchase.productID == kProductMonthly;
-            final duration = isMonthly 
-                ? const Duration(days: 30) 
-                : const Duration(days: 365);
-            final newExpDate = DateTime.fromMillisecondsSinceEpoch(purchaseTime).add(duration);
-            
-            if (_activeProfile!.premiumExpirationDate == null || 
-                _activeProfile!.premiumExpirationDate!.isBefore(newExpDate)) {
-              debugPrint('[ProfileProvider] Active subscription found. Syncing/Extending expiration to: $newExpDate');
-              _activeProfile = _activeProfile!.copyWith(
-                isPremium: true,
-                premiumPlan: isMonthly ? 'monthly' : 'yearly',
-                premiumExpirationDate: newExpDate,
-              );
-              await _saveAll();
-              await _syncToFirestore();
-              notifyListeners();
+          if (purchaseId != null && _premiumPurchaseId != purchaseId) {
+            _premiumPurchaseId = purchaseId;
+            await _saveAll();
+            await _syncToFirestore();
+          }
+
+          final productId = matchedPurchase.productID;
+          
+          if (productId == kProductLifetime) {
+            // Lifetime has no expiration date
+            if (!_activeProfile!.isPremium || _activeProfile!.premiumPlan != 'lifetime') {
+              debugPrint('[ProfileProvider] Lifetime purchase found. Activating premium.');
+              await updatePremiumStatus(true, planName: 'lifetime', purchaseId: purchaseId);
             }
           } else {
-            // User has CANCELLED the subscription in Google Play!
-            // Calculate the exact end date based on purchaseTime + billingPeriod
-            final isMonthly = subPurchase.productID == kProductMonthly;
-            // If they are monthly, check if they had premium before to see if it was a trial
-            final hasTrial = !_activeProfile!.hadPremiumBefore;
-            final duration = isMonthly 
-                ? (hasTrial ? const Duration(days: 3) : const Duration(days: 30)) 
-                : const Duration(days: 365);
-            
-            final endOfCycleDate = DateTime.fromMillisecondsSinceEpoch(purchaseTime).add(duration);
-            
-            if (endOfCycleDate.isBefore(DateTime.now())) {
-              debugPrint('[ProfileProvider] Subscription was cancelled and the paid cycle ended on: $endOfCycleDate. Deactivating.');
-              await updatePremiumStatus(false);
-            } else {
-              debugPrint('[ProfileProvider] Subscription was cancelled but paid cycle is still valid until: $endOfCycleDate. Keeping active.');
-              // Sync this exact end date to profile
-              if (_activeProfile!.premiumExpirationDate == null || 
-                  !_activeProfile!.premiumExpirationDate!.isAtSameMomentAs(endOfCycleDate)) {
+            // Monthly or Yearly subscription
+            bool autoRenewing = true;
+            int purchaseTime = DateTime.now().millisecondsSinceEpoch;
+
+            if (defaultTargetPlatform == TargetPlatform.android && matchedPurchase is GooglePlayPurchaseDetails) {
+              autoRenewing = matchedPurchase.billingClientPurchase.isAutoRenewing;
+              purchaseTime = matchedPurchase.billingClientPurchase.purchaseTime;
+            }
+
+            final isMonthly = productId == kProductMonthly;
+            if (autoRenewing) {
+              // Subscription is still active and auto-renewing.
+              // We extend the local expiration date dynamically!
+              final duration = isMonthly 
+                  ? const Duration(days: 30) 
+                  : const Duration(days: 365);
+              final newExpDate = DateTime.fromMillisecondsSinceEpoch(purchaseTime).add(duration);
+              
+              if (!_activeProfile!.isPremium || 
+                  _activeProfile!.premiumPlan != (isMonthly ? 'monthly' : 'yearly') ||
+                  _activeProfile!.premiumExpirationDate == null || 
+                  _activeProfile!.premiumExpirationDate!.isBefore(newExpDate)) {
+                debugPrint('[ProfileProvider] Active subscription found. Syncing/Extending expiration to: $newExpDate');
                 _activeProfile = _activeProfile!.copyWith(
                   isPremium: true,
                   premiumPlan: isMonthly ? 'monthly' : 'yearly',
-                  premiumExpirationDate: endOfCycleDate,
+                  premiumExpirationDate: newExpDate,
                 );
+                _premiumPurchaseId = purchaseId;
                 await _saveAll();
                 await _syncToFirestore();
                 notifyListeners();
+              }
+            } else {
+              // User has CANCELLED the subscription in Google Play!
+              // Calculate the exact end date based on purchaseTime + billingPeriod
+              final hasTrial = !_activeProfile!.hadPremiumBefore;
+              final duration = isMonthly 
+                  ? (hasTrial ? const Duration(days: 3) : const Duration(days: 30)) 
+                  : const Duration(days: 365);
+              
+              final endOfCycleDate = DateTime.fromMillisecondsSinceEpoch(purchaseTime).add(duration);
+              
+              if (endOfCycleDate.isBefore(DateTime.now())) {
+                debugPrint('[ProfileProvider] Subscription was cancelled and the paid cycle ended on: $endOfCycleDate. Deactivating.');
+                await updatePremiumStatus(false);
+              } else {
+                debugPrint('[ProfileProvider] Subscription was cancelled but paid cycle is still valid until: $endOfCycleDate. Keeping active.');
+                // Sync this exact end date to profile
+                if (!_activeProfile!.isPremium || 
+                    _activeProfile!.premiumPlan != (isMonthly ? 'monthly' : 'yearly') ||
+                    _activeProfile!.premiumExpirationDate == null || 
+                    !_activeProfile!.premiumExpirationDate!.isAtSameMomentAs(endOfCycleDate)) {
+                  _activeProfile = _activeProfile!.copyWith(
+                    isPremium: true,
+                    premiumPlan: isMonthly ? 'monthly' : 'yearly',
+                    premiumExpirationDate: endOfCycleDate,
+                  );
+                  _premiumPurchaseId = purchaseId;
+                  await _saveAll();
+                  await _syncToFirestore();
+                  notifyListeners();
+                }
               }
             }
           }

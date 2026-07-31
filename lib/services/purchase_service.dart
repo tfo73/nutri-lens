@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+
 
 // IAP product IDs — update when configuring App Store / Play Store
 const kProductMonthly = 'premium_monthly';
@@ -65,10 +67,16 @@ class PurchaseService {
   /// Restore previous purchases and return whether premium is active.
   Future<bool> restorePurchases() async {
     try {
+      _isRestoring = true;
+      _restoredPurchases.clear();
       await InAppPurchase.instance.restorePurchases();
-      return true;
+      // Wait a short time to allow stream to handle it
+      await Future.delayed(const Duration(milliseconds: 1500));
+      _isRestoring = false;
+      return _restoredPurchases.isNotEmpty;
     } catch (e) {
       debugPrint('[PurchaseService] Error restoring purchases: $e');
+      _isRestoring = false;
       return false;
     }
   }
@@ -82,13 +90,27 @@ class PurchaseService {
         throw Exception('Billing client not available');
       }
 
-      _isRestoring = true;
-      _restoredPurchases.clear();
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final androidAddition = InAppPurchase.instance
+            .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+        final response = await androidAddition.queryPastPurchases();
+        if (response.error != null) {
+          debugPrint('[PurchaseService] Error querying past purchases: ${response.error!.message}');
+          throw Exception(response.error!.message);
+        }
+        return response.pastPurchases;
+      } else {
+        _isRestoring = true;
+        _restoredPurchases.clear();
 
-      await InAppPurchase.instance.restorePurchases();
+        await InAppPurchase.instance.restorePurchases();
 
-      _isRestoring = false;
-      return List.from(_restoredPurchases);
+        // Wait a short time for the stream to receive the events
+        await Future.delayed(const Duration(milliseconds: 1500));
+
+        _isRestoring = false;
+        return List.from(_restoredPurchases);
+      }
     } catch (e) {
       debugPrint('[PurchaseService] Error querying active purchases: $e');
       _isRestoring = false;
