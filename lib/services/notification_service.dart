@@ -451,6 +451,53 @@ class NotificationService {
     );
     await scheduleDailySummary(settings.summaryEnabled);
   }
+
+  static Future<void> scheduleSymptomCheckNotification({
+    required String symptomName,
+    required int delayHours,
+  }) async {
+    try {
+      final notificationId = 800000 + symptomName.hashCode.abs() % 90000;
+      final scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(hours: delayHours));
+
+      const androidDetails = AndroidNotificationDetails(
+        'symptom_reminder',
+        'Semptom Takibi',
+        channelDescription: 'Semptomların durumunu kontrol etmek için hatırlatıcı gönderir.',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _plugin.zonedSchedule(
+        notificationId,
+        '🩺 Semptom Kontrolü',
+        '"$symptomName" semptomunuz geçti mi? Rahatsızlığınız devam ediyor mu?',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Error scheduling symptom notification: $e');
+    }
+  }
+
+  static Future<void> cancelSymptomCheckNotification(String symptomName) async {
+    try {
+      final notificationId = 800000 + symptomName.hashCode.abs() % 90000;
+      await _plugin.cancel(notificationId);
+    } catch (_) {}
+  }
 }
 
 class NotificationSettings {

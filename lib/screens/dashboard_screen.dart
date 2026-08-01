@@ -32,6 +32,7 @@ import '../services/sync_service.dart';
 import '../widgets/animated_widgets.dart';
 import '../models/supplement_model.dart';
 import '../widgets/supplement_management_sheet.dart';
+import '../services/notification_service.dart';
 import 'wc_tracking_screen.dart';
 import 'manual_entry_screen.dart';
 
@@ -105,6 +106,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // User Starred Micronutrients List (Max 6)
   List<String> _starredMicroKeys = [];
+
+  // Calorie Bar Percentage Toggle State
+  bool _showCaloriePercentage = false;
+  Timer? _caloriePercentageTimer;
 
   // Supplements PageView Controller & Current Page
   int _supplementsPage = 0;
@@ -219,6 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _supplementsPageController.dispose();
     context.read<ProfileProvider>().removeListener(_handleProfileChange);
     _updateTimer?.cancel();
+    _caloriePercentageTimer?.cancel();
     super.dispose();
   }
 
@@ -743,83 +749,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Calorie Bar Container
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+          // Calorie Bar Container (Tap toggles percentage / kcal mode)
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showCaloriePercentage = !_showCaloriePercentage;
+              });
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                ),
               ),
-            ),
-            child: Builder(
-              builder: (context) {
-                final goal = context.read<ProfileProvider>().activeProfile?.calorieGoal ?? 2000.0;
-                final isOverLimit = consumedCal > goal;
-                final excessCal = (consumedCal - goal).round();
-                final isTr = AppLocalizations.of(context).isTurkish;
+              child: Builder(
+                builder: (context) {
+                  final goal = context.read<ProfileProvider>().activeProfile?.calorieGoal ?? 2000.0;
+                  final isOverLimit = consumedCal > goal;
+                  final excessCal = (consumedCal - goal).round();
+                  final isTr = AppLocalizations.of(context).isTurkish;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.9),
+                  final consumedPct = goal > 0 ? (consumedCal / goal * 100).round() : 0;
+                  final excessPct = goal > 0 ? ((consumedCal - goal) / goal * 100).round() : 0;
+                  final remainingPct = goal > 0 ? ((goal - consumedCal) / goal * 100).round() : 0;
+
+                  String leadVal = _showCaloriePercentage ? '%$consumedPct' : '$consumedCal';
+                  String leadUnit = _showCaloriePercentage ? '' : ' kcal';
+                  String secondVal = _showCaloriePercentage
+                      ? (isOverLimit ? '%$excessPct' : '%$remainingPct')
+                      : '${isOverLimit ? excessCal : remainingCal}';
+                  String secondUnit = _showCaloriePercentage ? '' : ' kcal';
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.9),
+                            ),
+                            children: isOverLimit
+                                ? [
+                                    TextSpan(
+                                      text: '$leadVal$leadUnit ',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: isTr ? 'kalori aldınız, ' : 'consumed, '),
+                                    TextSpan(
+                                      text: '$secondVal$secondUnit ',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(
+                                      text: isTr ? 'kalori fazlanız var!' : 'over target!',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ]
+                                : [
+                                    TextSpan(
+                                      text: '$leadVal$leadUnit ',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: isTr ? 'kalori aldınız, ' : 'consumed, '),
+                                    TextSpan(
+                                      text: '$secondVal$secondUnit ',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: isTr ? 'kalori daha yiyebilirsiniz!' : 'remaining!'),
+                                  ],
+                          ),
                         ),
-                        children: isOverLimit
-                            ? [
-                                TextSpan(
-                                  text: '$consumedCal ',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                TextSpan(text: isTr ? 'kalori aldınız, ' : 'kcal consumed, '),
-                                TextSpan(
-                                  text: '$excessCal ',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                TextSpan(
-                                  text: isTr ? 'kalori fazlanız var!' : 'kcal over target!',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ]
-                            : [
-                                TextSpan(
-                                  text: '$consumedCal ',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                TextSpan(text: isTr ? 'kalori aldınız, ' : 'kcal consumed, '),
-                                TextSpan(
-                                  text: '$remainingCal ',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                TextSpan(text: isTr ? 'kalori daha yiyebilirsiniz!' : 'kcal remaining!'),
-                              ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0.0, end: calorieProgress),
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeOutCubic,
-                        builder: (ctx, animVal, child) {
-                          return LinearProgressIndicator(
-                            value: animVal,
-                            minHeight: 8,
-                            backgroundColor: isDark ? const Color(0xFF2B2F42) : Colors.grey.withValues(alpha: 0.2),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD97706)),
-                          );
-                        },
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: calorieProgress),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeOutCubic,
+                          builder: (ctx, animVal, child) {
+                            return LinearProgressIndicator(
+                              value: animVal,
+                              minHeight: 8,
+                              backgroundColor: isDark ? const Color(0xFF2B2F42) : Colors.grey.withValues(alpha: 0.2),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD97706)),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -1604,6 +1632,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Color _getSleepScoreColor(int score) {
+    switch (score) {
+      case 1:
+        return const Color(0xFFEF4444); // Apple Red
+      case 2:
+        return const Color(0xFFFF6D00); // Deep Tangerine Orange
+      case 3:
+        return const Color(0xFFFFC107); // Golden Amber Yellow
+      case 4:
+        return const Color(0xFF00BCD4); // Cyan / Teal
+      case 5:
+        return const Color(0xFF34C759); // Apple Mint
+      default:
+        return const Color(0xFF34C759);
+    }
+  }
+
+  bool _isValidSymptomInput(String input) {
+    final text = input.trim();
+    if (text.length < 2) return false;
+    final hasLetter = RegExp(r'[a-zA-ZçğıöşüÇĞİÖŞÜ]').hasMatch(text);
+    if (!hasLetter) return false;
+    final cleaned = text.replaceAll(RegExp(r'\s+'), '');
+    final allSameChar = cleaned.split('').every((c) => c.toLowerCase() == cleaned[0].toLowerCase());
+    if (allSameChar) return false;
+    final lower = text.toLowerCase();
+    final invalidSmashList = ['asdf', 'fdsa', 'qwerty', 'zxcv', '1234'];
+    if (invalidSmashList.any((smash) => lower.contains(smash))) return false;
+    return true;
+  }
+
   // ── GÜNLÜK SAĞLIK CARD (HORIZONTAL FLEX: 3 - MİKRO BESİNLER İLE AYNI GENİŞLİKTE!) ──
   Widget _buildDailyHealthCard({
     required BuildContext context,
@@ -1612,7 +1671,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     final cardBg = isDark ? const Color(0xFF181B28) : Colors.white;
     final log = wellnessProvider.getLogForDate(_selectedDate);
-    final selectedSleep = log.sleepScore ?? 5;
+    final selectedSleep = log.sleepScore; // null if unrecorded by user
+    final latestSymptom = log.symptoms.isNotEmpty ? log.symptoms.last : null;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1647,41 +1707,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          
-          Text(
-            'Semptom',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
+          // Semptom Row (En son semptom yanında yazar)
+          Row(
+            children: [
+              Text(
+                'Semptom: ',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  latestSymptom ?? 'Yok',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: latestSymptom != null
+                        ? const Color(0xFFD97706)
+                        : (isDark ? Colors.white38 : Colors.black38),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // Uyku Row
           Row(
             children: [
               Text(
                 'Uyku',
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [5, 4, 3, 2, 1].map((val) {
                     final isSel = selectedSleep == val;
+                    final scoreColor = _getSleepScoreColor(val);
                     return GestureDetector(
-                      onTap: () {
-                        wellnessProvider.setSleepScore(val);
+                      onTap: () async {
+                        if (!await SupplementManagementSheet.confirmPastDateAction(context, _selectedDate)) return;
+                        wellnessProvider.setSleepScoreForDate(_selectedDate, val);
                       },
                       child: Container(
                         width: 20,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFFD97706) : (isDark ? const Color(0xFF262A3B) : Colors.grey.withValues(alpha: 0.2)),
+                          color: isSel
+                              ? scoreColor
+                              : (isDark ? const Color(0xFF262A3B) : Colors.grey.withValues(alpha: 0.18)),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -1701,14 +1785,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           InkWell(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const WcTrackingScreen()),
-              );
+              showWcTrackingSheet(context, selectedDate: _selectedDate);
             },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1716,7 +1797,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(
                   'Tuvalet takibi',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7),
                   ),
                 ),
@@ -1742,15 +1823,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     final symptomExamples = [
       'Baş ağrısı',
-      'Yorgunluk',
-      'Şişkinlik',
       'Mide bulantısı',
-      'Stres',
+      'Şişkinlik',
+      'Halsizlik',
       'Kas ağrısı',
       'Uykusuzluk',
       'Hazımsızlık',
+      'Gaz',
     ];
     final customSymptomCtrl = TextEditingController();
+    final symptomFocusNode = FocusNode();
+    String? inlineError;
+    Timer? inlineTimer;
+    String? inlineSuccess;
+    Timer? inlineSuccessTimer;
 
     showModalBottomSheet(
       context: context,
@@ -1759,198 +1845,358 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (sheetCtx, setSheetState) {
-            final currentSymptoms = List<String>.from(log.symptoms);
-            final sleepScore = log.sleepScore ?? 5;
+            final currentLog = wellnessProvider.getLogForDate(_selectedDate);
+            final currentSymptoms = List<String>.from(currentLog.symptoms);
+            final sleepScore = currentLog.sleepScore; // null if not logged by user
 
             return Container(
-              height: MediaQuery.of(context).size.height * 0.82,
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF131520) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(2),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                20 + MediaQuery.of(sheetCtx).viewInsets.bottom,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Günlük Sağlık Kaydı',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Semptomlar, uyku kalitesi ve tuvalet kaydınızı buradan güncelleyebilirsiniz.',
-                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Günlük Sağlık Kaydı',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Semptomlar, uyku kalitesi ve tuvalet kaydınızı buradan güncelleyebilirsiniz.',
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54),
+                    ),
+                    const SizedBox(height: 16),
 
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        // 1. SEMPTOMLAR
-                        const Text(
-                          '1. SEMPTOMLAR',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFD97706),
-                            letterSpacing: 0.6,
-                          ),
+                    // Inline Error Banner Directly Below Subtitle
+                    if (inlineError != null) ...[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                         ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: symptomExamples.map((sym) {
-                            final isSel = currentSymptoms.contains(sym);
-                            return FilterChip(
-                              label: Text(sym),
-                              selected: isSel,
-                              onSelected: (val) {
-                                if (isSel) {
-                                  wellnessProvider.removeSymptom(sym);
-                                } else {
-                                  wellnessProvider.addSymptom(sym);
-                                }
-                                setSheetState(() {});
-                              },
-                              selectedColor: const Color(0xFFD97706).withValues(alpha: 0.25),
-                              checkmarkColor: const Color(0xFFD97706),
-                              labelStyle: TextStyle(
-                                fontSize: 12,
-                                color: isSel
-                                    ? const Color(0xFFD97706)
-                                    : (isDark ? Colors.white70 : Colors.black87),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
+                        child: Row(
                           children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+                            const SizedBox(width: 8),
                             Expanded(
-                              child: TextField(
-                                controller: customSymptomCtrl,
-                                decoration: const InputDecoration(
-                                  hintText: 'Farklı bir semptom yazın...',
-                                  isDense: true,
-                                  border: OutlineInputBorder(),
+                              child: Text(
+                                inlineError!,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.redAccent,
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Inline Success Banner Directly Below Subtitle
+                    if (inlineSuccess != null) ...[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF34C759).withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Color(0xFF34C759), size: 18),
                             const SizedBox(width: 8),
-                            FilledButton(
-                              onPressed: () {
-                                final text = customSymptomCtrl.text.trim();
-                                if (text.isNotEmpty) {
-                                  wellnessProvider.addSymptom(text);
-                                  customSymptomCtrl.clear();
-                                  setSheetState(() {});
-                                }
-                              },
-                              child: const Text('Ekle'),
+                            Expanded(
+                              child: Text(
+                                inlineSuccess!,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF34C759),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                      ),
+                    ],
 
-                        // 2. UYKU PUANLAMA
-                        const Text(
-                          '2. UYKU PUANLAMA',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF06B6D4),
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [5, 4, 3, 2, 1].map((val) {
-                            final isSel = sleepScore == val;
-                            return GestureDetector(
-                              onTap: () {
-                                wellnessProvider.setSleepScore(val);
-                                setSheetState(() {});
-                              },
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: isSel
-                                          ? const Color(0xFF06B6D4)
-                                          : (isDark ? const Color(0xFF262A3B) : Colors.grey.withValues(alpha: 0.2)),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '$val',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    val == 5 ? 'Kusursuz' : (val == 1 ? 'Çok Kötü' : '$val Puan'),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isDark ? Colors.white54 : Colors.black54,
-                                    ),
-                                  ),
-                                ],
+                    // SEMPTOMLAR (Yatay Kaydırılabilir Örnekler)
+                    const Text(
+                      'SEMPTOMLAR',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD97706),
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: symptomExamples.map((sym) {
+                          final isSel = currentSymptoms.contains(sym);
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: AnimatedScale(
+                              scale: isSel ? 1.03 : 1.0,
+                              duration: const Duration(milliseconds: 150),
+                              child: FilterChip(
+                                label: Text(sym),
+                                selected: isSel,
+                                showCheckmark: false,
+                                backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.white,
+                                selectedColor: isDark ? const Color(0xFF1E2235) : Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                side: BorderSide(
+                                  color: isSel ? const Color(0xFFD97706) : (isDark ? Colors.white24 : Colors.black12),
+                                  width: isSel ? 1.8 : 1.0,
+                                ),
+                                labelStyle: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                                  color: isSel
+                                      ? const Color(0xFFD97706)
+                                      : (isDark ? Colors.white70 : Colors.black87),
+                                ),
+                                onSelected: (val) async {
+                                  // Optimistic 0ms UI update
+                                  if (isSel) {
+                                    currentSymptoms.remove(sym);
+                                  } else {
+                                    currentSymptoms.add(sym);
+                                  }
+                                  setSheetState(() {});
+                                  setState(() {});
+
+                                  if (!await SupplementManagementSheet.confirmPastDateAction(context, _selectedDate)) {
+                                    if (isSel) {
+                                      currentSymptoms.add(sym);
+                                    } else {
+                                      currentSymptoms.remove(sym);
+                                    }
+                                    setSheetState(() {});
+                                    setState(() {});
+                                    return;
+                                  }
+
+                                  if (isSel) {
+                                    await wellnessProvider.removeSymptomForDate(_selectedDate, sym);
+                                    await NotificationService.cancelSymptomCheckNotification(sym);
+                                  } else {
+                                    await wellnessProvider.addSymptomForDate(_selectedDate, sym);
+                                    await NotificationService.scheduleSymptomCheckNotification(
+                                      symptomName: sym,
+                                      delayHours: 3,
+                                    );
+                                  }
+                                  setSheetState(() {});
+                                  setState(() {});
+                                },
                               ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // 3. TUVALET GİRDİSİ
-                        const Text(
-                          '3. TUVALET TAKİBİ',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF10B981),
-                            letterSpacing: 0.6,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: customSymptomCtrl,
+                            focusNode: symptomFocusNode,
+                            autofocus: false,
+                            decoration: InputDecoration(
+                              hintText: 'Farklı bir semptom yazın...',
+                              isDense: true,
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF1E2235) : Colors.grey.withValues(alpha: 0.08),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        ListTile(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          tileColor: isDark ? const Color(0xFF1C1F2E) : const Color(0xFFF7F8FA),
-                          leading: const Icon(Icons.wc_rounded, color: Color(0xFF10B981)),
-                          title: const Text('Tuvalet Takibi Ekranını Aç', style: TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: const Text('Bağırsak hareketleri ve detaylı tuvalet kaydı tutun.'),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const WcTrackingScreen()),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () async {
+                            symptomFocusNode.unfocus();
+                            FocusScope.of(sheetCtx).unfocus(); // Klavyeyi kapat
+                            final text = customSymptomCtrl.text.trim();
+                            if (text.isEmpty) return;
+
+                            if (!_isValidSymptomInput(text)) {
+                              await Future.delayed(const Duration(milliseconds: 200));
+                              inlineTimer?.cancel();
+                              setSheetState(() {
+                                inlineError = 'Lütfen geçerli bir sağlık/semptom ifadesi giriniz.';
+                              });
+                              inlineTimer = Timer(const Duration(seconds: 2), () {
+                                setSheetState(() {
+                                  inlineError = null;
+                                });
+                              });
+                              return;
+                            }
+
+                            if (!await SupplementManagementSheet.confirmPastDateAction(context, _selectedDate)) return;
+                            await wellnessProvider.addSymptomForDate(_selectedDate, text);
+                            await NotificationService.scheduleSymptomCheckNotification(
+                              symptomName: text,
+                              delayHours: 3,
                             );
+                            customSymptomCtrl.clear();
+                            setSheetState(() {});
+                            setState(() {});
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD97706),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Ekle', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+
+                    // UYKU KALİTESİ
+                    const Text(
+                      'UYKU KALİTESİ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF06B6D4),
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [5, 4, 3, 2, 1].map((val) {
+                        final isSel = sleepScore == val;
+                        final scoreColor = _getSleepScoreColor(val);
+                        return GestureDetector(
+                          onTap: () async {
+                            // Optimistic 0ms UI response
+                            setSheetState(() {});
+                            setState(() {});
+
+                            if (!await SupplementManagementSheet.confirmPastDateAction(context, _selectedDate)) return;
+                            await wellnessProvider.setSleepScoreForDate(_selectedDate, val);
+                            setSheetState(() {});
+                            setState(() {});
+                          },
+                          child: AnimatedScale(
+                            scale: isSel ? 1.1 : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: isSel
+                                        ? scoreColor
+                                        : (isDark ? const Color(0xFF262A3B) : Colors.grey.withValues(alpha: 0.2)),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$val',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  val == 5 ? 'Kusursuz' : (val == 1 ? 'Çok Kötü' : '$val Puan'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? Colors.white54 : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // TUVALET TAKİBİ
+                    const Text(
+                      'TUVALET TAKİBİ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF10B981),
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ListTile(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      tileColor: isDark ? const Color(0xFF1C1F2E) : const Color(0xFFF7F8FA),
+                      leading: const Icon(Icons.spa_rounded, color: Color(0xFF10B981)),
+                      title: const Text('Tuvalet Takibi Ekranını Aç', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Bağırsak hareketleri ve konforlu tuvalet kaydı tutun.'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () async {
+                        symptomFocusNode.unfocus();
+                        FocusScope.of(sheetCtx).unfocus();
+                        final result = await showWcTrackingSheet(context, selectedDate: _selectedDate);
+                        if (result == true) {
+                          inlineSuccessTimer?.cancel();
+                          setSheetState(() {
+                            inlineSuccess = 'Tuvalet kaydı başarıyla eklendi.';
+                          });
+                          inlineSuccessTimer = Timer(const Duration(seconds: 2), () {
+                            setSheetState(() {
+                              inlineSuccess = null;
+                            });
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -2014,8 +2260,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
                     Text(
                       mealCategory,
                       style: const TextStyle(
@@ -2023,16 +2267,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      timeStr,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.white38 : Colors.black38,
-                      ),
-                    ),
-                  ],
-                ),
                 GestureDetector(
                   onTap: () => _showAddMealOptions(mealCategory),
                   child: Container(
@@ -2049,7 +2283,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 6),
 
             Text(
-              '${mealCalories.round()} cal (%$mealPct)',
+              '${mealCalories.round()} kcal (%$mealPct)',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -2062,7 +2296,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Column(
                 children: entries.map((entry) {
                   final itemCal = entry.nutritionData.scaleBy(entry.portionSize / 100).calories.round();
-                  final hasImg = entry.imagePath != null && File(entry.imagePath!).existsSync();
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -2074,31 +2307,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            if (hasImg)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  File(entry.imagePath!),
-                                  width: 36,
-                                  height: 36,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Icon(
-                                    Icons.radio_button_unchecked,
-                                    size: 20,
-                                    color: isDark ? Colors.white38 : Colors.black38,
-                                  ),
-                                ),
-                              )
-                            else
-                              Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: Icon(
-                                  Icons.radio_button_unchecked,
-                                  size: 20,
-                                  color: isDark ? Colors.white38 : Colors.black38,
-                                ),
-                              ),
-                            const SizedBox(width: 8),
+                            _buildFoodAvatar(entry, isDark),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2113,7 +2323,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '$itemCal cal, ${entry.portionSize.round()}${entry.portionUnit}',
+                                    '$itemCal kcal, ${entry.portionSize.round()}${entry.portionUnit}',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: isDark ? Colors.white54 : Colors.black54,
@@ -2151,6 +2361,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildFoodAvatar(FoodEntry entry, bool isDark) {
+    final imgPath = entry.imagePath;
+    final hasImg = imgPath != null && imgPath.isNotEmpty;
+
+    if (hasImg) {
+      if (imgPath.startsWith('assets/')) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            imgPath,
+            width: 38,
+            height: 38,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildFallbackFoodIcon(isDark),
+          ),
+        );
+      } else if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.network(
+            imgPath,
+            width: 38,
+            height: 38,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildFallbackFoodIcon(isDark),
+          ),
+        );
+      } else if (File(imgPath).existsSync()) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.file(
+            File(imgPath),
+            width: 38,
+            height: 38,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildFallbackFoodIcon(isDark),
+          ),
+        );
+      }
+    }
+
+    return _buildFallbackFoodIcon(isDark);
+  }
+
+  Widget _buildFallbackFoodIcon(bool isDark) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF232738) : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFD97706).withValues(alpha: 0.3),
+        ),
+      ),
+      child: const Icon(
+        Icons.restaurant_rounded,
+        size: 20,
+        color: Color(0xFFD97706),
+      ),
     );
   }
 }
@@ -3114,12 +3387,23 @@ class _CustomCalendarSheet extends StatefulWidget {
 class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
   late DateTime _focusedMonth;
   late DateTime _selectedDate;
+  SharedPreferences? _prefs;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = widget.initialDate;
     _focusedMonth = DateTime(widget.initialDate.year, widget.initialDate.month, 1);
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final p = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _prefs = p;
+      });
+    }
   }
 
   void _changeMonth(int offset) {
@@ -3137,6 +3421,18 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
     final wLog = wellness.getLogForDate(date);
     if (wLog != null && (wLog.symptoms.isNotEmpty || wLog.sleepScore != null || wLog.wcEntries.isNotEmpty || wLog.moods.isNotEmpty)) {
       return true;
+    }
+    if (_prefs != null) {
+      final jsonStr = _prefs!.getString('user_supplements_v2');
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final list = SupplementItem.decodeList(jsonStr);
+        for (final item in list) {
+          final takenDoses = _prefs!.getInt('supp_dose_${key}_${item.id}') ?? 0;
+          if (takenDoses > 0) {
+            return true;
+          }
+        }
+      }
     }
     return false;
   }

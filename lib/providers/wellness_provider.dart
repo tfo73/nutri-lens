@@ -213,7 +213,12 @@ class WellnessProvider extends ChangeNotifier {
   }
 
   Future<void> setSleepScore(int score) async {
-    await _save(today.copyWith(sleepScore: score));
+    await setSleepScoreForDate(_shiftedNow, score);
+  }
+
+  Future<void> setSleepScoreForDate(DateTime date, int score) async {
+    final targetLog = getLogForDate(date);
+    await _save(targetLog.copyWith(sleepScore: score));
   }
 
   Future<void> setMood(String timeSlot, MoodType? mood) async {
@@ -226,19 +231,34 @@ class WellnessProvider extends ChangeNotifier {
   }
 
   Future<void> logWc({int stoolType = 0, DateTime? time}) async {
-    final updated = List<WcEntry>.from(today.wcEntries)
-      ..add(WcEntry(time: time ?? DateTime.now(), stoolType: stoolType));
-    await _save(today.copyWith(wcEntries: updated));
+    await logWcForDate(time ?? _shiftedNow, stoolType: stoolType, time: time);
+  }
+
+  Future<void> logWcForDate(DateTime date, {int stoolType = 0, DateTime? time}) async {
+    final targetLog = getLogForDate(date);
+    final updated = List<WcEntry>.from(targetLog.wcEntries)
+      ..add(WcEntry(time: time ?? date, stoolType: stoolType));
+    await _save(targetLog.copyWith(wcEntries: updated));
   }
 
   Future<void> addSymptom(String symptom) async {
-    final updated = List<String>.from(today.symptoms)..add(symptom);
-    await _save(today.copyWith(symptoms: updated));
+    await addSymptomForDate(_shiftedNow, symptom);
+  }
+
+  Future<void> addSymptomForDate(DateTime date, String symptom) async {
+    final targetLog = getLogForDate(date);
+    final updated = List<String>.from(targetLog.symptoms)..add(symptom);
+    await _save(targetLog.copyWith(symptoms: updated));
   }
 
   Future<void> removeSymptom(String symptom) async {
-    final updated = List<String>.from(today.symptoms)..remove(symptom);
-    await _save(today.copyWith(symptoms: updated));
+    await removeSymptomForDate(_shiftedNow, symptom);
+  }
+
+  Future<void> removeSymptomForDate(DateTime date, String symptom) async {
+    final targetLog = getLogForDate(date);
+    final updated = List<String>.from(targetLog.symptoms)..remove(symptom);
+    await _save(targetLog.copyWith(symptoms: updated));
   }
 
   /// Son [days] günün uyku puanlarını döndürür (null = girilmemiş).

@@ -65,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _submitFeedback() async {
+    FocusScope.of(context).unfocus();
     final text = _feedbackController.text.trim();
     if (text.isEmpty) return;
 
@@ -492,304 +493,164 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(context.tr('Ayarlar')),
         centerTitle: true,
       ),
-      body: WaveBackground(child: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            children: [
-              const SizedBox(height: 8),
+      body: WaveBackground(
+        child: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              children: [
+                // ── Kişiselleştirme ───────────────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Kişiselleştirme'),
+                  children: [
+                    _AppleSettingItem(
+                      icon: Icons.person_rounded,
+                      iconBgColor: const Color(0xFF007AFF),
+                      title: context.tr('Hesabı Düzenle'),
+                      onTap: () {
+                        final profile = profileProvider.activeProfile;
+                        if (profile != null) {
+                          openProfileEditSheet(context, profile);
+                        }
+                      },
+                    ),
+                    _AppleSettingItem(
+                      icon: Icons.straighten_rounded,
+                      iconBgColor: const Color(0xFF5856D6),
+                      title: context.tr('Ölçü Birimi'),
+                      showDivider: false,
+                      trailing: _SegmentedToggle(
+                        options: [context.tr('Metrik'), context.tr('Imperial')],
+                        selectedIndex: profileProvider.useMetricUnits ? 0 : 1,
+                        onChanged: (i) => profileProvider.setUseMetricUnits(i == 0),
+                      ),
+                    ),
+                    /* ── Temporarily hidden ──
+                    _AppleSettingItem(
+                      icon: Icons.biotech_rounded,
+                      iconBgColor: const Color(0xFF32ADE6),
+                      title: context.tr('Mikro Besin Birimi'),
+                      trailing: _SegmentedToggle(
+                        options: [context.tr('Değer'), '%'],
+                        selectedIndex: profileProvider.showMicroPercentage ? 1 : 0,
+                        onChanged: (i) => profileProvider.setShowMicroPercentage(i == 1),
+                      ),
+                    ),
+                    _AppleSettingItem(
+                      icon: Icons.calendar_today_rounded,
+                      iconBgColor: const Color(0xFF30B0C7),
+                      title: context.tr('Hafta Başlangıcı'),
+                      showDivider: false,
+                      trailing: _SegmentedToggle(
+                        options: [context.tr('Pazartesi'), context.tr('Pazar')],
+                        selectedIndex: profileProvider.weekStartDay == 1 ? 0 : 1,
+                        onChanged: (i) => profileProvider.setWeekStartDay(i == 0 ? 1 : 7),
+                      ),
+                    ),
+                    */
+                  ],
+                ),
 
-              // ── Kişiselleştirme ───────────────────────────────────────
-              _SectionLabel(label: context.tr('Kişiselleştirme')),
-              _SettingsCard(
-                children: [
-                  // Hesabı Düzenle
-                  GestureDetector(
-                    onTap: () {
-                      final profile = profileProvider.activeProfile;
-                      if (profile != null) {
-                        openProfileEditSheet(context, profile);
-                      }
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
+                // ── Hedefler ──────────────────────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Hedefler'),
+                  children: [
+                    _AppleSettingItem(
+                      icon: Icons.restaurant_rounded,
+                      iconBgColor: const Color(0xFFFF9500),
+                      title: context.tr('Günlük Besin'),
+                      onTap: () => _showNutritionGoalsSheet(context, profileProvider),
+                    ),
+                    _AppleSettingItem(
+                      icon: Icons.water_drop_rounded,
+                      iconBgColor: const Color(0xFF00C7BE),
+                      title: context.tr('Günlük Su'),
+                      onTap: () => _showWaterPicker(context, profileProvider),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.manage_accounts_outlined,
-                              color: Color(0xFF58A6FF), size: 22),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Text(context.tr('Hesabı Düzenle'),
-                                style: TextStyle(
-                                    color: cs.onSurface,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500)),
+                          Text(
+                            '${profileProvider.waterGoalMl} ml',
+                            style: const TextStyle(
+                              color: Color(0xFF007AFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          Icon(Icons.chevron_right,
-                              color: cs.onSurfaceVariant, size: 20),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: cs.onSurfaceVariant,
+                            size: 20,
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  // Ölçü birimi
-                  Row(
-                    children: [
-                      const Icon(Icons.straighten_outlined,
-                          color: Color(0xFF58A6FF), size: 22),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(context.tr('Ölçü Birimi'),
-                            style: TextStyle(
-                                color: cs.onSurface,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                      _SegmentedToggle(
-                        options: [context.tr('Metrik'), context.tr('Imperial')],
-                        selectedIndex:
-                            profileProvider.useMetricUnits ? 0 : 1,
-                        onChanged: (i) =>
-                            profileProvider.setUseMetricUnits(i == 0),
-                      ),
-                    ],
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  // Mikro besin gösterimi
-                  Row(
-                    children: [
-                      const Icon(Icons.biotech_outlined,
-                          color: Color(0xFF58A6FF), size: 22),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(context.tr('Mikro Besin Birimi'),
-                            style: TextStyle(
-                                color: cs.onSurface,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                      _SegmentedToggle(
-                        options: [context.tr('Değer'), '%'],
-                        selectedIndex: profileProvider.showMicroPercentage ? 1 : 0,
-                        onChanged: (i) =>
-                            profileProvider.setShowMicroPercentage(i == 1),
-                      ),
-                    ],
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  // Hafta başlangıcı
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_month_outlined,
-                          color: Color(0xFF58A6FF), size: 22),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(context.tr('Hafta Başlangıcı'),
-                            style: TextStyle(
-                                color: cs.onSurface,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                      _SegmentedToggle(
-                        options: [context.tr('Pazartesi'), context.tr('Pazar')],
-                        selectedIndex: profileProvider.weekStartDay == 1 ? 0 : 1,
-                        onChanged: (i) =>
-                            profileProvider.setWeekStartDay(i == 0 ? 1 : 7),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant),
-              const SizedBox(height: 12),
-
-              // ── Hedefler ──────────────────────────────────────────────
-              _SectionLabel(label: context.tr('Hedefler')),
-              _SettingsCard(
-                children: [
-                  // Besin hedefi
-                  GestureDetector(
-                    onTap: () => _showNutritionGoalsSheet(context, profileProvider),
-                    behavior: HitTestBehavior.opaque,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.restaurant_outlined,
-                            color: Color(0xFF58A6FF), size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(context.tr('Günlük Besin'),
-                              style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500)),
-                        ),
-                        Icon(Icons.chevron_right,
-                            color: cs.onSurfaceVariant, size: 20),
-                      ],
-                    ),
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  // Su hedefi
-                  GestureDetector(
-                    onTap: () => _showWaterPicker(context, profileProvider),
-                    behavior: HitTestBehavior.opaque,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.water_drop_outlined,
-                            color: Color(0xFF58A6FF), size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(context.tr('Günlük Su'),
-                              style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500)),
-                        ),
-                        Text(
-                          '${profileProvider.waterGoalMl} ml',
-                          style: const TextStyle(
-                              color: Color(0xFF58A6FF),
+                    _AppleSettingItem(
+                      icon: Icons.directions_walk_rounded,
+                      iconBgColor: const Color(0xFF34C759),
+                      title: context.tr('Günlük Adım'),
+                      showDivider: false,
+                      onTap: () => _showStepPicker(context, profileProvider),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${profileProvider.stepGoal}',
+                            style: const TextStyle(
+                              color: Color(0xFF007AFF),
                               fontSize: 14,
-                              fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.chevron_right,
-                            color: cs.onSurfaceVariant, size: 20),
-                      ],
-                    ),
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  // Adım hedefi
-                  GestureDetector(
-                    onTap: () => _showStepPicker(context, profileProvider),
-                    behavior: HitTestBehavior.opaque,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.directions_walk_outlined,
-                            color: Color(0xFF58A6FF), size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(context.tr('Günlük Adım'),
-                              style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500)),
-                        ),
-                        Text(
-                          '${profileProvider.stepGoal}',
-                          style: const TextStyle(
-                              color: Color(0xFF58A6FF),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.chevron_right,
-                            color: cs.onSurfaceVariant, size: 20),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant),
-              const SizedBox(height: 12),
-
-              // ── Rozetler ──────────────────────────────────────────────
-              _SectionLabel(label: context.tr('Rozetler')),
-              Consumer<AchievementProvider>(
-                builder: (ctx, achieveProvider, _) {
-                  final earned = achieveProvider.earned;
-                  final total = AchievementProvider.achievements.length;
-                  return GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const AchievementsScreen()),
-                    ),
-                    child: _SettingsCard(
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.emoji_events_outlined,
-                                color: Color(0xFF58A6FF), size: 22),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    langProvider.isTurkish
-                                        ? '${earned.length} / $total rozet kazanıldı'
-                                        : '${earned.length} / $total badges earned',
-                                    style: TextStyle(
-                                        color: cs.onSurface,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                  if (earned.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 6,
-                                      children: earned.take(8).map((id) {
-                                        final def = AchievementProvider
-                                            .achievements
-                                            .firstWhere((a) => a.id == id,
-                                                orElse: () =>
-                                                    const AchievementDef(
-                                                        id: '',
-                                                        emoji: '🏅',
-                                                        name: '',
-                                                        description: '',
-                                                        requirement: 1,
-                                                        progressKey: '',
-                                                        unit: ''));
-                                        return Text(def.emoji,
-                                            style: const TextStyle(
-                                                fontSize: 22));
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                              fontWeight: FontWeight.w600,
                             ),
-                            Icon(Icons.chevron_right,
-                                color: cs.onSurfaceVariant, size: 20),
-                          ],
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: cs.onSurfaceVariant,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                /* ── Temporarily hidden ──
+                // ── Rozetler ──────────────────────────────────────────────
+                Consumer<AchievementProvider>(
+                  builder: (ctx, achieveProvider, _) {
+                    final earned = achieveProvider.earned;
+                    final total = AchievementProvider.achievements.length;
+                    return _AppleSettingGroup(
+                      title: context.tr('Rozetler'),
+                      children: [
+                        _AppleSettingItem(
+                          icon: Icons.emoji_events_rounded,
+                          iconBgColor: const Color(0xFFFFCC00),
+                          title: langProvider.isTurkish
+                              ? '${earned.length} / $total rozet kazanıldı'
+                              : '${earned.length} / $total badges earned',
+                          showDivider: false,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AchievementsScreen()),
+                          ),
                         ),
                       ],
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant),
-              const SizedBox(height: 12),
+                    );
+                  },
+                ),
+                */
 
-              // ── Özel Ayarlar (Tema + Dil) ─────────────────────────────
-              _SectionLabel(label: context.tr('Özel Ayarlar')),
-              _SettingsCard(
-                children: [
-                  // Tema
-                  Row(
-                    children: [
-                      Icon(
-                        themeProvider.isDarkMode
-                            ? Icons.dark_mode_outlined
-                            : Icons.light_mode_outlined,
-                        color: const Color(0xFF58A6FF),
-                        size: 22,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(context.tr('Tema'),
-                            style: TextStyle(
-                                color: cs.onSurface,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                      _SegmentedToggle(
+                // ── Özel Ayarlar (Tema + Dil) ─────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Özel Ayarlar'),
+                  children: [
+                    _AppleSettingItem(
+                      icon: themeProvider.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                      iconBgColor: const Color(0xFF5E5CE6),
+                      title: context.tr('Tema'),
+                      trailing: _SegmentedToggle(
                         options: [context.tr('Karanlık'), context.tr('Aydınlık')],
                         selectedIndex: themeProvider.isDarkMode ? 0 : 1,
                         onChanged: (i) {
@@ -798,23 +659,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           }
                         },
                       ),
-                    ],
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  // Dil
-                  Row(
-                    children: [
-                      const Icon(Icons.language_outlined,
-                          color: Color(0xFF58A6FF), size: 22),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(context.tr('Dil'),
-                            style: TextStyle(
-                                color: cs.onSurface,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                      _SegmentedToggle(
+                    ),
+                    _AppleSettingItem(
+                      icon: Icons.language_rounded,
+                      iconBgColor: const Color(0xFF007AFF),
+                      title: context.tr('Dil'),
+                      showDivider: false,
+                      trailing: _SegmentedToggle(
                         options: [context.tr('Türkçe'), context.tr('English')],
                         selectedIndex: langProvider.isTurkish ? 0 : 1,
                         onChanged: (i) {
@@ -823,49 +674,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           }
                         },
                       ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant),
-              const SizedBox(height: 12),
+                    ),
+                  ],
+                ),
 
-              // ── Entegrasyonlar ──────────────────────────────────────────
-              _SectionLabel(label: context.tr('Entegrasyonlar')),
-              _SettingsCard(
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Platform.isAndroid ? Icons.health_and_safety_outlined : Icons.favorite_border,
-                        color: const Color(0xFF58A6FF),
-                        size: 22,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              context.tr('Sağlık Verilerini Senkronize Et'),
-                              style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                            Text(
-                              context.tr('Adım, yakılan kalori vb. verileri telefonunuzdan otomatik olarak aktarır.'),
-                              style: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 11,
-                                  height: 1.3),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
+                // ── Entegrasyonlar ──────────────────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Entegrasyonlar'),
+                  children: [
+                    _AppleSettingItem(
+                      icon: Platform.isAndroid ? Icons.health_and_safety_rounded : Icons.favorite_rounded,
+                      iconBgColor: const Color(0xFFFF2D55),
+                      title: context.tr('Sağlık Verilerini Senkronize Et'),
+                      showDivider: false,
+                      trailing: CupertinoSwitch(
                         value: profileProvider.healthSyncEnabled,
+                        activeColor: const Color(0xFF34C759),
                         onChanged: (value) async {
                           if (value) {
                             await HealthService.initialize();
@@ -883,214 +707,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             await profileProvider.setHealthSyncEnabled(false);
                           }
                         },
-                        activeColor: const Color(0xFF58A6FF),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant),
-              const SizedBox(height: 12),
-
-              // ── Geri Bildirim ──────────────────────────────────────────
-              _SectionLabel(label: context.tr('Geri Bildirim')),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: cs.primary.withValues(alpha: 0.2), width: 1),
-                ),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _feedbackController,
-                      maxLines: 3,
-                      style: TextStyle(color: cs.onSurface, fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: context.tr('Uygulama hakkındaki düşüncelerinizi buraya yazabilirsiniz...'),
-                        hintStyle: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5), fontSize: 13),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isSendingFeedback ? null : _submitFeedback,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF58A6FF),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _isSendingFeedback 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text(context.tr('Gönder'), style: const TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
 
-              // ── Yasal ───────────────────────────────────────────────────
-              _SectionLabel(label: context.tr('Yasal')),
-              _SettingsCard(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LegalScreen(
-                            title: context.tr('Kullanım Koşulları'),
-                            trAssetPath: 'assets/legal/terms_tr.md',
-                            enAssetPath: 'assets/legal/terms_en.md',
-                          ),
-                        ),
-                      );
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
+                // ── Geri Bildirim ──────────────────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Geri Bildirim'),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: Text(context.tr('Kullanım Koşulları'), 
-                                style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
+                          TextField(
+                            controller: _feedbackController,
+                            maxLines: 3,
+                            style: TextStyle(color: cs.onSurface, fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: context.tr('Uygulama hakkındaki düşüncelerinizi buraya yazabilirsiniz...'),
+                              hintStyle: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5), fontSize: 13),
+                              border: InputBorder.none,
+                            ),
                           ),
-                          Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 16),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _isSendingFeedback ? null : _submitFeedback,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF007AFF),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: _isSendingFeedback
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : Text(context.tr('Gönder'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                  Divider(color: cs.outlineVariant, height: 20),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LegalScreen(
-                            title: context.tr('Gizlilik Politikası'),
-                            trAssetPath: 'assets/legal/privacy_policy_tr.md',
-                            enAssetPath: 'assets/legal/privacy_policy_en.md',
+                  ],
+                ),
+
+                // ── Yasal ───────────────────────────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Yasal'),
+                  children: [
+                    _AppleSettingItem(
+                      icon: Icons.description_rounded,
+                      iconBgColor: const Color(0xFF8E8E93),
+                      title: context.tr('Kullanım Koşulları'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LegalScreen(
+                              title: context.tr('Kullanım Koşulları'),
+                              trAssetPath: 'assets/legal/terms_tr.md',
+                              enAssetPath: 'assets/legal/terms_en.md',
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(context.tr('Gizlilik Politikası'), 
-                                style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
+                        );
+                      },
+                    ),
+                    _AppleSettingItem(
+                      icon: Icons.shield_rounded,
+                      iconBgColor: const Color(0xFF636366),
+                      title: context.tr('Gizlilik Politikası'),
+                      showDivider: false,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LegalScreen(
+                              title: context.tr('Gizlilik Politikası'),
+                              trAssetPath: 'assets/legal/privacy_policy_tr.md',
+                              enAssetPath: 'assets/legal/privacy_policy_en.md',
+                            ),
                           ),
-                          Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 16),
-                        ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+
+                // ── Hesap ─────────────────────────────────────────────────
+                _AppleSettingGroup(
+                  title: context.tr('Hesap'),
+                  children: [
+                    if (FirebaseAuth.instance.currentUser == null ||
+                        FirebaseAuth.instance.currentUser!.isAnonymous)
+                      _AppleSettingItem(
+                        icon: Icons.link_rounded,
+                        iconBgColor: const Color(0xFF007AFF),
+                        title: context.tr('Hesap Bağla'),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const OnboardingScreen(
+                                mode: OnboardingMode.linkAccount,
+                              ),
+                            ),
+                          );
+                        },
                       ),
+                    _AppleSettingItem(
+                      icon: Icons.logout_rounded,
+                      iconBgColor: const Color(0xFFFF9500),
+                      title: context.tr('Hesaptan Çık'),
+                      onTap: _isDeleting ? null : _handleSignOut,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant),
-              const SizedBox(height: 12),
+                    if (FirebaseAuth.instance.currentUser != null &&
+                        !FirebaseAuth.instance.currentUser!.isAnonymous)
+                      _AppleSettingItem(
+                        icon: Icons.delete_forever_rounded,
+                        iconBgColor: const Color(0xFFFF3B30),
+                        title: context.tr('Hesabı Sil'),
+                        showDivider: false,
+                        onTap: _isDeleting ? null : _handleDeleteAccount,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              // ── Hesap ─────────────────────────────────────────────────
-              _SectionLabel(label: context.tr('Hesap')),
-              if (FirebaseAuth.instance.currentUser == null ||
-                  FirebaseAuth.instance.currentUser!.isAnonymous) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const OnboardingScreen(
-                            mode: OnboardingMode.linkAccount,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.link, color: Colors.white, size: 20),
-                    label: Text(context.tr('Hesap Bağla'),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: const Color(0xFF58A6FF),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                Center(
+                  child: Text(
+                    langProvider.isTurkish ? 'Versiyon $_appVersion' : 'Version $_appVersion',
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.35),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 32),
               ],
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isDeleting ? null : _handleSignOut,
-                  icon: const Icon(Icons.logout,
-                      color: Color(0xFF58A6FF), size: 20),
-                  label: Text(context.tr('Hesaptan Çık'),
-                      style: const TextStyle(
-                          color: Color(0xFF58A6FF),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(
-                        color: Color(0xFF58A6FF), width: 1),
-                    backgroundColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (FirebaseAuth.instance.currentUser != null &&
-                  !FirebaseAuth.instance.currentUser!.isAnonymous) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _isDeleting ? null : _handleDeleteAccount,
-                    icon: const Icon(Icons.delete_forever,
-                        color: Color(0xFFF85149), size: 20),
-                    label: Text(context.tr('Hesabı Sil'),
-                        style: const TextStyle(
-                            color: Color(0xFFF85149),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(
-                          color: Color(0xFFF85149), width: 1),
-                      backgroundColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              Center(
-                child: Text(
-                  langProvider.isTurkish ? 'Versiyon $_appVersion' : 'Version $_appVersion',
-                  style: TextStyle(
-                      color: cs.onSurface.withValues(alpha: 0.3),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
+            ),
           // Yükleme kaplaması
           if (_isDeleting)
             Container(
@@ -1256,40 +1011,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
+class _AppleSettingGroup extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+
+  const _AppleSettingGroup({
+    this.title,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 6, bottom: 6, top: 16),
+            child: Text(
+              title!.toUpperCase(),
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : Colors.black45,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+        ],
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1F2E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+          child: Column(children: children),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _SettingsCard extends StatelessWidget {
-  final List<Widget> children;
-  const _SettingsCard({required this.children});
+class _AppleSettingItem extends StatelessWidget {
+  final IconData icon;
+  final Color iconBgColor;
+  final String title;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool showDivider;
+
+  const _AppleSettingItem({
+    required this.icon,
+    required this.iconBgColor,
+    required this.title,
+    this.trailing,
+    this.onTap,
+    this.showDivider = true,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(children: children),
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: iconBgColor.withValues(alpha: isDark ? 0.22 : 0.14),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: iconBgColor, size: 18),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                if (trailing != null) trailing!,
+                if (onTap != null && trailing == null)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    size: 20,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            indent: 60,
+            endIndent: 14,
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+          ),
+      ],
     );
   }
 }
@@ -1620,36 +1463,36 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                     shrinkWrap: true,
                     physics: const ClampingScrollPhysics(),
                     children: [
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                       AnimatedBuilder(
                         animation: _animCtrl,
                         builder: (context, _) => Column(
                           children: [
-                            _buildRow(context.tr('Kalori hedefi'), '🔥', '${_displayCal.toInt()}', const Color(0xFFFF6B35), () {
+                            _buildRow(context.tr('Kalori hedefi'), '🔥', '${_displayCal.toInt()}', const Color(0xFFF59E0B), () {
                               _editValue('Kalori', 'kcal', pp.calorieGoal, (val) {
                                 pp.setCustomCalorieGoal(val.toInt());
                                 setState(() { _displayCal = val; });
                               });
                             }),
-                            _buildRow(context.tr('Protein hedefi'), '🍗', '${_displayProt.toInt()}', const Color(0xFF7EE787), () {
+                            _buildRow(context.tr('Protein hedefi'), '🍗', '${_displayProt.toInt()}', const Color(0xFFFF6B35), () {
                               _editValue('Protein', 'g', pp.proteinGoal, (val) {
                                 pp.setCustomProteinGoal(val.toInt());
                                 setState(() { _displayProt = val; });
                               });
                             }),
-                            _buildRow(context.tr('Karbohidrat hedefi'), '🌾', '${_displayCarb.toInt()}', const Color(0xFF58A6FF), () {
+                            _buildRow(context.tr('Karbohidrat hedefi'), '🌾', '${_displayCarb.toInt()}', const Color(0xFF0A84FF), () {
                               _editValue('Karbonhidrat', 'g', pp.carbGoal, (val) {
                                 pp.setCustomCarbGoal(val.toInt());
                                 setState(() { _displayCarb = val; });
                               });
                             }),
-                            _buildRow(context.tr('Yağ hedefi'), '🥑', '${_displayFat.toInt()}', const Color(0xFFFFA726), () {
+                            _buildRow(context.tr('Yağ hedefi'), '🥑', '${_displayFat.toInt()}', const Color(0xFF34C759), () {
                               _editValue('Yağ', 'g', pp.fatGoal, (val) {
                                 pp.setCustomFatGoal(val.toInt());
                                 setState(() { _displayFat = val; });
                               });
                             }),
-                            _buildRow(context.tr('Lif hedefi'), '🍎', '${_displayFiber.toInt()}', const Color(0xFF9B59B6), () {
+                            _buildRow(context.tr('Lif hedefi'), '🍎', '${_displayFiber.toInt()}', const Color(0xFFBF5AF2), () {
                               _editValue('Lif', 'g', _displayFiber, (val) {
                                 pp.setCustomMicroGoal('fiber', val);
                                 setState(() { _displayFiber = val; });
@@ -1659,7 +1502,7 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                         child: Theme(
                           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                           child: ExpansionTile(
@@ -1723,18 +1566,20 @@ class _NutritionGoalsSheetState extends State<_NutritionGoalsSheet> with SingleT
               ),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewPadding.bottom + 12),
+              padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.of(context).viewPadding.bottom + 12),
               child: SizedBox(
                 width: double.infinity,
                 height: 52,
-                child: FilledButton.tonal(
+                child: FilledButton(
                   onPressed: _isCalculating ? null : _startRecalculateAnimation,
                   style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF007AFF),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   child: Text(
                     context.tr('Tekrardan Hesapla'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
               ),

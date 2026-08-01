@@ -459,6 +459,8 @@ class AchievementProvider extends ChangeNotifier {
   }
 
   void _checkAndAward() {
+    // Badges are temporarily disabled as requested
+    return;
     bool changed = false;
     for (final ach in achievements) {
       if (!_earned.contains(ach.id)) {

@@ -2100,6 +2100,9 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    final isDark = theme.brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1C1F2E) : Colors.white;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -2113,160 +2116,200 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
         }
       },
       child: Container(
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-              child: Row(
-                children: [
-                  Text(context.tr('Hesabı Düzenle'),
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                   Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF12141D) : const Color(0xFFF2F2F7),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 16),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Pill Handle
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 36,
+                    height: 5,
                     decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextButton(
-                      onPressed: _save,
-                      child: Text(context.tr('Kaydet'),
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      color: isDark ? Colors.white24 : Colors.black26,
+                      borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            // Field rows
-            _buildFieldRow(
-              context,
-              label: context.tr('Ad Soyad'),
-              child: _inlineTextField(_nameCtrl, TextInputType.name),
-            ),
-            const Divider(height: 1, indent: 20),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showNumberPicker(
-                  context,
-                  label: context.tr('Mevcut Kilo'),
-                  unit: 'kg',
-                  values: [for (double i = 40.0; i <= 200.0; i += 0.1) i],
-                  initial: (double.tryParse(_weightCtrl.text) ?? 70).toDouble(),
-                  onSelected: (v) => setState(
-                      () => _weightCtrl.text = v.toStringAsFixed(1)),
                 ),
-                child: _buildFieldRow(
-                  context,
-                  label: context.tr('Mevcut Kilo'),
-                  child: Text(
-                    '${_weightCtrl.text} kg',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: cs.primary),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        context.tr('Hesabı Düzenle'),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      FilledButton(
+                        onPressed: _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text(
+                          context.tr('Kaydet'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ),
-            const Divider(height: 1, indent: 20),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showNumberPicker(
-                  context,
-                  label: context.tr('Boy'),
-                  unit: 'cm',
-                  values: [for (int i = 100; i <= 230; i++) i],
-                  initial: (double.tryParse(_heightCtrl.text) ?? 170).round(),
-                  onSelected: (v) =>
-                      setState(() => _heightCtrl.text = v.toInt().toString()),
-                ),
-                child: _buildFieldRow(
-                  context,
-                  label: context.tr('Boy'),
-                  child: Text(
-                    '${_heightCtrl.text} cm',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: cs.primary),
+                const SizedBox(height: 12),
+
+                // Apple HIG Inset Grouped Container
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 12,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Ad Soyad
+                        _buildAppleFieldRow(
+                          context,
+                          icon: Icons.person_rounded,
+                          iconColor: const Color(0xFF007AFF),
+                          label: context.tr('Ad Soyad'),
+                          child: _inlineTextField(_nameCtrl, TextInputType.name, width: 140),
+                        ),
+                        Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+
+                        // Mevcut Kilo
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showNumberPicker(
+                              context,
+                              label: context.tr('Mevcut Kilo'),
+                              unit: 'kg',
+                              values: [for (double i = 40.0; i <= 200.0; i += 0.1) i],
+                              initial: (double.tryParse(_weightCtrl.text) ?? 70).toDouble(),
+                              onSelected: (v) => setState(() => _weightCtrl.text = v.toStringAsFixed(1)),
+                            ),
+                            child: _buildAppleFieldRow(
+                              context,
+                              icon: Icons.monitor_weight_rounded,
+                              iconColor: const Color(0xFF34C759),
+                              label: context.tr('Mevcut Kilo'),
+                              child: Text(
+                                '${_weightCtrl.text} kg',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+
+                        // Boy
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showNumberPicker(
+                              context,
+                              label: context.tr('Boy'),
+                              unit: 'cm',
+                              values: [for (int i = 100; i <= 230; i++) i],
+                              initial: (double.tryParse(_heightCtrl.text) ?? 170).round(),
+                              onSelected: (v) => setState(() => _heightCtrl.text = v.toInt().toString()),
+                            ),
+                            child: _buildAppleFieldRow(
+                              context,
+                              icon: Icons.height_rounded,
+                              iconColor: const Color(0xFF5856D6),
+                              label: context.tr('Boy'),
+                              child: Text(
+                                '${_heightCtrl.text} cm',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+
+                        // Yaş
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showNumberPicker(
+                              context,
+                              label: context.tr('Yaş'),
+                              unit: context.tr('yaş'),
+                              values: [for (int i = 10; i <= 100; i++) i],
+                              initial: int.tryParse(_ageCtrl.text) ?? 25,
+                              onSelected: (v) => setState(() => _ageCtrl.text = v.toInt().toString()),
+                            ),
+                            child: _buildAppleFieldRow(
+                              context,
+                              icon: Icons.cake_rounded,
+                              iconColor: const Color(0xFFFF9500),
+                              label: context.tr('Yaş'),
+                              child: Text(
+                                _ageCtrl.text,
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+
+                        // Cinsiyet
+                        _buildAppleFieldRow(
+                          context,
+                          icon: Icons.wc_rounded,
+                          iconColor: const Color(0xFFFF2D55),
+                          label: context.tr('Cinsiyet'),
+                          showEditIcon: false,
+                          child: _GenderToggle(
+                            value: _gender,
+                            onChanged: (g) => setState(() => _gender = g),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+
+                        // Hedef
+                        _buildAppleFieldRow(
+                          context,
+                          icon: Icons.flag_rounded,
+                          iconColor: const Color(0xFF30B0C7),
+                          label: context.tr('Hedef'),
+                          showEditIcon: false,
+                          child: _GoalSelector(
+                            value: _goal,
+                            onChanged: (g) => setState(() => _goal = g),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+              ],
             ),
-            const Divider(height: 1, indent: 20),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showNumberPicker(
-                  context,
-                  label: context.tr('Yaş'),
-                  unit: context.tr('yaş'),
-                  values: [for (int i = 10; i <= 100; i++) i],
-                  initial: int.tryParse(_ageCtrl.text) ?? 25,
-                  onSelected: (v) =>
-                      setState(() => _ageCtrl.text = v.toInt().toString()),
-                ),
-                child: _buildFieldRow(
-                  context,
-                  label: context.tr('Yaş'),
-                  child: Text(
-                    _ageCtrl.text,
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: cs.primary),
-                  ),
-                ),
-              ),
-            ),
-            const Divider(height: 1, indent: 20),
-            _buildFieldRow(
-              context,
-              label: context.tr('Cinsiyet'),
-              showEditIcon: false,
-              child: _GenderToggle(
-                value: _gender,
-                onChanged: (g) => setState(() => _gender = g),
-              ),
-            ),
-            const Divider(height: 1, indent: 20),
-            _buildFieldRow(
-              context,
-              label: context.tr('Hedef'),
-              showEditIcon: false,
-              child: _GoalSelector(
-                value: _goal,
-                onChanged: (g) => setState(() => _goal = g),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
-    ), // Container
-    ); // PopScope
+    );
   }
 
   void _showNumberPicker<T extends num>(
@@ -2340,6 +2383,54 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAppleFieldRow(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required Widget child,
+    bool showEditIcon = true,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: isDark ? 0.22 : 0.14),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: cs.onSurface),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: child,
+              ),
+            ),
+          ),
+          if (showEditIcon) ...[
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, size: 18, color: isDark ? Colors.white38 : Colors.black38),
+          ],
+        ],
       ),
     );
   }

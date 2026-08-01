@@ -54,6 +54,55 @@ class SupplementManagementSheet extends StatefulWidget {
     return additions;
   }
 
+  static Future<bool> confirmPastDateAction(BuildContext context, DateTime selectedDate) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    if (!target.isBefore(today)) {
+      return true;
+    }
+
+    final dateStr = DateFormat('d MMMM yyyy', 'tr_TR').format(selectedDate);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1C2128) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.calendar_today_rounded, color: Color(0xFFD97706), size: 22),
+            SizedBox(width: 8),
+            Text('Tarih Değişiklik Onayı', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Değişikliği $dateStr tarihi için yapıyorsunuz. Emin misiniz?',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hayır', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Evet', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
   @override
   State<SupplementManagementSheet> createState() => _SupplementManagementSheetState();
 }
@@ -277,6 +326,7 @@ class _SupplementManagementSheetState extends State<SupplementManagementSheet> {
   }
 
   Future<void> _updateDose(String suppId, int count) async {
+    if (!await SupplementManagementSheet.confirmPastDateAction(context, widget.selectedDate)) return;
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _todayDosesMap[suppId] = count;
@@ -288,6 +338,8 @@ class _SupplementManagementSheetState extends State<SupplementManagementSheet> {
   void _handleAddFormSubmit() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
+
+    if (!await SupplementManagementSheet.confirmPastDateAction(context, widget.selectedDate)) return;
 
     final isDuplicate = _supplements.any((s) => s.name.trim().toLowerCase() == name.toLowerCase());
     if (isDuplicate) {
@@ -339,6 +391,7 @@ class _SupplementManagementSheetState extends State<SupplementManagementSheet> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _EditSupplementSheet(
         item: item,
+        selectedDate: widget.selectedDate,
         existingSupplements: _supplements,
         allMicroOptions: _allMicroOptions,
         onSave: (updatedItem) async {
@@ -848,6 +901,7 @@ class _SupplementManagementSheetState extends State<SupplementManagementSheet> {
 // ── APPLE-DESIGNED EDIT SUPPLEMENT SHEET ──
 class _EditSupplementSheet extends StatefulWidget {
   final SupplementItem item;
+  final DateTime selectedDate;
   final List<SupplementItem> existingSupplements;
   final List<(String key, String displayName, String unit, String category)> allMicroOptions;
   final Function(SupplementItem) onSave;
@@ -855,6 +909,7 @@ class _EditSupplementSheet extends StatefulWidget {
 
   const _EditSupplementSheet({
     required this.item,
+    required this.selectedDate,
     required this.existingSupplements,
     required this.allMicroOptions,
     required this.onSave,
@@ -924,9 +979,11 @@ class _EditSupplementSheetState extends State<_EditSupplementSheet> {
     }
   }
 
-  void _save() {
+  void _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
+
+    if (!await SupplementManagementSheet.confirmPastDateAction(context, widget.selectedDate)) return;
 
     final isDuplicate = widget.existingSupplements.any(
       (s) => s.id != widget.item.id && s.name.trim().toLowerCase() == name.toLowerCase(),
@@ -1155,7 +1212,8 @@ class _EditSupplementSheetState extends State<_EditSupplementSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
+                      if (!await SupplementManagementSheet.confirmPastDateAction(context, widget.selectedDate)) return;
                       widget.onDelete(widget.item.id);
                       Navigator.pop(context);
                     },
