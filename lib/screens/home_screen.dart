@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -82,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = index;
       _isMenuOpen = false;
+      _currentDashboardDate = DateTime.now();
     });
 
     _pageController.animateToPage(
@@ -91,80 +94,66 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<bool> _checkYesterdayLockWarning(BuildContext context, DateTime? date) async {
-    if (date == null) return true;
+  Future<bool> _checkYesterdayLockWarning(BuildContext context, DateTime targetDate) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final compareDate = DateTime(date.year, date.month, date.day);
-    final yesterday = today.subtract(const Duration(days: 1));
+    final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
 
-    if (compareDate.isAtSameMomentAs(yesterday)) {
-      if (now.hour > 2 || (now.hour == 2 && now.minute >= 30)) {
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text(context.tr('Süre Doldu'), style: const TextStyle(fontWeight: FontWeight.w700)),
-            content: Text(context.tr('Saat 2:30\'u geçtiği için dün gününe girdi yapamazsınız.')),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(context.tr('Tamam')),
-              ),
-            ],
-          ),
-        );
-        return false;
-      }
-      if (now.hour == 2 && now.minute >= 20 && now.minute < 30) {
-        final proceed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text(context.tr('Süre Sınırı Uyarısı'), style: const TextStyle(fontWeight: FontWeight.w700)),
-            content: Text(context.tr('Dün gününe girdi yapmak için son dakikalar! Saat 2:30\'dan sonra dün gününe girdi yapamayacaksınız. Devam etmek istiyor musunuz?')),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(context.tr('İptal')),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(context.tr('Devam Et')),
-              ),
-            ],
-          ),
-        );
-        return proceed ?? false;
-      }
+    if (target.isAfter(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gelecek tarihler için kayıt eklenemez veya değiştirilemez.'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
     }
-    return true;
-  }
 
-  void _showAddMenu() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final limitDate = today.subtract(const Duration(days: 1));
-    final compareDate = DateTime(_currentDashboardDate.year, _currentDashboardDate.month, _currentDashboardDate.day);
+    if (target.isBefore(today)) {
+      final dateStr = DateFormat('d MMMM yyyy', 'tr_TR').format(targetDate);
+      final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (compareDate.isBefore(limitDate)) {
-      showDialog(
+      final result = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1C2128) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(context.tr('past_day_lock_title'), style: const TextStyle(fontWeight: FontWeight.w700)),
-          content: Text(context.tr('past_day_lock_content')),
+          title: const Row(
+            children: [
+              Icon(Icons.calendar_today_rounded, color: Color(0xFFD97706), size: 22),
+              SizedBox(width: 8),
+              Text('Tarih Değişiklik Onayı', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            'Değişikliği $dateStr tarihi için yapıyorsunuz. Emin misiniz?',
+            style: const TextStyle(fontSize: 14),
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.tr('Tamam')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hayır', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD97706),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Evet', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       );
-      return;
+      return result ?? false;
     }
 
+    return true;
+  }
+
+  void _showAddMenu() {
     setState(() {
       _isMenuOpen = !_isMenuOpen;
     });
@@ -258,16 +247,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _KeepAlivePage(child: DashboardScreen(
         isCurrentTab: _selectedIndex == 0,
         onMealAddPressed: (meal, mode, date) => _handleMenuAction(mode, meal: meal, date: date),
-        onProfileSetupPressed: () => _onTabSelected(3),
+        onProfileSetupPressed: () => _onTabSelected(2),
         onFastingPressed: () => _onTabSelected(1),
-        onCoachPressed: () => _onTabSelected(2),
+        onCoachPressed: () => _onTabSelected(1),
         onDateChanged: (date) => setState(() => _currentDashboardDate = date),
       )),
-      const _KeepAlivePage(child: FastingScreen()),
-      _KeepAlivePage(child: SuggestionsScreen(
-        onNavigateBack: () => _onTabSelected(1),
-        onNavigateForward: () => _onTabSelected(3),
-      )),
+      const _KeepAlivePage(child: CoachScreen()),
       const _KeepAlivePage(child: ProfileScreen()),
     ];
 
@@ -311,6 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
+    final safeAreaTop = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       extendBody: true,
       body: Stack(
@@ -318,11 +305,12 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           PageView(
             controller: _pageController,
-            physics: (_isMenuOpen || _selectedIndex == 2) ? const NeverScrollableScrollPhysics() : null,
+            physics: _isMenuOpen ? const NeverScrollableScrollPhysics() : null,
             onPageChanged: (index) {
               FocusManager.instance.primaryFocus?.unfocus();
               setState(() {
                 _selectedIndex = index;
+                _currentDashboardDate = DateTime.now();
               });
             },
             children: screens,
@@ -349,17 +337,60 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Floating Menu Items
-          Positioned(
-            right: 16,
-            bottom: 85 + safeAreaBottom,
-            child: _FloatingAddMenu(
-              isOpen: _isMenuOpen,
-              onTap: _handleMenuAction,
+          if (_selectedIndex == 0) ...[
+            // Floating Menu Items (positioned above the 68x68 + button)
+            Positioned(
+              right: 16,
+              bottom: 165 + safeAreaBottom,
+              child: _FloatingAddMenu(
+                isOpen: _isMenuOpen,
+                onTap: _handleMenuAction,
+              ),
             ),
-          ),
 
-          // Arkaplanda analiz statusu (Tab barın hemen üstünde)
+            // Floating Add (+) Button (Just above Tab Bar, original 68x68 style & colors)
+            Positioned(
+              right: 16,
+              bottom: 85 + safeAreaBottom,
+              child: GestureDetector(
+                onTap: nutritionProvider.isAnalyzing ? null : _showAddMenu,
+                child: Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark 
+                        ? [Colors.white, Colors.grey.shade300] 
+                        : [Colors.black, Colors.grey.shade900],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: AnimatedRotation(
+                      turns: _isMenuOpen ? 0.125 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        _isMenuOpen ? Icons.close_rounded : Icons.add_rounded,
+                        color: isDark ? Colors.black : Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // Arkaplanda analiz statusu
           if (nutritionProvider.isAnalyzing)
             Positioned(
               bottom: 85 + safeAreaBottom,
@@ -393,7 +424,6 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: _HigTabBar(
         selectedIndex: _selectedIndex,
         onTap: _onTabSelected,
-        onAddPressed: _showAddMenu,
         isMenuOpen: _isMenuOpen,
         isAnalyzing: nutritionProvider.isAnalyzing,
         surface: surface,
@@ -457,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       onConfirm: (entry) {
-        context.read<NutritionProvider>().addFoodEntry(entry);
+        context.read<NutritionProvider>().addFoodEntry(entry, date: _currentDashboardDate);
         Navigator.pop(context);
       },
     );
@@ -651,7 +681,6 @@ class _FloatingAddMenuState extends State<_FloatingAddMenu> {
 class _HigTabBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
-  final VoidCallback onAddPressed;
   final bool isMenuOpen;
   final bool isAnalyzing;
   final Color surface;
@@ -664,7 +693,6 @@ class _HigTabBar extends StatelessWidget {
   const _HigTabBar({
     required this.selectedIndex,
     required this.onTap,
-    required this.onAddPressed,
     required this.isMenuOpen,
     required this.isAnalyzing,
     required this.surface,
@@ -677,82 +705,44 @@ class _HigTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> labels = [context.tr('Özet'), context.tr('Oruç'), context.tr('Öneriler'), context.tr('Profil')];
+    final List<String> labels = [
+      context.tr('Ana Menü'),
+      context.tr('Koç'),
+      context.tr('Profil'),
+    ];
     final List<IconData> iconsOutlined = [
       Icons.dashboard_outlined,
-      Icons.timer_outlined,
-      Icons.lightbulb_outlined,
-      Icons.person_outline,
+      Icons.psychology_outlined,
+      Icons.person_outline_rounded,
     ];
     final List<IconData> iconsFilled = [
-      Icons.dashboard,
-      Icons.timer,
-      Icons.lightbulb,
-      Icons.person,
+      Icons.dashboard_rounded,
+      Icons.psychology_rounded,
+      Icons.person_rounded,
     ];
 
     return SafeArea(
       top: false,
       child: Container(
-        height: 80,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 64,
+        margin: EdgeInsets.fromLTRB(16, 0, 16, math.max(8, safeAreaBottom)),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C2128).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Ana Sekmeler: Özet, Öneriler, Profil
-            Expanded(
-              child: Container(
-                height: 64,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C2128).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(16), // Daha az yuvarlak kenarlar
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildTab(0, labels[0], iconsOutlined[0], iconsFilled[0]),
-                    _buildTab(1, labels[1], iconsOutlined[1], iconsFilled[1]),
-                    _buildTab(2, labels[2], iconsOutlined[2], iconsFilled[2]),
-                    _buildTab(3, labels[3], iconsOutlined[3], iconsFilled[3]),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // "+" Butonu (Ayrı yuvarlak bar)
-            GestureDetector(
-              onTap: isAnalyzing ? null : onAddPressed,
-              child: Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark 
-                      ? [Colors.white, Colors.grey.shade300] 
-                      : [Colors.black, Colors.grey.shade900],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: _buildAddButton(),
-                ),
-              ),
-            ),
+            _buildTab(0, labels[0], iconsOutlined[0], iconsFilled[0]),
+            _buildTab(1, labels[1], iconsOutlined[1], iconsFilled[1]),
+            _buildTab(2, labels[2], iconsOutlined[2], iconsFilled[2]),
           ],
         ),
       ),
@@ -761,39 +751,29 @@ class _HigTabBar extends StatelessWidget {
 
   Widget _buildTab(int index, String label, IconData outlined, IconData filled) {
     final isSelected = selectedIndex == index;
-    return InkWell(
-      onTap: () => onTap(index),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+    final color = isSelected ? primary : textTert;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => onTap(index),
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isSelected ? filled : outlined, color: isSelected ? primary : textTert, size: 24),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(color: isSelected ? primary : textTert, fontSize: 10, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500)),
+            Icon(
+              isSelected ? filled : outlined,
+              color: color,
+              size: 24,
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: color,
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddButton() {
-    return AnimatedOpacity(
-      opacity: isAnalyzing ? 0.5 : 1.0,
-      duration: const Duration(milliseconds: 300),
-      child: SizedBox(
-        width: 52,
-        height: 52,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-          child: Icon(
-            isMenuOpen ? Icons.close_rounded : Icons.add_rounded,
-            key: ValueKey(isMenuOpen),
-            color: isDark ? Colors.black : Colors.white,
-            size: 30,
-          ),
         ),
       ),
     );

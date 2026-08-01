@@ -825,41 +825,11 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 32, height: 32,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 18)),
-            ),
-            const SizedBox(width: 8),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Beslenme Koçu',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF58A6FF),
-                  ),
-                ),
-                Text('Kişisel asistanın',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal)),
-              ],
-            ),
-          ],
-        ),
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: _buildChatBody(context),
       ),
-      body: _buildChatBody(context),
     );
   }
 
@@ -1186,8 +1156,11 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
 
   Widget _buildInputArea(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final safeAreaBottom = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = widget.isEmbedded ? 16.0 : (44.0 + safeAreaBottom);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(

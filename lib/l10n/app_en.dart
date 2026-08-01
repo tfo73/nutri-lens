@@ -2,7 +2,7 @@ class AppEn {
   static const Map<String, String> strings = {
     'past_day_lock_title': 'Past Date Modification Restricted',
     'past_day_lock_content': 'Due to system policies, new entries cannot be added to days older than yesterday. Please select today\'s or yesterday\'s page to make entries.',
-    'Özet': 'Summary',
+    'Özet': 'Main Menu',
     'Fotoğraf': 'Photo',
     'Öneriler': 'Tips',
     'Program': 'Program',

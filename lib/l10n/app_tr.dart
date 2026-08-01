@@ -2,7 +2,7 @@ class AppTr {
   static const Map<String, String> strings = {
     'past_day_lock_title': 'Geçmiş Gün Güncellemesi Yapılamaz',
     'past_day_lock_content': 'Sistem kuralları gereği dünden daha eski günlere yeni veri kaydı eklenememektedir. Kayıt işlemleri için lütfen bugünün veya dünün sayfasını seçiniz.',
-    'Özet': 'Özet',
+    'Özet': 'Ana Menü',
     'Fotoğraf': 'Fotoğraf',
     'Öneriler': 'Öneriler',
     'Program': 'Program',

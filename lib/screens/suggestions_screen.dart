@@ -710,91 +710,10 @@ class SuggestionsScreen extends StatefulWidget {
   State<SuggestionsScreen> createState() => _SuggestionsScreenState();
 }
 
-class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.index == 0) {
-        FocusScope.of(context).unfocus();
-      }
-      if (!_tabController.indexIsChanging) {
-        setState(() {});
-      }
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final coachProv = context.watch<CoachProvider>();
-    if (coachProv.prefilledMessage != null) {
-      _tabController.index = 1;
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _SuggestionsScreenState extends State<SuggestionsScreen> {
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cs = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 0,
-        title: null,
-        actions: const [],
-        bottom: TabBar(
-          controller: _tabController,
-          onTap: (index) {
-            _tabController.animateTo(index, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
-          },
-          tabs: [
-            Tab(text: context.tr('Günlük Tarifler')),
-            Tab(text: context.tr('Beslenme Koçu')),
-          ],
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-          indicatorWeight: 3,
-        ),
-      ),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragEnd: (details) {
-          final velocity = details.primaryVelocity ?? 0;
-          if (velocity > 300) {
-            // Right swipe
-            if (_tabController.index == 0) {
-              widget.onNavigateBack?.call();
-            } else {
-              _tabController.animateTo(0, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
-            }
-          } else if (velocity < -300) {
-            // Left swipe
-            if (_tabController.index == _tabController.length - 1) {
-              widget.onNavigateForward?.call();
-            } else {
-              _tabController.animateTo(1, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad);
-            }
-          }
-        },
-        child: TabBarView(
-          controller: _tabController,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _buildRecipesTab(context, cs, isDark),
-            const CoachScreen(isEmbedded: true),
-          ],
-        ),
-      ),
-    );
+    return const CoachScreen(isEmbedded: false);
   }
 
   Widget _buildRecipesTab(BuildContext context, ColorScheme cs, bool isDark) {
@@ -1171,7 +1090,7 @@ class _SuggestionsScreenState extends State<SuggestionsScreen> with SingleTicker
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => _tabController.animateTo(1, duration: const Duration(milliseconds: 150), curve: Curves.easeOutQuad),
+            onPressed: () {},
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF0969DA),
