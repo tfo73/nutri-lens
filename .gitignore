@@ -47,4 +47,6 @@ app.*.map.json
 # Keystore and keys
 android/key.properties
 *.jks
-
+# AI / IDE Agent folders
+.claude/
+.gemini/
