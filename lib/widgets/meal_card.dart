@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/food_entry.dart';
 import '../models/nutrition_data.dart';
+import 'food_entry_detail_sheet.dart';
 
 class MealCard extends StatelessWidget {
   final String mealName;
@@ -206,7 +207,13 @@ class MealCard extends StatelessWidget {
             ),
         ],
       ),
-      onTap: onEntryTap != null ? () => onEntryTap!(entry) : null,
+      onTap: () {
+        if (onEntryTap != null) {
+          onEntryTap!(entry);
+        } else {
+          FoodEntryDetailSheet.show(context, entry: entry);
+        }
+      },
     );
   }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -24,13 +25,14 @@ class CoachScreen extends StatefulWidget {
   Future<void> showHistoryExternal(BuildContext context) async {
     final coachProv = context.read<CoachProvider>();
     final history = coachProv.history;
-    
+
     if (history.isEmpty) {
       if (context.mounted) {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text(context.tr('Geçmiş Yok')),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: Text(context.tr('Geçmiş Yok'), style: const TextStyle(fontWeight: FontWeight.bold)),
             content: Text(context.tr('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.')),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Tamam'))),
@@ -52,52 +54,58 @@ class CoachScreen extends StatefulWidget {
           return StatefulBuilder(
             builder: (ctx, setSheetState) {
               return DraggableScrollableSheet(
-                initialChildSize: 0.7,
+                initialChildSize: 0.75,
                 minChildSize: 0.4,
                 maxChildSize: 0.95,
                 expand: false,
                 builder: (sheetCtx, ctrl) => Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF161B22) : Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   ),
                   child: Column(
                     children: [
+                      // iOS Drag Handle Bar
                       Container(
-                        width: 40, height: 4,
-                        margin: const EdgeInsets.only(top: 12, bottom: 8),
+                        width: 36, height: 5,
+                        margin: const EdgeInsets.only(top: 10, bottom: 10),
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
+                          color: isDark ? Colors.white24 : Colors.black26,
+                          borderRadius: BorderRadius.circular(2.5),
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                         child: Row(
                           children: [
-                            const Expanded(
-                              child: Text('Geçmiş Konuşmalar',
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            Expanded(
+                              child: Text(
+                                context.tr('Geçmiş Konuşmalar'),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: -0.4),
+                              ),
                             ),
                             if (selectedDate != null)
-                              TextButton(
-                                onPressed: () => setSheetState(() => selectedDate = null),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  minimumSize: Size.zero,
-                                ),
-                                child: Text(
-                                  '${selectedDate!.day}.${selectedDate!.month}.${selectedDate!.year} ✕',
-                                  style: const TextStyle(fontSize: 12),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: TextButton(
+                                  onPressed: () => setSheetState(() => selectedDate = null),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    minimumSize: Size.zero,
+                                  ),
+                                  child: Text(
+                                    '${selectedDate!.day}.${selectedDate!.month}.${selectedDate!.year} ✕',
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF007AFF), fontWeight: FontWeight.w600),
+                                  ),
                                 ),
                               ),
                             IconButton(
                               icon: Icon(
                                 Icons.calendar_today_rounded,
                                 size: 20,
-                                color: selectedDate != null
-                                    ? Theme.of(context).colorScheme.primary
-                                    : null,
+                                color: selectedDate != null ? const Color(0xFF007AFF) : (isDark ? Colors.white60 : Colors.black54),
                               ),
                               onPressed: () async {
                                 final now = DateTime.now();
@@ -115,7 +123,7 @@ class CoachScreen extends StatefulWidget {
                           ],
                         ),
                       ),
-                      const Divider(height: 1),
+                      Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
                       Expanded(
                         child: Consumer<CoachProvider>(
                           builder: (ctx2, coach, _) {
@@ -149,14 +157,16 @@ class CoachScreen extends StatefulWidget {
                                   selectedDate != null
                                       ? context.tr('Bu tarihte konuşma yok')
                                       : context.tr('Geçmiş bulunamadı'),
-                                  style: const TextStyle(color: Colors.grey),
+                                  style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 15),
                                 ),
                               );
                             }
 
-                            return ListView.builder(
+                            return ListView.separated(
                               controller: ctrl,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               itemCount: sortedHistory.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
                               itemBuilder: (_, i) {
                                 final session = sortedHistory[i];
                                 final archivedAt = DateTime.tryParse(session.archivedAt) ?? DateTime.now();
@@ -170,16 +180,22 @@ class CoachScreen extends StatefulWidget {
                                   key: ValueKey('${session.archivedAt}-$isFavorite'),
                                   direction: DismissDirection.horizontal,
                                   background: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade700,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
                                     alignment: Alignment.centerLeft,
                                     padding: const EdgeInsets.only(left: 20),
-                                    color: Colors.amber,
-                                    child: Icon(isFavorite ? Icons.star_border : Icons.star, color: Colors.white),
+                                    child: Icon(isFavorite ? Icons.star_border_rounded : Icons.star_rounded, color: Colors.white),
                                   ),
                                   secondaryBackground: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFF3B30),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
                                     alignment: Alignment.centerRight,
                                     padding: const EdgeInsets.only(right: 20),
-                                    color: Colors.red,
-                                    child: const Icon(Icons.delete_outline, color: Colors.white),
+                                    child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
                                   ),
                                   confirmDismiss: (direction) async {
                                     if (direction == DismissDirection.startToEnd) {
@@ -191,22 +207,64 @@ class CoachScreen extends StatefulWidget {
                                   onDismissed: (_) async {
                                     coach.deleteSession(session.archivedAt);
                                   },
-                                  child: ListTile(
-                                    leading: Icon(isFavorite ? Icons.star : Icons.chat_bubble_outline,
-                                        color: isFavorite ? Colors.amber : null),
-                                    title: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
-                                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    subtitle: Text('$preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    trailing: Text('${msgs.length} ${context.tr('mesaj')}',
-                                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-                                    onTap: () {
-                                      _showConversationDetailExternal(context, session);
-                                    },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: isFavorite
+                                              ? Colors.amber.withValues(alpha: 0.15)
+                                              : const Color(0xFF007AFF).withValues(alpha: 0.12),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          isFavorite ? Icons.star_rounded : Icons.chat_bubble_outline_rounded,
+                                          color: isFavorite ? Colors.amber.shade700 : const Color(0xFF007AFF),
+                                          size: 20,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        '${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                      ),
+                                      subtitle: Text(
+                                        '$preview…',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 13),
+                                      ),
+                                      trailing: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          '${msgs.length} ${context.tr('mesaj')}',
+                                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        _showConversationDetailExternal(context, session);
+                                      },
+                                    ),
                                   ),
                                 );
                               },
                             );
-                          }
+                          },
                         ),
                       ),
                     ],
@@ -235,18 +293,28 @@ class CoachScreen extends StatefulWidget {
         expand: false,
         builder: (ctx, dCtrl) => Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF161B22) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 8), decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
-              Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
-              const Divider(height: 1),
+              Container(
+                width: 36, height: 5,
+                margin: const EdgeInsets.only(top: 10, bottom: 10),
+                decoration: BoxDecoration(color: isDark ? Colors.white24 : Colors.black26, borderRadius: BorderRadius.circular(2.5)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  '${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: -0.4),
+                ),
+              ),
+              Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
               Expanded(
                 child: ListView.builder(
                   controller: dCtrl,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: msgs.length,
                   itemBuilder: (_, i) {
                     final m = msgs[i];
@@ -255,16 +323,35 @@ class CoachScreen extends StatefulWidget {
                     return Align(
                       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 3),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(ctx).size.width * 0.75),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(ctx).size.width * 0.78),
                         decoration: BoxDecoration(
                           color: isUser
-                              ? Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.15)
-                              : Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
+                              ? const Color(0xFF007AFF)
+                              : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(20),
+                            topRight: const Radius.circular(20),
+                            bottomLeft: Radius.circular(isUser ? 20 : 4),
+                            bottomRight: Radius.circular(isUser ? 4 : 20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
-                        child: RichText(text: TextSpan(children: _parseMarkdownSpans(content, Theme.of(ctx).colorScheme.onSurface))),
+                        child: RichText(
+                          text: TextSpan(
+                            children: _parseMarkdownSpans(
+                              content,
+                              isUser ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                            ),
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -293,7 +380,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _currentQuestions = _buildDynamicQuestions(context);
     _symptomQuestions = _buildSymptomQuestions(context);
-    // Start at the bottom
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(force: true));
   }
 
@@ -333,12 +419,13 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   Future<void> _showHistory(BuildContext context) async {
     final coachProv = context.read<CoachProvider>();
     final history = coachProv.history;
-    
+
     if (history.isEmpty) {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(context.tr('Geçmiş Yok')),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Text(context.tr('Geçmiş Yok'), style: const TextStyle(fontWeight: FontWeight.bold)),
           content: Text(context.tr('Henüz kaydedilmiş bir konuşma geçmişiniz bulunmuyor.')),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Tamam'))),
@@ -347,7 +434,7 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       );
       return;
     }
-    
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -355,31 +442,33 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       backgroundColor: Colors.transparent,
       builder: (_) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.7,
+          initialChildSize: 0.75,
           minChildSize: 0.4,
           maxChildSize: 0.95,
           expand: false,
           builder: (ctx, ctrl) => Container(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF161B22) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               children: [
                 Container(
-                  width: 40, height: 4,
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 36, height: 5,
+                  margin: const EdgeInsets.only(top: 10, bottom: 10),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+                    color: isDark ? Colors.white24 : Colors.black26,
+                    borderRadius: BorderRadius.circular(2.5),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('Geçmiş Konuşmalar',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    context.tr('Geçmiş Konuşmalar'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: -0.4),
+                  ),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
                 Expanded(
                   child: Consumer<CoachProvider>(
                     builder: (ctx, coach, _) {
@@ -397,9 +486,11 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
                         }
                       });
 
-                      return ListView.builder(
+                      return ListView.separated(
                         controller: ctrl,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: sortedHistory.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (_, i) {
                           final session = sortedHistory[i];
                           final archivedAt = DateTime.tryParse(session.archivedAt) ?? DateTime.now();
@@ -408,41 +499,89 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
                           final preview = msgs.isNotEmpty
                               ? msgs.first.content.substring(0, msgs.first.content.length.clamp(0, 60))
                               : '';
-                          
+
                           return Dismissible(
                             key: ValueKey('${session.archivedAt}-$isFavorite'),
                             direction: DismissDirection.horizontal,
                             background: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade700,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(left: 20),
-                              color: Colors.amber,
-                              child: Icon(isFavorite ? Icons.star_border : Icons.star, color: Colors.white),
+                              child: Icon(isFavorite ? Icons.star_border_rounded : Icons.star_rounded, color: Colors.white),
                             ),
                             secondaryBackground: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF3B30),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
-                              color: Colors.red,
-                              child: const Icon(Icons.delete_outline, color: Colors.white),
+                              child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
                             ),
                             confirmDismiss: (direction) async {
                               if (direction == DismissDirection.startToEnd) {
                                 coach.toggleFavorite(session.archivedAt);
-                                return false; 
+                                return false;
                               }
-                              return true; // Delete
+                              return true;
                             },
                             onDismissed: (_) async {
                               coach.deleteSession(session.archivedAt);
                             },
-                            child: ListTile(
-                              leading: Icon(isFavorite ? Icons.star : Icons.chat_bubble_outline, 
-                                  color: isFavorite ? Colors.amber : null),
-                              title: Text('${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
-                                  style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text('$preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
-                              trailing: Text('${msgs.length} ${context.tr('mesaj')}',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-                              onTap: () => _showConversationDetail(context, session),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: isFavorite
+                                        ? Colors.amber.withValues(alpha: 0.15)
+                                        : const Color(0xFF007AFF).withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isFavorite ? Icons.star_rounded : Icons.chat_bubble_outline_rounded,
+                                    color: isFavorite ? Colors.amber.shade700 : const Color(0xFF007AFF),
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  '${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                                subtitle: Text(
+                                  '$preview…',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 13),
+                                ),
+                                trailing: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${msgs.length} ${context.tr('mesaj')}',
+                                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                onTap: () => _showConversationDetail(context, session),
+                              ),
                             ),
                           );
                         },
@@ -473,31 +612,28 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         expand: false,
         builder: (ctx, ctrl) => Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF161B22) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
               Container(
-                width: 40, height: 4,
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                width: 36, height: 5,
+                margin: const EdgeInsets.only(top: 10, bottom: 10),
+                decoration: BoxDecoration(color: isDark ? Colors.white24 : Colors.black26, borderRadius: BorderRadius.circular(2.5)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   '${archivedAt.day}.${archivedAt.month}.${archivedAt.year}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: -0.4),
                 ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
               Expanded(
                 child: ListView.builder(
                   controller: ctrl,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: msgs.length,
                   itemBuilder: (_, i) {
                     final m = msgs[i];
@@ -506,16 +642,35 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
                     return Align(
                       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 3),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(ctx).size.width * 0.75),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(ctx).size.width * 0.78),
                         decoration: BoxDecoration(
                           color: isUser
-                              ? Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.15)
-                              : Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
+                              ? const Color(0xFF007AFF)
+                              : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(20),
+                            topRight: const Radius.circular(20),
+                            bottomLeft: Radius.circular(isUser ? 20 : 4),
+                            bottomRight: Radius.circular(isUser ? 4 : 20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
-                        child: RichText(text: TextSpan(children: _parseMarkdownSpans(content, Theme.of(ctx).colorScheme.onSurface))),
+                        child: RichText(
+                          text: TextSpan(
+                            children: _parseMarkdownSpans(
+                              content,
+                              isUser ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                            ),
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -562,7 +717,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
 
     final coachProv = context.read<CoachProvider>();
 
-    // Show displayText (short version) in bubble, but send 'text' (long version) to AI
     final userMsg = CoachMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       content: (displayText ?? text).trim(),
@@ -579,7 +733,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     try {
       final systemPrompt = _buildSystemPrompt(context);
 
-      // Build conversation history (last 10 messages)
       final historyMsgs = coachProv.currentMessages.length > 10
           ? coachProv.currentMessages.sublist(coachProv.currentMessages.length - 10)
           : List<CoachMessage>.from(coachProv.currentMessages);
@@ -602,7 +755,7 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
           'system': systemPrompt,
           'messages': [
             ...apiMessages.sublist(0, apiMessages.length - 1),
-            {'role': 'user', 'content': text} // Send the LONG version to AI
+            {'role': 'user', 'content': text}
           ],
         }),
       );
@@ -628,7 +781,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         setState(() {
           _isTyping = false;
         });
-        // Double scroll to ensure we catch the new message height after rebuild
         _scrollToBottom(force: true);
         Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(force: true));
       } else {
@@ -657,83 +809,85 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         final pos = _scrollController.position;
-        // Only auto-scroll if near bottom or forced
         if (force || (pos.maxScrollExtent - pos.pixels < 120)) {
           _scrollController.animateTo(
             pos.maxScrollExtent,
             duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
+            curve: Curves.easeOutCubic,
           );
         }
       }
     });
   }
 
-  Widget _buildChatBody(BuildContext context) {
-    final coach = context.watch<CoachProvider>();
-    // Set to 0 for a seamless connection with the tab bar
-    final bottomPadding = widget.isEmbedded ? (MediaQuery.of(context).padding.bottom + 0) : 0.0;
-    
-    return WaveBackground(
-      child: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: bottomPadding),
-            child: Column(
-              children: [
-                Expanded(
-                  child: coach.currentMessages.isEmpty
-                      ? _buildEmptyState(context)
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          itemCount: coach.currentMessages.length + (_isTyping ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == coach.currentMessages.length && _isTyping) {
-                              return _buildTypingIndicator(context);
-                            }
-                            return _buildMessageBubble(context, coach.currentMessages[index]);
-                          },
-                        ),
-                ),
-                if (!widget.isDialog)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12, bottom: 4),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF1C2128)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.history, size: 20),
-                          color: const Color(0xFF58A6FF),
-                          tooltip: context.tr('Geçmiş'),
-                          onPressed: () => _showHistory(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                _buildQuickQuestions(context),
-                _buildInputArea(context),
-              ],
+  Widget _buildTopHeader(BuildContext context) {
+    if (!widget.isDialog) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.85)
+                : const Color(0xFFF2F2F7).withValues(alpha: 0.85),
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
+                width: 0.5,
+              ),
             ),
           ),
+          child: Row(
+            children: [
+              const Spacer(),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 19,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildChatBody(BuildContext context) {
+    final coach = context.watch<CoachProvider>();
+
+    return WaveBackground(
+      child: Column(
+        children: [
+          if (!widget.isEmbedded) _buildTopHeader(context),
+          Expanded(
+            child: coach.currentMessages.isEmpty
+                ? _buildEmptyState(context)
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: coach.currentMessages.length + (_isTyping ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == coach.currentMessages.length && _isTyping) {
+                        return _buildTypingIndicator(context);
+                      }
+                      return _buildMessageBubble(context, coach.currentMessages[index]);
+                    },
+                  ),
+          ),
+          _buildQuickQuestions(context),
+          _buildInputArea(context),
         ],
       ),
     );
@@ -741,82 +895,15 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     if (widget.isDialog) {
-      return Column(
-        children: [
-          // HIG title bar
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              border: Border(
-                bottom: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20)),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                  context.tr('Beslenme Koçu'),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF58A6FF),
-                        ),
-                      ),
-                      Text(
-                        'Kişisel asistanın',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.history,
-                      color: colorScheme.onSurfaceVariant),
-                  iconSize: 20,
-                  tooltip: context.tr('Geçmiş'),
-                  onPressed: () => _showHistory(context),
-                ),
-                IconButton(
-                  icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                  iconSize: 20,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: _buildChatBody(context),
           ),
-          Expanded(child: _buildChatBody(context)),
-        ],
+        ),
       );
     }
 
@@ -855,19 +942,16 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
 
     final questions = <String>[];
 
-    // 1. Sabah soruları (06:00 - 12:00)
     if (hour >= 6 && hour < 12) {
       questions.add(context.tr('🍳 Kahvaltı önerisi?'));
       questions.add(context.tr('🗓️ Bugün ne yemeliyim?'));
     }
 
-    // 2. Akşam/Gece soruları (19:00 - 06:00)
     if (hour >= 19 || hour < 6) {
       questions.add(context.tr('💤 Uyku dostu besinler?'));
       questions.add(context.tr('📊 Günümü değerlendir'));
     }
 
-    // 3. Koşullu sorular
     if (nutrition.todayLog.exercises.isNotEmpty) {
       questions.add(context.tr('🏃‍♂️ Spor sonrası ne yemeliyim?'));
     }
@@ -892,7 +976,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       }
     }
 
-    // Her zaman olan genel sorular
     questions.add(context.tr('🍎 Sağlıklı atıştırmalık?'));
     questions.add(context.tr('⚡ Metabolizma hızlandırma?'));
     questions.add(context.tr('🥗 Pratik öğle yemeği?'));
@@ -902,63 +985,75 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 88,
-            height: 88,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 44)),
-          ),
-          const SizedBox(height: 24),
-          FittedBox(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Color(0xFF58A6FF), Color(0xFF79C0FF)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ).createShader(bounds),
-                  child: Text(
-                    context.tr('Merhaba!'),
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF007AFF), Color(0xFF58A6FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  context.tr('Ben senin beslenme koçunum.'),
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
-                ),
-              ],
+                ],
+              ),
+              child: Transform.scale(
+                scaleX: -1,
+                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 48),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
+            const SizedBox(height: 24),
+            Text(
+              context.tr('Merhaba!'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 26,
+                letterSpacing: -0.5,
+                color: Color(0xFF007AFF),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              context.tr('Ben senin dijital ikizinim.'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                letterSpacing: -0.4,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
               context.tr('Profil bilgilerine ve bugünkü verilerine göre sana özel öneriler sunabilirim. Nereden başlayalım?'),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: isDark ? Colors.white60 : Colors.black54,
+                fontSize: 14,
+                height: 1.4,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTypingIndicator(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -966,12 +1061,24 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           _buildAiAvatar(context),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(20),
+              color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const _TypingStatusText(),
           ),
@@ -981,7 +1088,7 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMessageBubble(BuildContext context, CoachMessage message) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isUser = message.isUser;
     final profile = context.read<ProfileProvider>().activeProfile;
 
@@ -992,14 +1099,14 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isUser) _buildAiAvatar(context),
-          if (!isUser) const SizedBox(width: 8),
+          if (!isUser) const SizedBox(width: 10),
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isUser
-                    ? colorScheme.primary
-                    : colorScheme.surfaceContainerHighest,
+                    ? const Color(0xFF007AFF)
+                    : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -1008,9 +1115,9 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -1018,13 +1125,13 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
                 text: TextSpan(
                   children: _parseMarkdown(
                     message.content,
-                    isUser ? colorScheme.onPrimary : colorScheme.onSurface,
+                    isUser ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.87)),
                   ),
                 ),
               ),
             ),
           ),
-          if (isUser) const SizedBox(width: 8),
+          if (isUser) const SizedBox(width: 10),
           if (isUser) _buildUserAvatar(context, profile),
         ],
       ),
@@ -1032,36 +1139,44 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildAiAvatar(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
-      width: 36,
-      height: 36,
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+          colors: [Color(0xFF007AFF), Color(0xFF58A6FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Transform.scale(scaleX: -1, child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20)),
+      child: Transform.scale(
+        scaleX: -1,
+        child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 19),
+      ),
     );
   }
 
   Widget _buildUserAvatar(BuildContext context, UserProfile? profile) {
-    final cs = Theme.of(context).colorScheme;
     if (profile?.imagePath != null && File(profile!.imagePath!).existsSync()) {
       return CircleAvatar(
-        radius: 16,
+        radius: 17,
         backgroundImage: FileImage(File(profile.imagePath!)),
       );
     }
     return CircleAvatar(
-      radius: 16,
-      backgroundColor: const Color(0xFF58A6FF).withValues(alpha: 0.2), // Same as profile screen
+      radius: 17,
+      backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.15),
       child: Text(
         profile?.name.isNotEmpty == true ? profile!.name[0].toUpperCase() : 'U',
-        style: const TextStyle(color: Color(0xFF58A6FF), fontSize: 12, fontWeight: FontWeight.bold),
+        style: const TextStyle(color: Color(0xFF007AFF), fontSize: 13, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -1076,77 +1191,99 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     ];
     if (allItems.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      height: 48,
+      height: 44,
       margin: const EdgeInsets.only(bottom: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: allItems.length,
         itemBuilder: (context, index) {
           final (isSymptom, itemIndex) = allItems[index];
           final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              label: Text(label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isSymptom
-                        ? (isDark ? const Color(0xFFFFCDD2) : const Color(0xFFC62828))
-                        : null,
-                    fontWeight: isSymptom ? FontWeight.w600 : FontWeight.normal,
-                  )),
-              onPressed: () {
-                final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
-                String prompt = label;
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: () {
+                  final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
+                  String prompt = label;
 
-                // Symptom-specific prompt
-                if (isSymptom) {
-                  final symptomText = label.replaceAll('🚨 ', '').replaceAll(context.tr('🚨 {} ile beslenme bağlantısı?').replaceFirst('{}', ''), '');
-                  prompt = context.tr('prompt_symptom').replaceFirst('{symptom}', symptomText);
-                } else if (label.contains(context.tr('🍳 Kahvaltı önerisi?').replaceAll('🍳 ', ''))) {
-                  prompt = context.tr('prompt_breakfast');
-                } else if (label.contains(context.tr('Akşam Yemeği').replaceAll(' Yemeği', '')) || label.contains('Akşam')) { // Fallback for 'Akşam' logic
-                  prompt = context.tr('prompt_dinner');
-                } else if (label.contains('💧') || label.contains('Su')) {
-                  prompt = context.tr('prompt_water');
-                } else if (label.contains('🏃‍♂️') || label.contains('Spor') || label.contains('Adım')) {
-                  prompt = context.tr('prompt_steps');
-                } else if (label.contains('🍎') || label.contains('atıştırmalık')) {
-                  prompt = context.tr('prompt_snack');
-                } else if (label.contains('⚡') || label.contains('Enerjim')) {
-                  prompt = context.tr('prompt_energy');
-                } else if (label.contains('📊') || label.contains('değerlendir') || label.contains('Günümü')) {
-                  prompt = context.tr('prompt_eval_day');
-                } else if (label.contains('egzersiz')) { // extra fallback
-                  prompt = context.tr('prompt_post_workout');
-                } else if (label.contains('Metabolizma')) {
-                  prompt = context.tr('prompt_metabolism');
-                } else if (label.contains('💤') || label.contains('Uyku')) {
-                  prompt = context.tr('prompt_sleep');
-                } else if (label.contains('⚖️') || label.contains('Kalori')) {
-                  prompt = context.tr('prompt_calorie');
-                } else if (label.contains('🍗') || label.contains('Protein')) {
-                  prompt = context.tr('prompt_protein');
-                } else if (label.contains('🥖') || label.contains('Karbonhidrat')) {
-                  prompt = context.tr('prompt_carb');
-                } else if (label.contains('🥑') || label.contains('yağlar')) {
-                  prompt = context.tr('prompt_fat');
-                } else if (label.contains('🥗') || label.contains('Öğle')) {
-                  prompt = context.tr('prompt_lunch');
-                }
-                
-                _sendMessage(prompt);
-              },
-              backgroundColor: isSymptom
-                  ? (isDark ? const Color(0xFF5C1A1A) : const Color(0xFFFFCDD2))
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              side: isSymptom
-                  ? BorderSide(color: isDark ? const Color(0xFFEF9A9A) : const Color(0xFFEF5350), width: 0.8)
-                  : BorderSide.none,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
+                  if (isSymptom) {
+                    final symptomText = label.replaceAll('🚨 ', '').replaceAll(context.tr('🚨 {} ile beslenme bağlantısı?').replaceFirst('{}', ''), '');
+                    prompt = context.tr('prompt_symptom').replaceFirst('{symptom}', symptomText);
+                  } else if (label.contains(context.tr('🍳 Kahvaltı önerisi?').replaceAll('🍳 ', ''))) {
+                    prompt = context.tr('prompt_breakfast');
+                  } else if (label.contains('Akşam')) {
+                    prompt = context.tr('prompt_dinner');
+                  } else if (label.contains('💧') || label.contains('Su')) {
+                    prompt = context.tr('prompt_water');
+                  } else if (label.contains('🏃‍♂️') || label.contains('Spor') || label.contains('Adım')) {
+                    prompt = context.tr('prompt_steps');
+                  } else if (label.contains('🍎') || label.contains('atıştırmalık')) {
+                    prompt = context.tr('prompt_snack');
+                  } else if (label.contains('⚡') || label.contains('Enerjim')) {
+                    prompt = context.tr('prompt_energy');
+                  } else if (label.contains('📊') || label.contains('değerlendir') || label.contains('Günümü')) {
+                    prompt = context.tr('prompt_eval_day');
+                  } else if (label.contains('egzersiz')) {
+                    prompt = context.tr('prompt_post_workout');
+                  } else if (label.contains('Metabolizma')) {
+                    prompt = context.tr('prompt_metabolism');
+                  } else if (label.contains('💤') || label.contains('Uyku')) {
+                    prompt = context.tr('prompt_sleep');
+                  } else if (label.contains('⚖️') || label.contains('Kalori')) {
+                    prompt = context.tr('prompt_calorie');
+                  } else if (label.contains('🍗') || label.contains('Protein')) {
+                    prompt = context.tr('prompt_protein');
+                  } else if (label.contains('🥖') || label.contains('Karbonhidrat')) {
+                    prompt = context.tr('prompt_carb');
+                  } else if (label.contains('🥑') || label.contains('yağlar')) {
+                    prompt = context.tr('prompt_fat');
+                  } else if (label.contains('🥗') || label.contains('Öğle')) {
+                    prompt = context.tr('prompt_lunch');
+                  }
+
+                  _sendMessage(prompt);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSymptom
+                        ? (isDark ? const Color(0xFF5C1A1A) : const Color(0xFFFFCDD2))
+                        : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: isSymptom
+                          ? (isDark ? const Color(0xFFEF9A9A) : const Color(0xFFEF5350))
+                          : (isDark ? Colors.white12 : Colors.black12),
+                      width: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSymptom ? FontWeight.w600 : FontWeight.w500,
+                        color: isSymptom
+                            ? (isDark ? const Color(0xFFFFCDD2) : const Color(0xFFC62828))
+                            : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           );
         },
@@ -1155,74 +1292,134 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildInputArea(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final safeAreaBottom = MediaQuery.of(context).padding.bottom;
-    final bottomPadding = widget.isEmbedded ? 16.0 : (44.0 + safeAreaBottom);
+    final bottomPadding = widget.isEmbedded ? 12.0 : (8.0 + safeAreaBottom);
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: context.tr('Koçuna bir şey sor...'),
-                hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
-                filled: true,
-                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(16, 10, 16, bottomPadding),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.85)
+                : const Color(0xFFF2F2F7).withValues(alpha: 0.85),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+                      width: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _textController,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: context.tr('Dijital ikizine bir şey sor...'),
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        fontSize: 15,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      border: InputBorder.none,
+                    ),
+                    onSubmitted: _sendMessage,
+                  ),
                 ),
               ),
-              onSubmitted: _sendMessage,
-            ),
+              const SizedBox(width: 10),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _textController,
+                builder: (context, value, child) {
+                  final hasText = value.text.trim().isNotEmpty;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: hasText ? const Color(0xFF007AFF) : (isDark ? Colors.white12 : Colors.black12),
+                      shape: BoxShape.circle,
+                      boxShadow: hasText
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.arrow_upward_rounded, size: 20),
+                      color: hasText ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                      onPressed: hasText ? () => _sendMessage(_textController.text) : null,
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_upward),
-              color: colorScheme.onPrimary,
-              onPressed: () => _sendMessage(_textController.text),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ─── Markdown parser (top-level so history sheet can use it) ─────────────────
+// ─── Markdown parser ─────────────────────────────────────────────────────────
 
-List<TextSpan> _parseMarkdownSpans(String text, Color baseColor, {double fontSize = 13}) {
+List<TextSpan> _parseMarkdownSpans(String text, Color baseColor, {double fontSize = 14}) {
   final spans = <TextSpan>[];
   final regex = RegExp(r'\*\*(.*?)\*\*');
   int lastEnd = 0;
   for (final m in regex.allMatches(text)) {
     if (m.start > lastEnd) {
-      spans.add(TextSpan(text: text.substring(lastEnd, m.start), style: TextStyle(color: baseColor, fontSize: fontSize)));
+      spans.add(TextSpan(
+        text: text.substring(lastEnd, m.start),
+        style: TextStyle(color: baseColor, fontSize: fontSize, height: 1.45),
+      ));
     }
-    spans.add(TextSpan(text: m.group(1), style: TextStyle(color: baseColor, fontSize: fontSize, fontWeight: FontWeight.w900)));
+    spans.add(TextSpan(
+      text: m.group(1),
+      style: TextStyle(color: baseColor, fontSize: fontSize, fontWeight: FontWeight.bold, height: 1.45),
+    ));
     lastEnd = m.end;
   }
   if (lastEnd < text.length) {
-    spans.add(TextSpan(text: text.substring(lastEnd), style: TextStyle(color: baseColor, fontSize: fontSize)));
+    spans.add(TextSpan(
+      text: text.substring(lastEnd),
+      style: TextStyle(color: baseColor, fontSize: fontSize, height: 1.45),
+    ));
   }
   if (spans.isEmpty) {
-    spans.add(TextSpan(text: text, style: TextStyle(color: baseColor, fontSize: fontSize)));
+    spans.add(TextSpan(
+      text: text,
+      style: TextStyle(color: baseColor, fontSize: fontSize, height: 1.45),
+    ));
   }
   return spans;
 }
@@ -1264,28 +1461,32 @@ class _TypingStatusTextState extends State<_TypingStatusText> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 400),
           transitionBuilder: (child, anim) => FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeInOut),
             child: SlideTransition(
               position: Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
               child: child,
             ),
           ),
           child: Text(
             _messages[_index],
             key: ValueKey(_index),
-            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: cs.onSurface),
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+            ),
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         const _AnimatedDots(),
       ],
     );
@@ -1329,7 +1530,8 @@ class _AnimatedDotsState extends State<_AnimatedDots> with TickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? Colors.white70 : Colors.black87;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (i) => Padding(

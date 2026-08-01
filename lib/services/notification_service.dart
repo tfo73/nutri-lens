@@ -321,6 +321,34 @@ class NotificationService {
     }
   }
 
+  static Future<void> scheduleSupplementDoseNotification({
+    required int id,
+    required String supplementName,
+    required int hour,
+    required int minute,
+  }) async {
+    await _scheduleDailyNotification(
+      id: id,
+      channelId: 'supplement_reminders',
+      channelName: 'Takviye Hatırlatıcıları',
+      title: 'Takviye Zamanı! 💊',
+      body: '$supplementName takviyenizi alma vaktiniz geldi.',
+      hour: hour,
+      minute: minute,
+    );
+  }
+
+  static Future<void> cancelSupplementNotifications(String supplementId) async {
+    try {
+      final baseId = supplementId.hashCode.abs() % 100000;
+      for (int i = 0; i < 8; i++) {
+        await _plugin.cancel(900000 + baseId + i);
+      }
+    } catch (e) {
+      debugPrint('Takviye bildirim iptal hatası: $e');
+    }
+  }
+
   static Future<void> _scheduleDailyNotification({
     required int id,
     required String channelId,

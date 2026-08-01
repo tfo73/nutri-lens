@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -22,12 +23,15 @@ import '../providers/nutrition_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/wellness_provider.dart';
 import '../providers/coach_provider.dart';
+import '../widgets/food_entry_detail_sheet.dart';
 import '../providers/fasting_provider.dart';
 import '../services/device_id_service.dart';
 import '../services/health_service.dart';
 import '../services/saved_foods_service.dart';
 import '../services/sync_service.dart';
 import '../widgets/animated_widgets.dart';
+import '../models/supplement_model.dart';
+import '../widgets/supplement_management_sheet.dart';
 import 'wc_tracking_screen.dart';
 import 'manual_entry_screen.dart';
 
@@ -52,6 +56,7 @@ bool isDateEditable(DateTime date) {
 
 enum MicroCategory {
   all('Tümü', Color(0xFFD97706)),
+  starred('Yıldızlılar', Color(0xFFFFB800)),
   vitamin('Vitaminler', Color(0xFFF59E0B)),
   mineral('Mineraller', Color(0xFF06B6D4)),
   fat('Yağlar', Color(0xFF10B981)),
@@ -358,20 +363,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _WaterAddSheet(
-        onAdd: (ml) {
-          if (isRemove) {
-            provider.updateWater(
-              (selectedLog.waterIntakeMl - ml).clamp(0.0, double.infinity),
-              date: _selectedDate,
-              deltaAmount: -ml,
-            );
-          } else {
-            provider.updateWater(
-              selectedLog.waterIntakeMl + ml,
-              date: _selectedDate,
-              deltaAmount: ml,
-            );
-          }
+        onAdd: (signedMl) {
+          provider.updateWater(
+            (selectedLog.waterIntakeMl + signedMl).clamp(0.0, double.infinity),
+            date: _selectedDate,
+            deltaAmount: signedMl,
+          );
         },
         isRemove: isRemove,
         currentWaterMl: selectedLog.waterIntakeMl,
@@ -474,10 +471,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: Colors.transparent,
               shape: BoxShape.circle,
+              border: Border.all(color: color, width: 2.0),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: color, size: 26),
           ),
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
@@ -588,7 +586,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ROW 1: Su Takibi (flex: 2) & Mikro Besinler (flex: 3)
-                    IntrinsicHeight(
+                    SizedBox(
+                      height: 165,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -616,8 +615,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // ROW 2: Günlük Sağlık (flex: 3) & Takviye (flex: 2)
-                    IntrinsicHeight(
+                    // ROW 2: Günlük Sağlık (flex: 3) & Takviye (flex: 2) - SU TAKİBİ İLE EŞİT 165px YÜKSEKLİK
+                    SizedBox(
+                      height: 165,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -632,7 +632,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             flex: 2,
-                            child: _buildSupplementsCard(
+                            child: _buildSupplementBox(
                               context: context,
                               isDark: isDark,
                             ),
@@ -754,47 +754,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.9),
+            child: Builder(
+              builder: (context) {
+                final goal = context.read<ProfileProvider>().activeProfile?.calorieGoal ?? 2000.0;
+                final isOverLimit = consumedCal > goal;
+                final excessCal = (consumedCal - goal).round();
+                final isTr = AppLocalizations.of(context).isTurkish;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.9),
+                        ),
+                        children: isOverLimit
+                            ? [
+                                TextSpan(
+                                  text: '$consumedCal ',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(text: isTr ? 'kalori aldınız, ' : 'kcal consumed, '),
+                                TextSpan(
+                                  text: '$excessCal ',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(
+                                  text: isTr ? 'kalori fazlanız var!' : 'kcal over target!',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ]
+                            : [
+                                TextSpan(
+                                  text: '$consumedCal ',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(text: isTr ? 'kalori aldınız, ' : 'kcal consumed, '),
+                                TextSpan(
+                                  text: '$remainingCal ',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(text: isTr ? 'kalori daha yiyebilirsiniz!' : 'kcal remaining!'),
+                              ],
+                      ),
                     ),
-                    children: [
-                      TextSpan(
-                        text: '$consumedCal ',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: calorieProgress),
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOutCubic,
+                        builder: (ctx, animVal, child) {
+                          return LinearProgressIndicator(
+                            value: animVal,
+                            minHeight: 8,
+                            backgroundColor: isDark ? const Color(0xFF2B2F42) : Colors.grey.withValues(alpha: 0.2),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD97706)),
+                          );
+                        },
                       ),
-                      const TextSpan(text: 'kalori aldınız, '),
-                      TextSpan(
-                        text: '$remainingCal ',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const TextSpan(text: 'kalori daha yiyebilirsiniz!'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: calorieProgress),
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.easeOutCubic,
-                    builder: (ctx, animVal, child) {
-                      return LinearProgressIndicator(
-                        value: animVal,
-                        minHeight: 8,
-                        backgroundColor: isDark ? const Color(0xFF2B2F42) : Colors.grey.withValues(alpha: 0.2),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD97706)),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 14),
@@ -804,22 +829,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildMacroMorphItem(
-                label: 'KARBONHİDRAT',
-                percentTextVal: carbPct,
-                subtitle: carbSubtitle,
-                progress: carbProgress,
-                color: const Color(0xFFD97706),
-                darkBaseColor: const Color(0xFF4A2800),
-                collapseFactor: collapseFactor,
-                isDark: isDark,
-              ),
-              _buildMacroMorphItem(
                 label: 'PROTEİN',
                 percentTextVal: proteinPct,
                 subtitle: proteinSubtitle,
                 progress: proteinProgress,
                 color: const Color(0xFFE11D48),
                 darkBaseColor: const Color(0xFF4C0816),
+                collapseFactor: collapseFactor,
+                isDark: isDark,
+              ),
+              _buildMacroMorphItem(
+                label: 'KARBONHİDRAT',
+                percentTextVal: carbPct,
+                subtitle: carbSubtitle,
+                progress: carbProgress,
+                color: const Color(0xFFD97706),
+                darkBaseColor: const Color(0xFF4A2800),
                 collapseFactor: collapseFactor,
                 isDark: isDark,
               ),
@@ -1387,73 +1412,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Comprehensive list of all 46 calculable micronutrients
-  List<_MicroItemDef> _getListOfAllMicros(NutritionData t) {
+  List<_MicroItemDef> _getListOfAllMicros(NutritionData t, {Map<String, double>? supplementAdditions}) {
+    double getVal(String key, double baseVal) {
+      final extra = supplementAdditions?[key] ?? 0.0;
+      return baseVal + extra;
+    }
+
     return [
       // ── VİTAMİNLER (14) ──
-      _MicroItemDef(key: 'D-Vit', name: 'D Vitamini', code: 'D-Vit', current: t.vitaminD ?? 0, target: 15.0, unit: 'mcg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'C-Vit', name: 'C Vitamini', code: 'C-Vit', current: t.vitaminC ?? 0, target: 90.0, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B12', name: 'B12 Vitamini', code: 'B12', current: t.vitaminB12 ?? 0, target: 2.4, unit: 'mcg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'A-Vit', name: 'A Vitamini', code: 'A-Vit', current: t.vitaminA ?? 0, target: 900.0, unit: 'mcg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'E-Vit', name: 'E Vitamini', code: 'E-Vit', current: t.vitaminE ?? 0, target: 15.0, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'K-Vit', name: 'K Vitamini', code: 'K-Vit', current: t.vitaminK ?? 0, target: 120.0, unit: 'mcg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B1', name: 'B1 (Tiamin)', code: 'B1', current: t.thiamine ?? 0, target: 1.2, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B2', name: 'B2 (Riboflavin)', code: 'B2', current: t.riboflavin ?? 0, target: 1.3, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B3', name: 'B3 (Niasin)', code: 'B3', current: t.niacin ?? 0, target: 16.0, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B5', name: 'B5 (Pantotenik)', code: 'B5', current: t.pantothenic ?? 0, target: 5.0, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B6', name: 'B6 Vitamini', code: 'B6', current: t.vitaminB6 ?? 0, target: 1.7, unit: 'mg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B7', name: 'B7 (Biyotin)', code: 'B7', current: t.biotin ?? 0, target: 30.0, unit: 'mcg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'B9', name: 'B9 (Folat)', code: 'B9', current: t.folate ?? 0, target: 400.0, unit: 'mcg', category: MicroCategory.vitamin),
-      _MicroItemDef(key: 'Kolin', name: 'Kolin', code: 'Kolin', current: t.choline ?? 0, target: 550.0, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'D-Vit', name: 'D Vitamini', code: 'D-Vit', current: getVal('D-Vit', t.vitaminD ?? 0), target: 15.0, unit: 'mcg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'C-Vit', name: 'C Vitamini', code: 'C-Vit', current: getVal('C-Vit', t.vitaminC ?? 0), target: 90.0, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B12', name: 'B12 Vitamini', code: 'B12', current: getVal('B12', t.vitaminB12 ?? 0), target: 2.4, unit: 'mcg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'A-Vit', name: 'A Vitamini', code: 'A-Vit', current: getVal('A-Vit', t.vitaminA ?? 0), target: 900.0, unit: 'mcg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'E-Vit', name: 'E Vitamini', code: 'E-Vit', current: getVal('E-Vit', t.vitaminE ?? 0), target: 15.0, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'K-Vit', name: 'K Vitamini', code: 'K-Vit', current: getVal('K-Vit', t.vitaminK ?? 0), target: 120.0, unit: 'mcg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B1', name: 'B1 (Tiamin)', code: 'B1', current: getVal('B1', t.thiamine ?? 0), target: 1.2, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B2', name: 'B2 (Riboflavin)', code: 'B2', current: getVal('B2', t.riboflavin ?? 0), target: 1.3, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B3', name: 'B3 (Niasin)', code: 'B3', current: getVal('B3', t.niacin ?? 0), target: 16.0, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B5', name: 'B5 (Pantotenik)', code: 'B5', current: getVal('B5', t.pantothenic ?? 0), target: 5.0, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B6', name: 'B6 Vitamini', code: 'B6', current: getVal('B6', t.vitaminB6 ?? 0), target: 1.7, unit: 'mg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B7', name: 'B7 (Biyotin)', code: 'B7', current: getVal('B7', t.biotin ?? 0), target: 30.0, unit: 'mcg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'B9', name: 'B9 (Folat)', code: 'B9', current: getVal('B9', t.folate ?? 0), target: 400.0, unit: 'mcg', category: MicroCategory.vitamin),
+      _MicroItemDef(key: 'Kolin', name: 'Kolin', code: 'Kolin', current: getVal('Kolin', t.choline ?? 0), target: 550.0, unit: 'mg', category: MicroCategory.vitamin),
 
       // ── MİNERALLER (10) ──
-      _MicroItemDef(key: 'Demir', name: 'Demir', code: 'Demir', current: t.iron ?? 0, target: 18.0, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Magnezyum', name: 'Magnezyum', code: 'Mg', current: t.magnesium ?? 0, target: 400.0, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Kalsiyum', name: 'Kalsiyum', code: 'Ca', current: t.calcium ?? 0, target: 1000.0, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Potasyum', name: 'Potasyum', code: 'K+', current: t.potassium ?? 0, target: 4700.0, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Sodyum', name: 'Sodyum', code: 'Na', current: t.sodium ?? 0, target: 2300.0, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Çinko', name: 'Çinko', code: 'Zn', current: t.zinc ?? 0, target: 11.0, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Bakır', name: 'Bakır', code: 'Cu', current: t.copper ?? 0, target: 0.9, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Manganez', name: 'Manganez', code: 'Mn', current: t.manganese ?? 0, target: 2.3, unit: 'mg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Selenyum', name: 'Selenyum', code: 'Se', current: t.selenium ?? 0, target: 55.0, unit: 'mcg', category: MicroCategory.mineral),
-      _MicroItemDef(key: 'Fosfor', name: 'Fosfor', code: 'P', current: t.phosphorus ?? 0, target: 700.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Demir', name: 'Demir', code: 'Demir', current: getVal('Demir', t.iron ?? 0), target: 18.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Magnezyum', name: 'Magnezyum', code: 'Mg', current: getVal('Magnezyum', t.magnesium ?? 0), target: 400.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Kalsiyum', name: 'Kalsiyum', code: 'Ca', current: getVal('Kalsiyum', t.calcium ?? 0), target: 1000.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Potasyum', name: 'Potasyum', code: 'K+', current: getVal('Potasyum', t.potassium ?? 0), target: 4700.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Sodyum', name: 'Sodyum', code: 'Na', current: getVal('Sodyum', t.sodium ?? 0), target: 2300.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Çinko', name: 'Çinko', code: 'Zn', current: getVal('Çinko', t.zinc ?? 0), target: 11.0, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Bakır', name: 'Bakır', code: 'Cu', current: getVal('Bakır', t.copper ?? 0), target: 0.9, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Manganez', name: 'Manganez', code: 'Mn', current: getVal('Manganez', t.manganese ?? 0), target: 2.3, unit: 'mg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Selenyum', name: 'Selenyum', code: 'Se', current: getVal('Selenyum', t.selenium ?? 0), target: 55.0, unit: 'mcg', category: MicroCategory.mineral),
+      _MicroItemDef(key: 'Fosfor', name: 'Fosfor', code: 'P', current: getVal('Fosfor', t.phosphorus ?? 0), target: 700.0, unit: 'mg', category: MicroCategory.mineral),
 
       // ── YAĞ ASİTLERİ & DİĞER YAĞLAR (10) ──
-      _MicroItemDef(key: 'Omega-3', name: 'Omega-3', code: 'Omg3', current: t.omega3 ?? 0, target: 1.6, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'Omega-6', name: 'Omega-6', code: 'Omg6', current: t.omega6 ?? 0, target: 14.0, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'ALA', name: 'ALA', code: 'ALA', current: t.ala ?? 0, target: 1.6, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'EPA', name: 'EPA', code: 'EPA', current: t.epa ?? 0, target: 0.25, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'DHA', name: 'DHA', code: 'DHA', current: t.dha ?? 0, target: 0.25, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'Kolesterol', name: 'Kolesterol', code: 'Chol', current: t.cholesterol ?? 0, target: 300.0, unit: 'mg', category: MicroCategory.fat),
-      _MicroItemDef(key: 'Doymuş Yağ', name: 'Doymuş Yağ', code: 'Sat', current: t.saturatedFat, target: 20.0, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'Tekli Doymamış', name: 'Tekli Doymamış', code: 'Mono', current: t.monoFat ?? 0, target: 25.0, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'Çoklu Doymamış', name: 'Çoklu Doymamış', code: 'Poly', current: t.polyFat ?? 0, target: 15.0, unit: 'g', category: MicroCategory.fat),
-      _MicroItemDef(key: 'Trans Yağ', name: 'Trans Yağ', code: 'Trns', current: t.transFat ?? 0, target: 2.0, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Omega-3', name: 'Omega-3', code: 'Omg3', current: getVal('Omega-3', t.omega3 ?? 0), target: 1.6, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Omega-6', name: 'Omega-6', code: 'Omg6', current: getVal('Omega-6', t.omega6 ?? 0), target: 14.0, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'ALA', name: 'ALA', code: 'ALA', current: getVal('ALA', t.ala ?? 0), target: 1.6, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'EPA', name: 'EPA', code: 'EPA', current: getVal('EPA', t.epa ?? 0), target: 0.25, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'DHA', name: 'DHA', code: 'DHA', current: getVal('DHA', t.dha ?? 0), target: 0.25, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Kolesterol', name: 'Kolesterol', code: 'Chol', current: getVal('Kolesterol', t.cholesterol ?? 0), target: 300.0, unit: 'mg', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Doymuş Yağ', name: 'Doymuş Yağ', code: 'Sat', current: getVal('Doymuş Yağ', t.saturatedFat), target: 20.0, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Tekli Doymamış', name: 'Tekli Doymamış', code: 'Mono', current: getVal('Tekli Doymamış', t.monoFat ?? 0), target: 25.0, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Çoklu Doymamış', name: 'Çoklu Doymamış', code: 'Poly', current: getVal('Çoklu Doymamış', t.polyFat ?? 0), target: 15.0, unit: 'g', category: MicroCategory.fat),
+      _MicroItemDef(key: 'Trans Yağ', name: 'Trans Yağ', code: 'Trns', current: getVal('Trans Yağ', t.transFat ?? 0), target: 2.0, unit: 'g', category: MicroCategory.fat),
 
       // ── KAROTENOİDLER & ANTİOKSİDANLAR (4) ──
-      _MicroItemDef(key: 'Beta-Karoten', name: 'Beta-Karoten', code: 'bCar', current: t.betaCarotene ?? 0, target: 3000.0, unit: 'mcg', category: MicroCategory.antioxidant),
-      _MicroItemDef(key: 'Likopen', name: 'Likopen', code: 'Lyc', current: t.lycopene ?? 0, target: 10000.0, unit: 'mcg', category: MicroCategory.antioxidant),
-      _MicroItemDef(key: 'Lutein-Zea', name: 'Lutein & Zeaksantin', code: 'Lut', current: t.luteinZeaxanthin ?? 0, target: 6000.0, unit: 'mcg', category: MicroCategory.antioxidant),
-      _MicroItemDef(key: 'Alfa-Karoten', name: 'Alfa-Karoten', code: 'aCar', current: t.alphaCarotene ?? 0, target: 500.0, unit: 'mcg', category: MicroCategory.antioxidant),
+      _MicroItemDef(key: 'Beta-Karoten', name: 'Beta-Karoten', code: 'bCar', current: getVal('Beta-Karoten', t.betaCarotene ?? 0), target: 3000.0, unit: 'mcg', category: MicroCategory.antioxidant),
+      _MicroItemDef(key: 'Likopen', name: 'Likopen', code: 'Lyc', current: getVal('Likopen', t.lycopene ?? 0), target: 10000.0, unit: 'mcg', category: MicroCategory.antioxidant),
+      _MicroItemDef(key: 'Lutein-Zea', name: 'Lutein & Zeaksantin', code: 'Lut', current: getVal('Lutein-Zea', t.luteinZeaxanthin ?? 0), target: 6000.0, unit: 'mcg', category: MicroCategory.antioxidant),
+      _MicroItemDef(key: 'Alfa-Karoten', name: 'Alfa-Karoten', code: 'aCar', current: getVal('Alfa-Karoten', t.alphaCarotene ?? 0), target: 500.0, unit: 'mcg', category: MicroCategory.antioxidant),
 
       // ── AMİNO ASİTLER (9) ──
-      _MicroItemDef(key: 'Lösin', name: 'Lösin', code: 'Leu', current: t.leucine ?? 0, target: 2.73, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Lizin', name: 'Lizin', code: 'Lys', current: t.lysine ?? 0, target: 2.10, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'İzolösin', name: 'İzolösin', code: 'Ile', current: t.isoleucine ?? 0, target: 1.40, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Valin', name: 'Valin', code: 'Val', current: t.valine ?? 0, target: 1.82, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Treonin', name: 'Treonin', code: 'Thr', current: t.threonine ?? 0, target: 1.05, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Metiyonin', name: 'Metiyonin', code: 'Met', current: t.methionine ?? 0, target: 0.70, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Fenilalanin', name: 'Fenilalanin', code: 'Phe', current: t.phenylalanine ?? 0, target: 1.70, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Triptofan', name: 'Triptofan', code: 'Trp', current: t.tryptophan ?? 0, target: 0.28, unit: 'g', category: MicroCategory.amino),
-      _MicroItemDef(key: 'Histidin', name: 'Histidin', code: 'His', current: t.histidine ?? 0, target: 0.70, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Lösin', name: 'Lösin', code: 'Leu', current: getVal('Lösin', t.leucine ?? 0), target: 2.73, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Lizin', name: 'Lizin', code: 'Lys', current: getVal('Lizin', t.lysine ?? 0), target: 2.10, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'İzolösin', name: 'İzolösin', code: 'Ile', current: getVal('İzolösin', t.isoleucine ?? 0), target: 1.40, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Valin', name: 'Valin', code: 'Val', current: getVal('Valin', t.valine ?? 0), target: 1.82, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Treonin', name: 'Treonin', code: 'Thr', current: getVal('Treonin', t.threonine ?? 0), target: 1.05, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Metiyonin', name: 'Metiyonin', code: 'Met', current: getVal('Metiyonin', t.methionine ?? 0), target: 0.70, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Fenilalanin', name: 'Fenilalanin', code: 'Phe', current: getVal('Fenilalanin', t.phenylalanine ?? 0), target: 1.70, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Triptofan', name: 'Triptofan', code: 'Trp', current: getVal('Triptofan', t.tryptophan ?? 0), target: 0.28, unit: 'g', category: MicroCategory.amino),
+      _MicroItemDef(key: 'Histidin', name: 'Histidin', code: 'His', current: getVal('Histidin', t.histidine ?? 0), target: 0.70, unit: 'g', category: MicroCategory.amino),
 
       // ── DİĞERLERİ (2) ──
-      _MicroItemDef(key: 'Lif', name: 'Lif (Fiber)', code: 'Lif', current: t.fiber, target: 30.0, unit: 'g', category: MicroCategory.carb),
-      _MicroItemDef(key: 'Şeker', name: 'Şeker', code: 'Şeker', current: t.sugar, target: 50.0, unit: 'g', category: MicroCategory.carb),
+      _MicroItemDef(key: 'Lif', name: 'Lif (Fiber)', code: 'Lif', current: getVal('Lif', t.fiber), target: 30.0, unit: 'g', category: MicroCategory.carb),
+      _MicroItemDef(key: 'Şeker', name: 'Şeker', code: 'Şeker', current: getVal('Şeker', t.sugar), target: 50.0, unit: 'g', category: MicroCategory.carb),
     ];
   }
 
   // REDESIGNED 2-COLUMN GRID MICRONUTRIENTS SHEET
-  void _showMicronutrientsDetailSheet(BuildContext context, DailyLog log, bool isDark) {
+  void _showMicronutrientsDetailSheet(BuildContext context, DailyLog log, bool isDark) async {
+    final additions = await SupplementManagementSheet.getSupplementMicroAdditions(_selectedDate);
+    if (!context.mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1463,7 +1496,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           log: log,
           isDark: isDark,
           starredKeys: _starredMicroKeys,
-          allMicros: _getListOfAllMicros(log.totalNutrition),
+          allMicros: _getListOfAllMicros(log.totalNutrition, supplementAdditions: additions),
           onStarredChanged: () {
             _saveStarredMicros();
             setState(() {});
@@ -1473,171 +1506,101 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── HORIZONTALLY SWIPEABLE SUPPLEMENTS CARD (MAX 3 ITEMS PER PAGE) ──
-  Widget _buildSupplementsCard({
+  Widget _buildSupplementBox({
     required BuildContext context,
     required bool isDark,
   }) {
     final cardBg = isDark ? const Color(0xFF181B28) : Colors.white;
 
-    // Group supplements into pages of max 3 items
-    final pageCount = (_supplementList.length / 3).ceil();
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([
+        SharedPreferences.getInstance(),
+        SupplementManagementSheet.getSupplementMicroAdditions(_selectedDate),
+      ]),
+      builder: (ctx, snapshot) {
+        final prefs = snapshot.data?[0] as SharedPreferences?;
+        final jsonStr = prefs?.getString('user_supplements_v2');
+        List<SupplementItem> list = jsonStr != null ? SupplementItem.decodeList(jsonStr) : [];
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Takviye',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-              GestureDetector(
-                onTap: () {
-                  _showAddSupplementDialog(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, size: 18),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Horizontal Swipeable List of Supplements (Max 3 per page)
-          SizedBox(
-            height: 94,
-            child: PageView.builder(
-              controller: _supplementsPageController,
-              onPageChanged: (page) {
-                setState(() => _supplementsPage = page);
-              },
-              itemCount: math.max(1, pageCount),
-              itemBuilder: (ctx, pageIndex) {
-                final pageItems = _supplementList.skip(pageIndex * 3).take(3).toList();
-                final dateKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
-                final currentChecked = _checkedSupplementsPerDate[dateKey] ?? <String>{};
-
-                return Column(
-                  children: pageItems.map((supp) {
-                    final isChecked = currentChecked.contains(supp);
-                    return GestureDetector(
-                      onTap: () async {
-                        if (!await _confirmPastDateAction(context, _selectedDate)) return;
-                        if (!mounted) return;
-                        setState(() {
-                          final set = _checkedSupplementsPerDate[dateKey] ?? <String>{};
-                          if (set.contains(supp)) {
-                            set.remove(supp);
-                          } else {
-                            set.add(supp);
-                          }
-                          _checkedSupplementsPerDate[dateKey] = set;
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Text(
-                              supp,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black.withValues(alpha: 0.87),
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              isChecked ? Icons.check_circle : Icons.circle_outlined,
-                              size: 20,
-                              color: isChecked ? const Color(0xFFD97706) : (isDark ? Colors.white30 : Colors.black.withValues(alpha: 0.3)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ),
-
-          // Page Indicator Dots if more than 1 page
-          if (pageCount > 1)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(pageCount, (index) {
-                final isSel = index == _supplementsPage;
-                return Container(
-                  width: isSel ? 12 : 5,
-                  height: 5,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: isSel ? const Color(0xFFD97706) : (isDark ? Colors.white24 : Colors.black26),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddSupplementDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Yeni Takviye Ekle'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Takviye adı (ör. Magnezyum)'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
-                if (!await _confirmPastDateAction(context, _selectedDate)) return;
-                if (!mounted) return;
-                setState(() {
-                  if (!_supplementList.contains(text)) {
-                    _supplementList.add(text);
-                  }
-                  final dateKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
-                  final set = _checkedSupplementsPerDate[dateKey] ?? <String>{};
-                  set.add(text);
-                  _checkedSupplementsPerDate[dateKey] = set;
-                });
+        if (list.isEmpty) {
+          final answersStr = prefs?.getString('onboarding_answers');
+          if (answersStr != null) {
+            try {
+              final answers = jsonDecode(answersStr);
+              final onboardingList = (answers['supplements'] as List?)?.cast<String>().toList() ?? [];
+              final other = answers['supplementsOther'] as String?;
+              if (other != null && other.trim().isNotEmpty) {
+                onboardingList.add(other.trim());
               }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Ekle'),
+
+              if (onboardingList.isNotEmpty) {
+                list = onboardingList.map((suppName) {
+                  final sName = suppName.trim();
+                  return SupplementItem(
+                    id: sName.hashCode.toString(),
+                    name: sName,
+                    timesPerDay: 1,
+                  );
+                }).toList();
+              }
+            } catch (_) {}
+          }
+        }
+
+        final dateKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+        return GestureDetector(
+          onTap: () {
+            SupplementManagementSheet.show(
+              context,
+              selectedDate: _selectedDate,
+              onDataChanged: () => setState(() {}),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Takviye',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.open_in_new_rounded, size: 16),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                Expanded(
+                  child: _SupplementBoxPageView(
+                    list: list,
+                    prefs: prefs,
+                    dateKey: dateKey,
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -2022,15 +1985,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (c.contains('kahvaltı') && !c.contains('ara')) {
             return m == 'kahvaltı' || m == 'breakfast';
           } else if (c.contains('kahvaltı sonrası ara')) {
-            return m.contains('kahvaltı') && m.contains('ara');
+            if (m.contains('kahvaltı') && m.contains('ara')) return true;
+            if ((m == 'ara öğün' || m == 'snack') && e.timestamp.hour < 14) return true;
+            return m == 'kahvaltı sonrası ara öğün';
           } else if (c.contains('öğle yemeği')) {
             return m == 'öğle' || m == 'öğle yemeği' || m == 'lunch';
           } else if (c.contains('öğle sonrası ara')) {
-            return m.contains('öğle') && m.contains('ara');
+            if (m.contains('öğle') && m.contains('ara')) return true;
+            if ((m == 'ara öğün' || m == 'snack') && e.timestamp.hour >= 14 && e.timestamp.hour < 21) return true;
+            return m == 'öğle sonrası ara öğün';
           } else if (c.contains('akşam yemeği')) {
             return m == 'akşam' || m == 'akşam yemeği' || m == 'dinner';
           } else if (c.contains('gece')) {
-            return m.contains('gece') || m.contains('snack');
+            return m.contains('gece') || (m.contains('snack') && e.timestamp.hour >= 21);
           }
           return m == c;
         }).toList();
@@ -2095,49 +2062,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Column(
                 children: entries.map((entry) {
                   final itemCal = entry.nutritionData.scaleBy(entry.portionSize / 100).calories.round();
+                  final hasImg = entry.imagePath != null && File(entry.imagePath!).existsSync();
+
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2, right: 12),
-                          child: Icon(
-                            Icons.radio_button_unchecked,
-                            size: 20,
-                            color: isDark ? Colors.white38 : Colors.black38,
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry.name,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      onTap: () => FoodEntryDetailSheet.show(context, entry: entry, date: _selectedDate),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (hasImg)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  File(entry.imagePath!),
+                                  width: 36,
+                                  height: 36,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.radio_button_unchecked,
+                                    size: 20,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                  ),
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Icon(
+                                  Icons.radio_button_unchecked,
+                                  size: 20,
+                                  color: isDark ? Colors.white38 : Colors.black38,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '$itemCal cal, ${entry.portionSize.round()}${entry.portionUnit}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark ? Colors.white54 : Colors.black54,
-                                ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    entry.name,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '$itemCal cal, ${entry.portionSize.round()}${entry.portionUnit}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? Colors.white54 : Colors.black54,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: isDark ? Colors.white30 : Colors.black26,
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red.withValues(alpha: 0.7)),
-                          onPressed: () async {
-                            if (!await _confirmPastDateAction(context, _selectedDate)) return;
-                            nutritionProvider.removeFoodEntry(entry.id, date: _selectedDate);
-                          },
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 }).toList(),
@@ -2212,7 +2204,7 @@ class _MicronutrientsSheetContentState extends State<_MicronutrientsSheetContent
   @override
   Widget build(BuildContext context) {
     final categoriesToDisplay = _selectedCategory == MicroCategory.all
-        ? MicroCategory.values.where((c) => c != MicroCategory.all).toList()
+        ? MicroCategory.values.where((c) => c != MicroCategory.all && c != MicroCategory.starred).toList()
         : [_selectedCategory];
 
     return Container(
@@ -2349,7 +2341,26 @@ class _MicronutrientsSheetContentState extends State<_MicronutrientsSheetContent
               itemCount: categoriesToDisplay.length,
               itemBuilder: (ctx, catIndex) {
                 final cat = categoriesToDisplay[catIndex];
-                final catMicros = widget.allMicros.where((m) => m.category == cat).toList();
+                final List<_MicroItemDef> catMicros;
+                if (cat == MicroCategory.starred) {
+                  catMicros = widget.starredKeys.map((key) {
+                    return widget.allMicros.firstWhere(
+                      (m) => m.key.toLowerCase().trim() == key.toLowerCase().trim() ||
+                             m.name.toLowerCase().trim() == key.toLowerCase().trim(),
+                      orElse: () => _MicroItemDef(
+                        key: key,
+                        name: key,
+                        code: key,
+                        current: 0,
+                        target: 1.0,
+                        unit: '',
+                        category: MicroCategory.starred,
+                      ),
+                    );
+                  }).toList();
+                } else {
+                  catMicros = widget.allMicros.where((m) => m.category == cat).toList();
+                }
 
                 if (catMicros.isEmpty) return const SizedBox.shrink();
 
@@ -2742,43 +2753,43 @@ class _WaterAddSheet extends StatefulWidget {
 class _WaterAddSheetState extends State<_WaterAddSheet> {
   final _manualCtrl = TextEditingController();
   String? _errorText;
+  Timer? _errorTimer;
+  late bool _isRemove;
+
+  @override
+  void initState() {
+    super.initState();
+    _isRemove = widget.isRemove;
+  }
 
   @override
   void dispose() {
     _manualCtrl.dispose();
+    _errorTimer?.cancel();
     super.dispose();
   }
 
   void _addAndClose(double ml) {
-    if (widget.isRemove && ml > widget.currentWaterMl) {
+    if (_isRemove && ml > widget.currentWaterMl) {
       HapticFeedback.vibrate();
       final msg = (AppLocalizations.of(context).isTurkish 
-          ? 'Alınan su miktarından fazla çıkaramazsınız.' 
-          : 'Cannot remove more than total intake.');
+          ? 'İçtiğiniz sudan fazlasını çıkaramazsınız! (Mevcut su: ${widget.currentWaterMl.round()} ml)' 
+          : 'Cannot remove more than total intake! (Current: ${widget.currentWaterMl.round()} ml)');
       setState(() {
         _errorText = msg;
       });
-      final isTurkish = AppLocalizations.of(context).isTurkish;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showDialog(
-          context: context,
-          useRootNavigator: true,
-          builder: (ctx) => AlertDialog(
-            title: Text(isTurkish ? 'Hatalı İşlem' : 'Invalid Action'),
-            content: Text(msg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(AppLocalizations.of(context).tr('Tamam')),
-              ),
-            ],
-          ),
-        );
+      _errorTimer?.cancel();
+      _errorTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _errorText = null;
+          });
+        }
       });
       return;
     }
     Navigator.pop(context);
-    widget.onAdd(ml);
+    widget.onAdd(_isRemove ? -ml : ml);
   }
 
   @override
@@ -2786,6 +2797,10 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
     final l10n = AppLocalizations.of(context);
     final isTurkish = l10n.isTurkish;
     final colorScheme = Theme.of(context).colorScheme;
+
+    final accentColor = _isRemove ? const Color(0xFFF43F5E) : colorScheme.primary;
+    final btnBgColor = _isRemove ? const Color(0xFFFFE4E6) : colorScheme.primaryContainer;
+    final btnTextColor = _isRemove ? const Color(0xFFBE123C) : colorScheme.onPrimaryContainer;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -2811,55 +2826,55 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
           ),
           Row(
             children: [
-              Icon(Icons.water_drop, color: colorScheme.primary),
+              Icon(Icons.water_drop, color: accentColor),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  widget.isRemove
-                      ? (isTurkish
-                            ? 'Ne kadar çıkarmak istersiniz?'
-                            : 'How much to remove?')
-                      : (isTurkish
-                            ? 'Ne kadar içtiniz?'
-                            : 'How much did you drink?'),
-                  style: Theme.of(context).textTheme.titleMedium,
+                  _isRemove
+                      ? (isTurkish ? 'Ne kadar çıkarmak istersiniz?' : 'How much to remove?')
+                      : (isTurkish ? 'Ne kadar içtiniz?' : 'How much did you drink?'),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: _isRemove ? const Color(0xFFE11D48) : null,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              if (widget.isRemove)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    (isTurkish ? 'Alınan: ' : 'Intake: ') + '${widget.currentWaterMl.toStringAsFixed(0)} ml',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
+              // Top-right minus / plus toggle button
+              IconButton(
+                icon: Icon(
+                  _isRemove ? Icons.add_circle_outline_rounded : Icons.remove_circle_outline_rounded,
+                  color: accentColor,
+                  size: 26,
                 ),
+                tooltip: _isRemove
+                    ? (isTurkish ? 'Ekleme Modu' : 'Add Mode')
+                    : (isTurkish ? 'Çıkarma Modu' : 'Remove Mode'),
+                onPressed: () {
+                  setState(() {
+                    _isRemove = !_isRemove;
+                    _errorText = null;
+                  });
+                },
+              ),
             ],
           ),
           if (_errorText != null) ...[
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF43F5E)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorText!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                      style: const TextStyle(color: Color(0xFFBE123C), fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -2878,7 +2893,8 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
                   height: 52,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colorScheme.primaryContainer,
+                    color: btnBgColor,
+                    border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.2),
                   ),
                   child: Center(
                     child: Text(
@@ -2886,7 +2902,7 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: colorScheme.onPrimaryContainer,
+                        color: btnTextColor,
                       ),
                     ),
                   ),
@@ -2902,7 +2918,11 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
                 child: GestureDetector(
                   onTap: () => _addAndClose(100),
                   child: Card(
-                    color: colorScheme.surfaceContainerHighest,
+                    color: _isRemove ? const Color(0xFFFFF1F2) : colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: accentColor.withValues(alpha: 0.2)),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 16,
@@ -2922,7 +2942,7 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
+                              color: accentColor,
                             ),
                           ),
                         ],
@@ -2936,7 +2956,11 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
                 child: GestureDetector(
                   onTap: () => _addAndClose(200),
                   child: Card(
-                    color: colorScheme.surfaceContainerHighest,
+                    color: _isRemove ? const Color(0xFFFFF1F2) : colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: accentColor.withValues(alpha: 0.2)),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 16,
@@ -2956,7 +2980,7 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
+                              color: accentColor,
                             ),
                           ),
                         ],
@@ -2984,11 +3008,14 @@ class _WaterAddSheetState extends State<_WaterAddSheet> {
               ),
               const SizedBox(width: 12),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: accentColor,
+                ),
                 onPressed: () {
                   final ml = double.tryParse(_manualCtrl.text);
                   if (ml != null && ml > 0) _addAndClose(ml);
                 },
-                child: Text(widget.isRemove ? (isTurkish ? 'Çıkart' : 'Remove') : l10n.tr('Ekle')),
+                child: Text(_isRemove ? (isTurkish ? 'Çıkart' : 'Remove') : l10n.tr('Ekle')),
               ),
             ],
           ),
@@ -3357,6 +3384,178 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SupplementBoxPageView extends StatefulWidget {
+  final List<SupplementItem> list;
+  final SharedPreferences? prefs;
+  final String dateKey;
+  final bool isDark;
+
+  const _SupplementBoxPageView({
+    required this.list,
+    required this.prefs,
+    required this.dateKey,
+    required this.isDark,
+  });
+
+  @override
+  State<_SupplementBoxPageView> createState() => _SupplementBoxPageViewState();
+}
+
+class _SupplementBoxPageViewState extends State<_SupplementBoxPageView> {
+  int _currentPage = 0;
+  bool _isDragging = false;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _pageController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_pageController.hasClients) return;
+    final page = _pageController.page ?? 0.0;
+    final isDragging = (page - page.round()).abs() > 0.01;
+    if (isDragging != _isDragging) {
+      setState(() {
+        _isDragging = isDragging;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.removeListener(_onScroll);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSupplementClassicRow(SupplementItem item) {
+    final takenDoses = widget.prefs?.getInt('supp_dose_${widget.dateKey}_${item.id}') ?? 0;
+    final targetDoses = item.timesPerDay;
+
+    IconData icon;
+    Color iconColor;
+
+    if (takenDoses >= targetDoses) {
+      icon = Icons.check_circle_rounded;
+      iconColor = const Color(0xFFD97706);
+    } else if (takenDoses > 0) {
+      icon = Icons.pie_chart_rounded;
+      iconColor = const Color(0xFFD97706);
+    } else {
+      icon = Icons.radio_button_unchecked_rounded;
+      iconColor = widget.isDark ? Colors.white30 : Colors.black.withValues(alpha: 0.3);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: widget.isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black.withValues(alpha: 0.87),
+              ),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOutCubic,
+            padding: EdgeInsets.only(left: 4, right: _isDragging ? 6 : 0),
+            child: Icon(
+              icon,
+              size: 18,
+              color: iconColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.list.isEmpty) {
+      return Center(
+        child: Text(
+          'Takviye eklemek için dokunun',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: widget.isDark ? Colors.white38 : Colors.black38),
+        ),
+      );
+    }
+
+    if (widget.list.length <= 4) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: widget.list.map((item) => _buildSupplementClassicRow(item)).toList(),
+      );
+    }
+
+    final pageCount = (widget.list.length / 4).ceil();
+
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            clipBehavior: Clip.hardEdge,
+            onPageChanged: (idx) {
+              setState(() {
+                _currentPage = idx;
+              });
+            },
+            itemCount: pageCount,
+            itemBuilder: (ctx, pageIndex) {
+              final startIndex = pageIndex * 4;
+              final endIndex = (startIndex + 4 < widget.list.length) ? startIndex + 4 : widget.list.length;
+              final chunk = widget.list.sublist(startIndex, endIndex);
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: chunk.map((item) => _buildSupplementClassicRow(item)).toList(),
+                ),
+              );
+            },
+          ),
+        ),
+        if (pageCount > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(pageCount, (idx) {
+                final isActive = idx == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                  width: isActive ? 10 : 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFFD97706)
+                        : (widget.isDark ? Colors.white24 : Colors.black12),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                );
+              }),
+            ),
+          ),
+      ],
     );
   }
 }

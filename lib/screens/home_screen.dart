@@ -707,7 +707,7 @@ class _HigTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<String> labels = [
       context.tr('Ana Menü'),
-      context.tr('Koç'),
+      context.tr('Dijital İkiz'),
       context.tr('Profil'),
     ];
     final List<IconData> iconsOutlined = [
@@ -947,7 +947,7 @@ class _CoachFloatingButton extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              context.tr('Beslenme Koçu'),
+              context.tr('Dijital İkiz'),
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ],
