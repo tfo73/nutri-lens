@@ -28,6 +28,9 @@ import '../services/report_generator_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
+import 'paywall_screen.dart';
+import '../models/daily_log.dart';
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
@@ -61,23 +64,12 @@ class ProfileScreen extends StatelessWidget {
     final profile = profileProvider.activeProfile;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.tr('Profil')),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: WaveBackground(
-        child: profile == null
-            ? _buildEmptyState(context, profileProvider)
-            : _buildActiveProfile(context, profileProvider, profile, cs),
+      body: SafeArea(
+        child: WaveBackground(
+          child: profile == null
+              ? _buildEmptyState(context, profileProvider)
+              : _buildActiveProfile(context, profileProvider, profile, cs),
+        ),
       ),
     );
   }
@@ -125,194 +117,217 @@ class ProfileScreen extends StatelessWidget {
     UserProfile profile,
     ColorScheme cs,
   ) {
-    final useMetric = profileProvider.useMetricUnits;
-    // Height display
-    final String heightStr = useMetric
-        ? '${profile.height.toStringAsFixed(0)} cm'
-        : () {
-            final totalIn = profile.height / 2.54;
-            final ft = totalIn ~/ 12;
-            final inches = (totalIn % 12).round();
-            return "$ft'$inches\"";
-          }();
-    // Weight display
-    final String weightStr = useMetric
-        ? '${profile.weight.toStringAsFixed(1)} kg'
-        : '${(profile.weight * 2.20462).toStringAsFixed(1)} lbs';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 160),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Avatar (tıklayarak fotoğraf seç) ─────────────────────
-          GestureDetector(
-            onTap: () => _showPhotoOptions(context, profileProvider, profile),
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 44,
-                  backgroundColor: const Color(0xFF58A6FF).withValues(alpha: 0.2),
-                  backgroundImage: profile.imagePath != null
-                      ? FileImage(File(profile.imagePath!))
-                      : null,
-                  child: profile.imagePath == null
-                      ? Text(
-                          profile.name.isNotEmpty
-                              ? profile.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF58A6FF),
-                          ),
-                        )
-                      : null,
-                ),
-                // Kamera ikonu rozeti
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 26,
-                    height: 26,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF58A6FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // ── Gradient name ─────────────────────────────────────────
+          // ── 1. Top Header (Greeting + Avatar with Camera Badge) ─────────
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _gradientName(profile.name, 22),
-              if (profile.isPremium) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              GestureDetector(
+                onTap: () => _showPhotoOptions(context, profileProvider, profile),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                      backgroundImage: profile.imagePath != null
+                          ? FileImage(File(profile.imagePath!))
+                          : null,
+                      child: profile.imagePath == null
+                          ? Text(
+                              profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF007AFF),
+                              ),
+                            )
+                          : null,
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFFA500).withValues(alpha: 0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                    Positioned(
+                      right: -3,
+                      bottom: -3,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF1C1F2E) : Colors.white,
+                            width: 2.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
                       ),
-                    ],
-                  ),
-                  child: const Text(
-                    'PRO',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Merhaba ${profile.name}!',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ],
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.settings_outlined,
+                  color: cs.onSurface.withValues(alpha: 0.8),
+                  size: 24,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+              ),
             ],
           ),
-          _buildAchievementsList(context),
-          const SizedBox(height: 16),
-          // ── Info card ─────────────────────────────────────────────
-          Card(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _infoCell(
-                            Icons.cake_outlined,
-                            context.tr('Yaş'),
-                            '${profile.age}'),
-                      ),
-                      Expanded(
-                        child: _infoCell(
-                            Icons.straighten_outlined,
-                            context.tr('Boy'),
-                            heightStr),
-                      ),
-                      Expanded(
-                        child: _infoCell(
-                            Icons.monitor_weight_outlined,
-                            context.tr('Kilo'),
-                            weightStr),
-                      ),
-                    ],
+          const SizedBox(height: 14),
+
+          // ── 2. Premium / Paywall Banner ──────────────────────────────────
+          if (!profile.isPremium) ...[
+            _buildPremiumBanner(context, isDark),
+            const SizedBox(height: 14),
+          ],
+
+          // ── 3. Horizontal BMI Verileri Card ──────────────────────────────
+          _buildBMIDataCard(context, profile, isDark),
+          const SizedBox(height: 14),
+
+          // ── 4. Main 2-Column Section (Charts + 7-Day Macro Rings) ─────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sol Sütun: Kilo Grafiği + Uyku Grafiği
+              Expanded(
+                flex: 1,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 235,
+                      child: _WeightChart(wellness: context.watch<WellnessProvider>()),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 180,
+                      child: _SleepScoreChart(wellness: context.watch<WellnessProvider>()),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Sağ Sütun: 7-Günlük Kalori/Besin Takibi (235 + 12 + 180 = 427)
+              Expanded(
+                flex: 1,
+                child: SizedBox(
+                  height: 427,
+                  child: _WeeklyMacroRingsCard(
+                    nutritionProvider: context.watch<NutritionProvider>(),
+                    profileProvider: profileProvider,
+                    isDark: isDark,
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _infoCell(
-                            Icons.flag_outlined,
-                            context.tr('Hedef'),
-                            context.tr(profile.goalLabel)),
-                      ),
-                      Expanded(
-                        child: _infoCell(
-                            profile.gender == Gender.female 
-                                ? Icons.female 
-                                : (profile.gender == Gender.male ? Icons.male : Icons.person_outline),
-                            context.tr('Cinsiyet'),
-                            profile.gender == Gender.female 
-                                ? context.tr('Kadın') 
-                                : (profile.gender == Gender.male ? context.tr('Erkek') : context.tr('Belirtilmemiş'))),
-                      ),
-                      Expanded(
-                        child: _infoCell(
-                            Icons.directions_run_outlined,
-                            context.tr('Aktivite'),
-                            context.tr(profile.activityLabel)),
-                      ),
-                    ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumBanner(BuildContext context, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PaywallScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1F2E) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFFFB800).withValues(alpha: 0.35),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFB800).withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFCC00), Color(0xFFFF9500)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
+              child: const Text(
+                'Premium',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          const SizedBox(height: 12),
-          // ── BMI (VKİ) Card ──────────────────────────────────────
-          _buildBMICard(context, profile, cs),
-          const SizedBox(height: 12),
-          // ── Kalori & Makro Hedefleri ──────────────────────────────
-          _GoalsCard(profileProvider: profileProvider),
-          const SizedBox(height: 12),
-          // ── Weekly Flow Card ───────────────────────────────────────
-          _WeeklyFlowCard(fasting: context.watch<FastingProvider>()),
-          const SizedBox(height: 12),
-          // ── Kilo Grafiği ──────────────────────────────────────────
-          _WeightChart(wellness: context.watch<WellnessProvider>()),
-          const SizedBox(height: 12),
-          // ── Uyku Skoru Grafiği ────────────────────────────────────
-          _SleepScoreChart(
-              wellness: context.watch<WellnessProvider>()),
-          const SizedBox(height: 12),
-          // ── Mail ile Gönder ───────────────────────────────────────
-          _EmailReportCard(),
-          const SizedBox(height: 20),
-        ],
-        ),  // Column
-      ),    // ConstrainedBox
-    ),      // SingleChildScrollView
-    );      // LayoutBuilder
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                context.tr('Özel beslenme koçun ile hedefine daha hızlı ulaş!'),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFFFB800),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _infoCell(IconData icon, String label, String value) {
@@ -387,7 +402,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBMICard(BuildContext context, UserProfile profile, ColorScheme cs) {
+  Widget _buildBMIDataCard(BuildContext context, UserProfile profile, bool isDark) {
     final bmi = profile.weight / ((profile.height / 100) * (profile.height / 100));
     String category;
     Color statusColor;
@@ -396,65 +411,175 @@ class ProfileScreen extends StatelessWidget {
       category = 'Zayıf';
       statusColor = Colors.blueAccent;
     } else if (bmi < 25) {
-      category = 'Normal';
-      statusColor = const Color(0xFF58A6FF);
+      category = 'Normal aralık';
+      statusColor = const Color(0xFFFF9500);
     } else if (bmi < 30) {
-      category = 'Fazla Kilolu';
+      category = 'Fazla kilolu';
       statusColor = Colors.orangeAccent;
     } else {
       category = 'Obez';
       statusColor = Colors.redAccent;
     }
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          children: [
-            Stack(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.tr('BMI Verileri'),
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B949E))),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(bmi.toStringAsFixed(1),
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: statusColor.withValues(alpha: 0.5)),
-                          ),
-                          child: Text(context.tr(category),
-                              style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
+    final cs = Theme.of(context).colorScheme;
+    final cardBg = isDark ? const Color(0xFF1C1F2E) : Colors.white;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('BMI verileri'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white54 : Colors.black45,
                     ),
-                  ],
-                ),
-                Positioned(
-                  right: -8,
-                  top: -8,
-                  child: IconButton(
-                    onPressed: () => _showBMIInfoDialog(context),
-                    icon: const Icon(Icons.info_outline, color: Color(0xFF8B949E), size: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        bmi.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          context.tr(category),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: () => _showBMIInfoDialog(context),
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    size: 20,
+                    color: isDark ? Colors.white70 : Colors.black87,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildBMIProgressBar(bmi),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _buildBMIProgressBar(bmi),
+        ],
       ),
     );
+  }
+
+  void _showBMIInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? const Color(0xFF1C1F2E) : Colors.white,
+          title: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Color(0xFF007AFF)),
+              const SizedBox(width: 10),
+              Text(ctx.tr('BMI Nedir?'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                ctx.tr('Vücut Kitle İndeksi (BMI), kilonuzun (kg) boyunuzun karesine (m²) bölünmesiyle hesaplanan uluslararası bir standarttır.'),
+                style: TextStyle(fontSize: 13.5, height: 1.4, color: cs.onSurface.withValues(alpha: 0.85)),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                ctx.tr('Kategoriler:'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+              ),
+              const SizedBox(height: 8),
+              _bmiCategoryRow('< 18.5', ctx.tr('Zayıf'), Colors.blueAccent),
+              _bmiCategoryRow('18.5 - 24.9', ctx.tr('Normal aralık'), const Color(0xFFFF9500)),
+              _bmiCategoryRow('25.0 - 29.9', ctx.tr('Fazla kilolu'), Colors.orangeAccent),
+              _bmiCategoryRow('≥ 30.0', ctx.tr('Obez'), Colors.redAccent),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(ctx.tr('Tamam'), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF007AFF))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _bmiCategoryRow(String range, String label, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text('$range: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
+          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12.5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBMICard(BuildContext context, UserProfile profile, ColorScheme cs) {
+    return _buildBMIDataCard(context, profile, Theme.of(context).brightness == Brightness.dark);
   }
 
 Widget _buildBMIProgressBar(double bmi) {
@@ -539,61 +664,6 @@ Widget _buildBMIProgressBar(double bmi) {
     ],
   );
 }
-
-
-  void _showBMIInfoDialog(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF161B22) : Colors.white,
-        title: Text(context.tr('Vücut Kitle İndeksi (VKİ)'),
-            style: TextStyle(color: cs.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr('VKİ, vücut ağırlığınızın (kg) boyunuzun (m) karesine bölünmesiyle hesaplanır.'),
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            _bmiCategoryRow(context, context.tr('Zayıf'), '< 18.5', Colors.blueAccent),
-            _bmiCategoryRow(context, context.tr('Normal'), '18.5 - 24.9', const Color(0xFF58A6FF)),
-            _bmiCategoryRow(context, context.tr('Fazla Kilolu'), '25.0 - 29.9', Colors.orangeAccent),
-            _bmiCategoryRow(context, context.tr('Obez'), '≥ 30.0', Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(
-              context.tr('* VKİ, genel bir sağlık göstergesidir; yağ/kas oranı veya yaş gibi faktörleri dikkate almaz.'),
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11, fontStyle: FontStyle.italic),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(context.tr('Anladım'), style: const TextStyle(color: Color(0xFF58A6FF))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bmiCategoryRow(BuildContext context, String label, String range, Color color) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
-          Text(range, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
-        ],
-      ),
-    );
-  }
 
 
   Future<void> _showPhotoOptions(
@@ -3638,7 +3708,7 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
       });
       labels = List.generate(7, (i) {
         final d = now.subtract(Duration(days: 6 - i));
-        if (i == 6) return context.tr('Bugün');
+        if (i == 6) return context.tr('Bug');
         const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
         return context.tr(days[d.weekday - 1]);
       });
@@ -3676,15 +3746,18 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
     final lineColor = const Color(0xFF7EE787);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -3696,17 +3769,12 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
               Expanded(
                 child: Text(
                   context.tr('Uyku Puanı Grafiği'),
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
               ),
-              _PeriodChip(label: '7G', selected: _period == _SleepPeriod.week, onTap: () => setState(() { _period = _SleepPeriod.week; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
-              const SizedBox(width: 6),
-              _PeriodChip(label: '1A', selected: _period == _SleepPeriod.month, onTap: () => setState(() { _period = _SleepPeriod.month; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
-              const SizedBox(width: 6),
-              _PeriodChip(label: '1Y', selected: _period == _SleepPeriod.year, onTap: () => setState(() { _period = _SleepPeriod.year; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           if (nonNull.isEmpty)
             Center(
               child: Padding(
@@ -3740,10 +3808,11 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                         reservedSize: 24,
                         interval: 1,
                         getTitlesWidget: (val, _) {
-                          if ((val - 3).abs() < 0.1 || (val - 5).abs() < 0.1) {
-                            return Text(val.toInt().toString(),
+                          final intVal = val.round();
+                          if (intVal >= 1 && intVal <= 5 && (val - intVal).abs() < 0.1) {
+                            return Text(intVal.toString(),
                                 style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 9.5,
                                     color: cs.onSurface.withValues(alpha: 0.5)));
                           }
                           return const SizedBox.shrink();
@@ -3759,10 +3828,6 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                         getTitlesWidget: (x, _) {
                           final i = x.toInt();
                           if (i < 0 || i >= labels.length) return const SizedBox.shrink();
-                          final showLabel = _period == _SleepPeriod.week ||
-                              (_period == _SleepPeriod.month && labels[i].isNotEmpty) ||
-                              _period == _SleepPeriod.year;
-                          if (!showLabel) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(labels[i],
@@ -3827,9 +3892,9 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                           FlDotData(
                             show: true,
                             getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                              radius: 6,
+                              radius: 4,
                               color: const Color(0xFF7EE787),
-                              strokeWidth: 3,
+                              strokeWidth: 2,
                               strokeColor: Colors.white,
                             ),
                           ),
@@ -3852,10 +3917,10 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                         show: true,
                         getDotPainter: (spot, percent, barData, index) {
                           return FlDotCirclePainter(
-                            radius: 4.5,
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                            strokeColor: _scoreColor(spot.y, cs),
+                            radius: 2.0,
+                            color: lineColor,
+                            strokeWidth: 1.0,
+                            strokeColor: Colors.white,
                           );
                         },
                       ),
@@ -3982,7 +4047,9 @@ class _WeightChartState extends State<_WeightChart> {
       final now = DateTime.now();
       labels = List.generate(8, (i) {
         final d = now.subtract(Duration(days: (7 - i) * 7));
-        return i == 7 ? 'Bu H' : '${d.day}/${d.month}';
+        final dayOfYear = d.difference(DateTime(d.year, 1, 1)).inDays + 1;
+        final weekNum = ((dayOfYear - d.weekday + 10) / 7).floor();
+        return i == 7 ? 'Bu H' : 'H$weekNum';
       });
       todayIndex = 7;
     } else {
@@ -4002,41 +4069,74 @@ class _WeightChartState extends State<_WeightChart> {
     }
 
     final nonNull = values.whereType<double>().toList();
-    // Use the latest logged weight for chart labels if available
-    final currentWeight = nonNull.isNotEmpty ? nonNull.last : (profile?.weight ?? 70.0);
-    double lowerB5 = (currentWeight / 5).floor() * 5.0;
-    double upperB5 = (currentWeight / 5).ceil() * 5.0;
-    if (lowerB5 == upperB5) {
-      lowerB5 -= 5;
-      upperB5 += 5;
-    }
-
-    final minVal = nonNull.isEmpty 
-        ? lowerB5 
-        : [nonNull.reduce((a, b) => a < b ? a : b), lowerB5].reduce((a, b) => a < b ? a : b) - 2;
-    final maxVal = nonNull.isEmpty 
-        ? upperB5 
-        : [nonNull.reduce((a, b) => a > b ? a : b), upperB5].reduce((a, b) => a > b ? a : b) + 2;
+    final double minW = nonNull.isEmpty ? 60.0 : nonNull.reduce((a, b) => a < b ? a : b);
+    final double maxW = nonNull.isEmpty ? 80.0 : nonNull.reduce((a, b) => a > b ? a : b);
+    final double minVal = (minW - 1.5).floorToDouble();
+    final double maxVal = (maxW + 1.5).ceilToDouble();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05), blurRadius: 10, offset: const Offset(0, 3))],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(child: Text(context.tr('Kilo Grafiği'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-              _PeriodChip(label: '8H', selected: _period == _WeightPeriod.weeks, onTap: () => setState(() { _period = _WeightPeriod.weeks; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
-              const SizedBox(width: 6),
-              _PeriodChip(label: '1Y', selected: _period == _WeightPeriod.year, onTap: () => setState(() { _period = _WeightPeriod.year; _showingSpots = []; _tooltipTimer?.cancel(); }), cs: cs),
+              Expanded(
+                child: Text(
+                  context.tr('Kilo Grafiği'),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showWeightPicker(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: widget.wellness.weightEnteredThisWeek
+                        ? cs.primary.withValues(alpha: 0.12)
+                        : cs.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        widget.wellness.weightEnteredThisWeek ? Icons.check_rounded : Icons.add_rounded,
+                        size: 13,
+                        color: widget.wellness.weightEnteredThisWeek ? cs.primary : Colors.white,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        widget.wellness.weightEnteredThisWeek
+                            ? '${widget.wellness.thisWeekWeight!.toStringAsFixed(1)} kg'
+                            : context.tr('Kilo Gir'),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: widget.wellness.weightEnteredThisWeek ? cs.primary : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           if (nonNull.isEmpty)
             Center(
               child: Column(
@@ -4051,7 +4151,7 @@ class _WeightChartState extends State<_WeightChart> {
             )
           else
             SizedBox(
-              height: 130,
+              height: 155,
               child: LineChart(
                 LineChartData(
                   minX: 0,
@@ -4072,16 +4172,13 @@ class _WeightChartState extends State<_WeightChart> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 32,
-                        interval: 1,
+                        reservedSize: 28,
+                        interval: ((maxVal - minVal) / 2).clamp(1.0, 10.0),
                         getTitlesWidget: (val, _) {
-                          if ((val - lowerB5).abs() < 0.1 || (val - upperB5).abs() < 0.1) {
-                            return Text(val.toInt().toString(),
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    color: cs.onSurface.withValues(alpha: 0.5)));
-                          }
-                          return const SizedBox.shrink();
+                          return Text(val.toInt().toString(),
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: cs.onSurface.withValues(alpha: 0.5)));
                         },
                       ),
                     ),
@@ -4157,9 +4254,9 @@ class _WeightChartState extends State<_WeightChart> {
                           FlDotData(
                             show: true,
                             getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                              radius: 6,
+                              radius: 4,
                               color: cs.primary,
-                              strokeWidth: 3,
+                              strokeWidth: 2,
                               strokeColor: Colors.white,
                             ),
                           ),
@@ -4182,10 +4279,10 @@ class _WeightChartState extends State<_WeightChart> {
                         show: true,
                         getDotPainter: (spot, percent, barData, index) {
                           return FlDotCirclePainter(
-                            radius: 4.5,
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                            strokeColor: cs.primary,
+                            radius: 2.0,
+                            color: cs.primary,
+                            strokeWidth: 1.0,
+                            strokeColor: Colors.white,
                           );
                         },
                       ),
@@ -4205,41 +4302,20 @@ class _WeightChartState extends State<_WeightChart> {
                   extraLinesData: ExtraLinesData(
                     horizontalLines: [
                       HorizontalLine(
-                          y: lowerB5,
+                          y: minVal,
                           color: cs.primary.withValues(alpha: 0.08),
                           strokeWidth: 1,
                           dashArray: [4, 4]),
                       HorizontalLine(
-                          y: upperB5,
+                          y: maxVal,
                           color: cs.primary.withValues(alpha: 0.08),
                           strokeWidth: 1,
                           dashArray: [4, 4]),
                     ],
                   ),
                 ),
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeInOutCubic,
               ),
             ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _showWeightPicker(context),
-              icon: const Icon(Icons.monitor_weight_outlined, size: 16),
-              label: Text(widget.wellness.weightEnteredThisWeek
-                  ? '${context.tr('Bu haftaki kilo:')} ${widget.wellness.thisWeekWeight!.toStringAsFixed(1)} kg'
-                  : context.tr('Bu haftanın kilosunu gir')),
-              style: FilledButton.styleFrom(
-                backgroundColor: widget.wellness.weightEnteredThisWeek
-                    ? cs.primary.withValues(alpha: 0.12)
-                    : cs.primary,
-                foregroundColor: widget.wellness.weightEnteredThisWeek ? cs.primary : Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -4460,4 +4536,268 @@ class _AnimatedDotsState extends State<_AnimatedDots> with SingleTickerProviderS
       },
     );
   }
+}
+
+// ─── Weekly 7-Day Macro Rings Card ────────────────────────────────────────────
+
+class _WeeklyMacroRingsCard extends StatelessWidget {
+  final NutritionProvider nutritionProvider;
+  final ProfileProvider profileProvider;
+  final bool isDark;
+
+  const _WeeklyMacroRingsCard({
+    required this.nutritionProvider,
+    required this.profileProvider,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final cardBg = isDark ? const Color(0xFF1C1F2E) : Colors.white;
+
+    final now = DateTime.now();
+    final days = List.generate(7, (i) {
+      final date = now.subtract(Duration(days: 6 - i));
+      final log = nutritionProvider.getLogForDate(date);
+      final dayName = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][date.weekday - 1];
+      return (date: date, dayName: dayName, log: log);
+    });
+
+    final carbGoal = profileProvider.carbGoal.toDouble();
+    final protGoal = profileProvider.proteinGoal.toDouble();
+    final fatGoal = profileProvider.fatGoal.toDouble();
+    final fiberGoal = (profileProvider.activeProfile?.fiberGoal ?? 25.0);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.tr('Kalori Takibi'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // 7 Days Concentric Shapes
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Row 1: Days 0, 1, 2
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    for (int i = 0; i < 3; i++)
+                      _buildDayMacroShape(context, days[i], carbGoal, protGoal, fatGoal, fiberGoal),
+                  ],
+                ),
+
+                // Row 2: Days 3, 4, 5
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    for (int i = 3; i < 6; i++)
+                      _buildDayMacroShape(context, days[i], carbGoal, protGoal, fatGoal, fiberGoal),
+                  ],
+                ),
+
+                // Row 3: Day 6 (Today - Centered)
+                Center(
+                  child: _buildDayMacroShape(context, days[6], carbGoal, protGoal, fatGoal, fiberGoal, isToday: true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Bottom Legend
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            alignment: WrapAlignment.center,
+            children: [
+              _legendDot('Karbonhidrat', const Color(0xFFBF5AF2)),
+              _legendDot('Protein', const Color(0xFF34C759)),
+              _legendDot('Yağ', const Color(0xFFFF9500)),
+              _legendDot('Lif', const Color(0xFF32ADE6)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white60 : Colors.black54,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDayMacroShape(
+    BuildContext context,
+    ({DateTime date, String dayName, DailyLog? log}) item,
+    double carbGoal,
+    double protGoal,
+    double fatGoal,
+    double fiberGoal, {
+    bool isToday = false,
+  }) {
+    final hasEntries = item.log != null && item.log!.entries.isNotEmpty;
+    final totals = hasEntries ? item.log!.totalNutrition : NutritionData.empty;
+
+    final carbProg = (hasEntries && carbGoal > 0) ? (totals.carbohydrates / carbGoal) : 0.0;
+    final protProg = (hasEntries && protGoal > 0) ? (totals.protein / protGoal) : 0.0;
+    final fatProg = (hasEntries && fatGoal > 0) ? (totals.fat / fatGoal) : 0.0;
+    final fiberProg = (hasEntries && fiberGoal > 0) ? (totals.fiber / fiberGoal) : 0.0;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 46,
+          height: 46,
+          child: CustomPaint(
+            painter: _ConcentricMacroShapePainter(
+              carbProgress: carbProg,
+              proteinProgress: protProg,
+              fatProgress: fatProg,
+              fiberProgress: fiberProg,
+              isDark: isDark,
+              hasEntries: hasEntries,
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          item.dayName,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+            color: isToday ? const Color(0xFF007AFF) : (isDark ? Colors.white54 : Colors.black54),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConcentricMacroShapePainter extends CustomPainter {
+  final double carbProgress;
+  final double proteinProgress;
+  final double fatProgress;
+  final double fiberProgress;
+  final bool isDark;
+  final bool hasEntries;
+
+  _ConcentricMacroShapePainter({
+    required this.carbProgress,
+    required this.proteinProgress,
+    required this.fatProgress,
+    required this.fiberProgress,
+    required this.isDark,
+    required this.hasEntries,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final baseRadius = size.width / 2 - 2;
+
+    final rings = [
+      (proteinProgress, const Color(0xFF34C759), baseRadius),
+      (carbProgress, const Color(0xFFBF5AF2), baseRadius - 4.5),
+      (fatProgress, const Color(0xFFFF9500), baseRadius - 9.0),
+      (fiberProgress, const Color(0xFF32ADE6), baseRadius - 13.5),
+    ];
+
+    if (!hasEntries) {
+      // Empty day: draw a single clean neutral ring outline
+      final emptyPaint = Paint()
+        ..color = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+      canvas.drawCircle(center, baseRadius, emptyPaint);
+      return;
+    }
+
+    for (final ring in rings) {
+      final prog = ring.$1.clamp(0.0, 1.0);
+      final color = ring.$2;
+      final r = ring.$3;
+
+      if (r <= 2) continue;
+
+      // Track background for day with entries
+      final bgPaint = Paint()
+        ..color = color.withValues(alpha: isDark ? 0.14 : 0.10)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0
+        ..strokeCap = StrokeCap.round;
+      canvas.drawCircle(center, r, bgPaint);
+
+      if (prog > 0) {
+        final activePaint = Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0
+          ..strokeCap = StrokeCap.round;
+        final sweepAngle = 2 * 3.1415926535 * prog;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: r),
+          -3.1415926535 / 2,
+          sweepAngle,
+          false,
+          activePaint,
+        );
+
+        // Glow if completed 100%
+        if (ring.$1 >= 1.0) {
+          final glowPaint = Paint()
+            ..color = color.withValues(alpha: 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4.5;
+          canvas.drawCircle(center, r, glowPaint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConcentricMacroShapePainter oldDelegate) => true;
 }
