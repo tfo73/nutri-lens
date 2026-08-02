@@ -224,12 +224,12 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     SizedBox(
-                      height: 235,
+                      height: 180,
                       child: _WeightChart(wellness: context.watch<WellnessProvider>()),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
-                      height: 180,
+                      height: 160,
                       child: _SleepScoreChart(wellness: context.watch<WellnessProvider>()),
                     ),
                   ],
@@ -237,11 +237,11 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Sağ Sütun: 7-Günlük Kalori/Besin Takibi (235 + 12 + 180 = 427)
+              // Sağ Sütun: 7-Günlük Kalori/Besin Takibi (180 + 12 + 160 = 352)
               Expanded(
                 flex: 1,
                 child: SizedBox(
-                  height: 427,
+                  height: 352,
                   child: _WeeklyMacroRingsCard(
                     nutritionProvider: context.watch<NutritionProvider>(),
                     profileProvider: profileProvider,
@@ -446,61 +446,52 @@ class ProfileScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.tr('BMI verileri'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white54 : Colors.black45,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        bmi.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: statusColor.withValues(alpha: 0.4)),
-                        ),
-                        child: Text(
-                          context.tr(category),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              Text(
+                context.tr('BMI verileri'),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
               ),
-              IconButton(
-                onPressed: () => _showBMIInfoDialog(context),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                    shape: BoxShape.circle,
-                  ),
+              GestureDetector(
+                onTap: () => _showBMIInfoDialog(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(2.0),
                   child: Icon(
                     Icons.info_outline_rounded,
-                    size: 20,
-                    color: isDark ? Colors.white70 : Colors.black87,
+                    size: 16,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Text(
+                bmi.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  context.tr(category),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -3677,13 +3668,13 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
     super.dispose();
   }
 
-  Color _scoreColor(double? score, ColorScheme cs) {
-    if (score == null) return cs.outline.withValues(alpha: 0.12);
-    if (score >= 4.5) return const Color(0xFF3FB950);
-    if (score >= 3.5) return const Color(0xFF7EE787);
-    if (score >= 2.5) return const Color(0xFFFFCC00);
-    if (score >= 1.5) return const Color(0xFFFF8C42);
-    return const Color(0xFFF85149);
+  Color _scoreColor(double? score) {
+    if (score == null) return const Color(0xFF7EE787);
+    if (score >= 4.5) return const Color(0xFF34C759); // 5: Green
+    if (score >= 3.5) return const Color(0xFF7EE787); // 4: Light Green
+    if (score >= 2.5) return const Color(0xFFFF9500); // 3: Orange
+    if (score >= 1.5) return const Color(0xFFFFCC00); // 2: Yellow
+    return const Color(0xFFFF3B30);                   // 1: Red
   }
 
   @override
@@ -3746,7 +3737,7 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
     final lineColor = const Color(0xFF7EE787);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(6, 8, 10, 2),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
@@ -3774,7 +3765,7 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           if (nonNull.isEmpty)
             Center(
               child: Padding(
@@ -3784,7 +3775,7 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
             )
           else
             SizedBox(
-              height: 130,
+              height: 115,
               child: LineChart(
                 LineChartData(
                   minX: 0,
@@ -3792,28 +3783,30 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                   minY: 0,
                   maxY: 5,
                   gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    drawHorizontalLine: true,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                      strokeWidth: 0.8,
-                    ),
+                    show: false,
                   ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 24,
+                        reservedSize: 30,
                         interval: 1,
                         getTitlesWidget: (val, _) {
                           final intVal = val.round();
                           if (intVal >= 1 && intVal <= 5 && (val - intVal).abs() < 0.1) {
-                            return Text(intVal.toString(),
+                            return Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Text(
+                                intVal.toString(),
                                 style: TextStyle(
-                                    fontSize: 9.5,
-                                    color: cs.onSurface.withValues(alpha: 0.5)));
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: cs.onSurface.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            );
                           }
                           return const SizedBox.shrink();
                         },
@@ -3884,16 +3877,18 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                     ),
                     getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
                       return spotIndexes.map((index) {
+                        final spot = barData.spots[index];
+                        final c = _scoreColor(spot.y);
                         return TouchedSpotIndicatorData(
                           FlLine(
-                            color: const Color(0xFF7EE787).withValues(alpha: 0.2),
+                            color: c.withValues(alpha: 0.25),
                             strokeWidth: 2,
                           ),
                           FlDotData(
                             show: true,
                             getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                              radius: 4,
-                              color: const Color(0xFF7EE787),
+                              radius: 4.5,
+                              color: c,
                               strokeWidth: 2,
                               strokeColor: Colors.white,
                             ),
@@ -3917,8 +3912,8 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                         show: true,
                         getDotPainter: (spot, percent, barData, index) {
                           return FlDotCirclePainter(
-                            radius: 2.0,
-                            color: lineColor,
+                            radius: 2.5,
+                            color: _scoreColor(spot.y),
                             strokeWidth: 1.0,
                             strokeColor: Colors.white,
                           );
@@ -3939,16 +3934,13 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                   ],
                   extraLinesData: ExtraLinesData(
                     horizontalLines: [
-                      HorizontalLine(
-                          y: 3,
-                          color: cs.primary.withValues(alpha: 0.08),
-                          strokeWidth: 1,
-                          dashArray: [4, 4]),
-                      HorizontalLine(
-                          y: 5,
-                          color: cs.primary.withValues(alpha: 0.25),
-                          strokeWidth: 1,
-                          dashArray: [4, 4]),
+                      for (double score = 1; score <= 5; score += 1)
+                        HorizontalLine(
+                          y: score,
+                          color: _scoreColor(score).withValues(alpha: (score == 3 || score == 5) ? 0.22 : 0.08),
+                          strokeWidth: (score == 3 || score == 5) ? 1.0 : 0.8,
+                          dashArray: (score == 3 || score == 5) ? [4, 4] : [2, 3],
+                        ),
                     ],
                   ),
                 ),
@@ -4069,13 +4061,20 @@ class _WeightChartState extends State<_WeightChart> {
     }
 
     final nonNull = values.whereType<double>().toList();
-    final double minW = nonNull.isEmpty ? 60.0 : nonNull.reduce((a, b) => a < b ? a : b);
-    final double maxW = nonNull.isEmpty ? 80.0 : nonNull.reduce((a, b) => a > b ? a : b);
-    final double minVal = (minW - 1.5).floorToDouble();
-    final double maxVal = (maxW + 1.5).ceilToDouble();
+    final double rawMin = nonNull.isEmpty ? 60.0 : nonNull.reduce((a, b) => a < b ? a : b);
+    final double rawMax = nonNull.isEmpty ? 80.0 : nonNull.reduce((a, b) => a > b ? a : b);
+
+    // Ensure (maxVal - minVal) is an even integer so midVal is always a clean whole number
+    double minVal = (rawMin - 1.0).floorToDouble();
+    double maxVal = (rawMax + 1.0).ceilToDouble();
+    if ((maxVal - minVal).toInt() % 2 != 0) {
+      maxVal += 1.0;
+    }
+    final double step = (maxVal - minVal) / 2;
+    final double midVal = minVal + step;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
@@ -4136,7 +4135,7 @@ class _WeightChartState extends State<_WeightChart> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           if (nonNull.isEmpty)
             Center(
               child: Column(
@@ -4151,7 +4150,7 @@ class _WeightChartState extends State<_WeightChart> {
             )
           else
             SizedBox(
-              height: 155,
+              height: 120,
               child: LineChart(
                 LineChartData(
                   minX: 0,
@@ -4162,6 +4161,12 @@ class _WeightChartState extends State<_WeightChart> {
                     show: true,
                     drawVerticalLine: false,
                     drawHorizontalLine: true,
+                    checkToShowHorizontalLine: (val) {
+                      final d1 = (val - minVal).abs();
+                      final d2 = (val - midVal).abs();
+                      final d3 = (val - maxVal).abs();
+                      return d1 < 0.2 || d2 < 0.2 || d3 < 0.2;
+                    },
                     getDrawingHorizontalLine: (_) => FlLine(
                       color: cs.outlineVariant.withValues(alpha: 0.3),
                       strokeWidth: 0.8,
@@ -4172,13 +4177,28 @@ class _WeightChartState extends State<_WeightChart> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 28,
-                        interval: ((maxVal - minVal) / 2).clamp(1.0, 10.0),
+                        reservedSize: 30,
+                        interval: step > 0 ? step : 1.0,
                         getTitlesWidget: (val, _) {
-                          return Text(val.toInt().toString(),
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  color: cs.onSurface.withValues(alpha: 0.5)));
+                          final d1 = (val - minVal).abs();
+                          final d2 = (val - midVal).abs();
+                          final d3 = (val - maxVal).abs();
+                          if (d1 < 0.3 || d2 < 0.3 || d3 < 0.3) {
+                            final int target = (d2 < 0.3 && d1 >= 0.3 && d3 >= 0.3) ? midVal.toInt() : val.round();
+                            return Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Text(
+                                target.toString(),
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: cs.onSurface.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
                         },
                       ),
                     ),
@@ -4584,7 +4604,7 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -4596,39 +4616,48 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
               color: cs.onSurface,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
 
-          // 7 Days Concentric Shapes
+          // 7 Days Concentric Shapes (2-column rows + centered Today at bottom)
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Row 1: Days 0, 1, 2
+                // Row 1: Days 0, 1
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    for (int i = 0; i < 3; i++)
+                    for (int i = 0; i < 2; i++)
                       _buildDayMacroShape(context, days[i], carbGoal, protGoal, fatGoal, fiberGoal),
                   ],
                 ),
 
-                // Row 2: Days 3, 4, 5
+                // Row 2: Days 2, 3
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    for (int i = 3; i < 6; i++)
+                    for (int i = 2; i < 4; i++)
                       _buildDayMacroShape(context, days[i], carbGoal, protGoal, fatGoal, fiberGoal),
                   ],
                 ),
 
-                // Row 3: Day 6 (Today - Centered)
+                // Row 3: Days 4, 5
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    for (int i = 4; i < 6; i++)
+                      _buildDayMacroShape(context, days[i], carbGoal, protGoal, fatGoal, fiberGoal),
+                  ],
+                ),
+
+                // Row 4: Day 6 (Today - Centered & Larger)
                 Center(
                   child: _buildDayMacroShape(context, days[6], carbGoal, protGoal, fatGoal, fiberGoal, isToday: true),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
           // Bottom Legend
           Wrap(
@@ -4636,10 +4665,10 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
             runSpacing: 4,
             alignment: WrapAlignment.center,
             children: [
-              _legendDot('Karbonhidrat', const Color(0xFFBF5AF2)),
-              _legendDot('Protein', const Color(0xFF34C759)),
-              _legendDot('Yağ', const Color(0xFFFF9500)),
-              _legendDot('Lif', const Color(0xFF32ADE6)),
+              _legendDot('Protein', const Color(0xFFFF3B30)),
+              _legendDot('Karbonhidrat', const Color(0xFFFF9500)),
+              _legendDot('Yağ', const Color(0xFFBF5AF2)),
+              _legendDot('Lif', const Color(0xFF34C759)),
             ],
           ),
         ],
@@ -4686,12 +4715,14 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
     final fatProg = (hasEntries && fatGoal > 0) ? (totals.fat / fatGoal) : 0.0;
     final fiberProg = (hasEntries && fiberGoal > 0) ? (totals.fiber / fiberGoal) : 0.0;
 
+    final shapeSize = isToday ? 52.0 : 44.0;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 46,
-          height: 46,
+          width: shapeSize,
+          height: shapeSize,
           child: CustomPaint(
             painter: _ConcentricMacroShapePainter(
               carbProgress: carbProg,
@@ -4700,6 +4731,7 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
               fiberProgress: fiberProg,
               isDark: isDark,
               hasEntries: hasEntries,
+              ringThickness: isToday ? 3.8 : 3.0,
             ),
           ),
         ),
@@ -4707,9 +4739,9 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
         Text(
           item.dayName,
           style: TextStyle(
-            fontSize: 10.5,
+            fontSize: isToday ? 11.5 : 10.5,
             fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-            color: isToday ? const Color(0xFF007AFF) : (isDark ? Colors.white54 : Colors.black54),
+            color: isToday ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white54 : Colors.black54),
           ),
         ),
       ],
@@ -4724,6 +4756,7 @@ class _ConcentricMacroShapePainter extends CustomPainter {
   final double fiberProgress;
   final bool isDark;
   final bool hasEntries;
+  final double ringThickness;
 
   _ConcentricMacroShapePainter({
     required this.carbProgress,
@@ -4732,29 +4765,21 @@ class _ConcentricMacroShapePainter extends CustomPainter {
     required this.fiberProgress,
     required this.isDark,
     required this.hasEntries,
+    this.ringThickness = 3.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final baseRadius = size.width / 2 - 2;
+    final gap = ringThickness + 1.5;
 
     final rings = [
-      (proteinProgress, const Color(0xFF34C759), baseRadius),
-      (carbProgress, const Color(0xFFBF5AF2), baseRadius - 4.5),
-      (fatProgress, const Color(0xFFFF9500), baseRadius - 9.0),
-      (fiberProgress, const Color(0xFF32ADE6), baseRadius - 13.5),
+      (proteinProgress, const Color(0xFFFF3B30), baseRadius),             // Protein: Kırmızı
+      (carbProgress, const Color(0xFFFF9500), baseRadius - gap),         // Karbonhidrat: Turuncu
+      (fatProgress, const Color(0xFFBF5AF2), baseRadius - gap * 2),     // Yağ: Mor
+      (fiberProgress, const Color(0xFF34C759), baseRadius - gap * 3),   // Lif: Yeşil
     ];
-
-    if (!hasEntries) {
-      // Empty day: draw a single clean neutral ring outline
-      final emptyPaint = Paint()
-        ..color = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-      canvas.drawCircle(center, baseRadius, emptyPaint);
-      return;
-    }
 
     for (final ring in rings) {
       final prog = ring.$1.clamp(0.0, 1.0);
@@ -4763,11 +4788,11 @@ class _ConcentricMacroShapePainter extends CustomPainter {
 
       if (r <= 2) continue;
 
-      // Track background for day with entries
+      // Track background for every day (faint track)
       final bgPaint = Paint()
         ..color = color.withValues(alpha: isDark ? 0.14 : 0.10)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0
+        ..strokeWidth = ringThickness
         ..strokeCap = StrokeCap.round;
       canvas.drawCircle(center, r, bgPaint);
 
@@ -4775,7 +4800,7 @@ class _ConcentricMacroShapePainter extends CustomPainter {
         final activePaint = Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 3.0
+          ..strokeWidth = ringThickness
           ..strokeCap = StrokeCap.round;
         final sweepAngle = 2 * 3.1415926535 * prog;
         canvas.drawArc(
@@ -4791,7 +4816,7 @@ class _ConcentricMacroShapePainter extends CustomPainter {
           final glowPaint = Paint()
             ..color = color.withValues(alpha: 0.35)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 4.5;
+            ..strokeWidth = ringThickness + 1.5;
           canvas.drawCircle(center, r, glowPaint);
         }
       }
