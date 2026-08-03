@@ -300,12 +300,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       extendBody: true,
+      drawer: const CoachDrawer(),
       body: Stack(
         clipBehavior: Clip.none,
         children: [
           PageView(
             controller: _pageController,
-            physics: _isMenuOpen ? const NeverScrollableScrollPhysics() : null,
+            physics: const NeverScrollableScrollPhysics(),
             onPageChanged: (index) {
               FocusManager.instance.primaryFocus?.unfocus();
               setState(() {

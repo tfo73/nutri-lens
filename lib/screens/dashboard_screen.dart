@@ -33,6 +33,7 @@ import '../widgets/animated_widgets.dart';
 import '../models/supplement_model.dart';
 import '../widgets/supplement_management_sheet.dart';
 import '../services/notification_service.dart';
+import '../services/conflict_detection_service.dart';
 import 'wc_tracking_screen.dart';
 import 'manual_entry_screen.dart';
 
@@ -427,12 +428,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
                   _buildOptionItem(
-                    icon: Icons.qr_code_scanner_rounded,
-                    label: context.tr('Barkod'),
-                    color: const Color(0xFF2563EB),
+                    icon: Icons.mic_rounded,
+                    label: context.tr('Anlatarak Analiz'),
+                    color: const Color(0xFF9333EA),
                     onTap: () {
                       Navigator.pop(context);
-                      widget.onMealAddPressed?.call(mealType, 'barcode', _selectedDate);
+                      widget.onMealAddPressed?.call(mealType, 'voice', _selectedDate);
                     },
                   ),
                   _buildOptionItem(
@@ -445,12 +446,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
                   _buildOptionItem(
-                    icon: Icons.mic_rounded,
-                    label: context.tr('Sesli'),
-                    color: const Color(0xFF9333EA),
+                    icon: Icons.qr_code_scanner_rounded,
+                    label: context.tr('Barkod'),
+                    color: const Color(0xFF2563EB),
                     onTap: () {
                       Navigator.pop(context);
-                      widget.onMealAddPressed?.call(mealType, 'voice', _selectedDate);
+                      widget.onMealAddPressed?.call(mealType, 'barcode', _selectedDate);
                     },
                   ),
                 ],
@@ -591,6 +592,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildAlertSection(
+                      context: context,
+                      np: nutritionProvider,
+                      pp: profileProvider,
+                      wp: wellnessProvider,
+                      dailyLog: dailyLog,
+                      isDark: isDark,
+                    ),
+
                     // ROW 1: Su Takibi (flex: 2) & Mikro Besinler (flex: 3)
                     SizedBox(
                       height: 165,
@@ -714,6 +724,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
+                      color: Color(0xFF007AFF),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -2406,6 +2417,306 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return _buildFallbackFoodIcon(isDark);
+  }
+
+  Widget _buildAlertSection({
+    required BuildContext context,
+    required NutritionProvider np,
+    required ProfileProvider pp,
+    required WellnessProvider wp,
+    required DailyLog dailyLog,
+    required bool isDark,
+  }) {
+    final isTurkish = context.watch<LanguageProvider>().isTurkish;
+    final conflicts = np.getConflicts(pp.activeProfile, log: dailyLog, isTurkish: isTurkish);
+    
+    final alertItems = <Widget>[];
+
+    // 1. Weekly weight check alert
+    final now = DateTime.now();
+    final isToday = DateUtils.isSameDay(_selectedDate, now);
+    if (isToday) {
+      final weekStartDay = pp.weekStartDay; // Default to Monday
+      final diff = (now.weekday - weekStartDay + 7) % 7;
+      final isFirstDayOfWeek = diff == 0;
+      
+      if (isFirstDayOfWeek && !wp.weightEnteredThisWeek) {
+        alertItems.add(
+          _buildSingleAlertCard(
+            context: context,
+            icon: '⚖️',
+            message: isTurkish
+                ? 'Haftalık kilo kontrolü zamanı! Değişimini takip etmek için dokun. ✨'
+                : 'Time for weekly weight check! Tap here to log your weight. ✨',
+            isDark: isDark,
+            onTap: () => _showWeightPickerSheet(context),
+          ),
+        );
+      }
+    }
+
+    // 2. Nutrition conflicts alerts
+    for (final c in conflicts) {
+      alertItems.add(
+        _buildSingleAlertCard(
+          context: context,
+          icon: c.icon,
+          message: c.message,
+          isDark: isDark,
+          onTap: () {
+            final prompt = _getPromptForConflict(c, isTurkish);
+            context.read<CoachProvider>().setPrefilledMessage(prompt);
+            widget.onCoachPressed?.call();
+          },
+        ),
+      );
+    }
+
+    if (alertItems.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: alertItems,
+      ),
+    );
+  }
+
+  void _showWeightPickerSheet(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final wellness = context.read<WellnessProvider>();
+    final profile = context.read<ProfileProvider>();
+    final lastRecorded = wellness.lastRecordedWeight;
+    final profileWeight = profile.weight;
+    final current = wellness.thisWeekWeight ?? lastRecorded ?? (profileWeight > 0 ? profileWeight : 70.0);
+    double selected = current;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF131520) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                context.tr('Bu Haftanın Kilosu'),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: cs.onSurface,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 180,
+                child: ListWheelScrollView.useDelegate(
+                  itemExtent: 48,
+                  perspective: 0.003,
+                  physics: const FixedExtentScrollPhysics(),
+                  controller: FixedExtentScrollController(
+                    initialItem: ((selected - 30) * 10).round().clamp(0, 1200),
+                  ),
+                  onSelectedItemChanged: (i) =>
+                      setSheetState(() => selected = 30 + i / 10),
+                  childDelegate: ListWheelChildBuilderDelegate(
+                    builder: (_, i) {
+                      final v = 30 + i / 10;
+                      final isSel = ((v - selected).abs() < 0.05);
+                      return Center(
+                        child: Text(
+                          '${v.toStringAsFixed(1)} kg',
+                          style: TextStyle(
+                            fontSize: isSel ? 22 : 16,
+                            fontWeight: isSel
+                                ? FontWeight.w800
+                                : FontWeight.w400,
+                            color: isSel
+                                ? cs.primary
+                                : cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: 1201,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  onPressed: () async {
+                    await wellness.logWeight(selected);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF007AFF),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    '${selected.toStringAsFixed(1)} kg ${context.tr('Kaydet')}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleAlertCard({
+    required BuildContext context,
+    required String icon,
+    required String message,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final redBg = const Color(0xFFFF3B30);
+    final orangeBg = const Color(0xFFFF9500);
+    final isWeight = icon == '⚖️';
+    final cardBg = isWeight
+        ? (isDark ? const Color(0xFF221A0F) : orangeBg.withValues(alpha: 0.08))
+        : (isDark ? const Color(0xFF1E1418) : redBg.withValues(alpha: 0.08));
+    final borderColor = isWeight
+        ? (isDark ? const Color(0xFF503510) : orangeBg.withValues(alpha: 0.2))
+        : (isDark ? const Color(0xFF501015) : redBg.withValues(alpha: 0.2));
+    final textColor = isWeight
+        ? (isDark ? const Color(0xFFFFB340) : const Color(0xFFB05000))
+        : (isDark ? const Color(0xFFFF6B6B) : const Color(0xFFC02020));
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: borderColor,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: textColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getPromptForConflict(NutritionConflict c, bool isTurkish) {
+    if (isTurkish) {
+      if (c.icon == '🌾' || c.message.contains('Lif')) {
+        return 'Lif alımımı artırmak için bana nasıl bir beslenme önerirsin?';
+      }
+      if (c.icon == '💪' || c.message.contains('Protein')) {
+        return 'Günlük protein ihtiyacımı karşılamak için pratik ve sağlıklı hangi gıdaları eklemeliyim?';
+      }
+      if (c.icon == '☀️' || c.message.contains('D vitamini')) {
+        return 'D vitamini eksikliğimi gidermek için neler yapabilirim? Beslenme veya yaşam tarzı önerilerin nelerdir?';
+      }
+      if (c.icon == '🩸' || c.message.contains('Demir')) {
+        return 'Demir alımımı artırmak ve vücudumdaki demir emilimini desteklemek için ne tür besinler tüketmeliyim?';
+      }
+      if (c.icon == '🦷' || c.message.contains('Kalsiyum')) {
+        return 'Kalsiyum alımımı doğal yollarla artırmak için beslenmeme neler ekleyebilirim?';
+      }
+      if (c.icon == '🌿' || c.message.contains('Magnezyum')) {
+        return 'Magnezyum alımımı artırmak için bana ne önerirsin?';
+      }
+      if (c.icon == '⚡' || c.message.contains('Çinko')) {
+        return 'Çinko içeren besinler ve faydaları hakkında bilgi verir misin?';
+      }
+      if (c.icon == '🍌' || c.message.contains('Potasyum')) {
+        return 'Potasyum ihtiyacımı dengeli karşılamak için nasıl beslenmeliyim?';
+      }
+      if (c.icon == '💊' || c.message.contains('B12')) {
+        return 'B12 vitamini alımımı artırmak için beslenme önerileriniz nelerdir?';
+      }
+      if (c.icon == '🐟' || c.message.contains('Omega-3')) {
+        return 'Omega-3 alımımı artırmak için ne tür besinler tüketmeliyim?';
+      }
+      return c.message;
+    } else {
+      if (c.icon == '🌾' || c.message.contains('Fiber')) {
+        return 'What dietary changes can I make to increase my fiber intake?';
+      }
+      if (c.icon == '💪' || c.message.contains('Protein')) {
+        return 'What are some practical and healthy foods to add to meet my daily protein needs?';
+      }
+      if (c.icon == '☀️' || c.message.contains('Vitamin D')) {
+        return 'What can I do to address my Vitamin D deficiency? What are your dietary or lifestyle tips?';
+      }
+      if (c.icon == '🩸' || c.message.contains('Iron')) {
+        return 'What foods should I consume to increase my iron intake and support absorption?';
+      }
+      if (c.icon == '🦷' || c.message.contains('Calcium')) {
+        return 'What can I add to my diet to naturally increase calcium intake?';
+      }
+      if (c.icon == '🌿' || c.message.contains('Magnesium')) {
+        return 'What do you recommend to increase my magnesium intake?';
+      }
+      if (c.icon == '⚡' || c.message.contains('Zinc')) {
+        return 'Can you give information about zinc-rich foods and their benefits?';
+      }
+      if (c.icon == '🍌' || c.message.contains('Potassium')) {
+        return 'How should I eat to balance my potassium intake?';
+      }
+      if (c.icon == '💊' || c.message.contains('B12')) {
+        return 'What are your dietary recommendations to increase Vitamin B12 intake?';
+      }
+      if (c.icon == '🐟' || c.message.contains('Omega-3')) {
+        return 'What kind of foods should I consume to increase my Omega-3 intake?';
+      }
+      return c.message;
+    }
   }
 
   Widget _buildFallbackFoodIcon(bool isDark) {

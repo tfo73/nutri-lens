@@ -12,6 +12,7 @@ import '../providers/wellness_provider.dart';
 import '../services/config_service.dart';
 import '../widgets/wave_background.dart';
 import '../l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CoachScreen extends StatefulWidget {
   final bool isDialog;
@@ -365,35 +366,81 @@ class CoachScreen extends StatefulWidget {
   }
 }
 
-class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
+class _CoachScreenState extends State<CoachScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   bool _isTyping = false;
   List<String> _currentQuestions = [];
   List<String> _symptomQuestions = [];
+  Map<String, dynamic>? _onboardingAnswers;
+
+  String _randomFeatureText = '';
+  String? _lastSessionId;
+  int _lastMessageCount = -1;
 
   String get _apiKey => ConfigService.anthropicKey;
+
+  void _rollRandomFeatureText() {
+    final features = [
+      context.tr('Yediğin yemeğin fotoğrafını çekerek veya yazarak kalori ve porsiyon analizi yapabilirim.'),
+      context.tr('Profilindeki alerji, hassasiyet ve sağlık durumlarına göre tamamen güvenli tarifler üretebilirim.'),
+      context.tr('Kilo alma veya verme hedefine uygun günlük porsiyon ve menü planlamaları hazırlayabilirim.'),
+      context.tr('Bugünkü kalori, makro ve su tüketim durumunu inceleyip gününü değerlendirebilirim.'),
+      context.tr('Spor sonrası kas yenilenmesi veya enerji kazanımı için en uygun öğünleri önerebilirim.'),
+      context.tr('Metabolizmanı hızlandıracak pratik tarifler ve sağlıklı atıştırmalık alternatifleri sunabilirim.'),
+      context.tr('Öğünlerinin protein, karbonhidrat ve yağ dengesini analiz edip sana özel tavsiyeler verebilirim.'),
+    ];
+    features.shuffle();
+    setState(() {
+      _randomFeatureText = features.first;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _currentQuestions = _buildDynamicQuestions(context);
     _symptomQuestions = _buildSymptomQuestions(context);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(force: true));
+    _loadOnboardingAnswers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rollRandomFeatureText();
+      setState(() {
+        _currentQuestions = _buildDynamicQuestions(context);
+      });
+      _scrollToBottom(force: true);
+    });
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
-      context.read<CoachProvider>().archiveSession();
-    }
+  Future<void> _loadOnboardingAnswers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final answersStr = prefs.getString('onboarding_answers');
+      if (answersStr != null) {
+        setState(() {
+          _onboardingAnswers = jsonDecode(answersStr);
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final coachProv = context.watch<CoachProvider>();
+    
+    // Check if session changed or conversation was cleared (New Session)
+    if (coachProv.selectedSessionId != _lastSessionId || 
+        coachProv.currentMessages.length != _lastMessageCount) {
+      final oldSessionId = _lastSessionId;
+      _lastSessionId = coachProv.selectedSessionId;
+      _lastMessageCount = coachProv.currentMessages.length;
+      
+      // Roll random feature sentence and shuffle questions on session change/clear
+      if (coachProv.currentMessages.isEmpty || coachProv.selectedSessionId != oldSessionId) {
+        _rollRandomFeatureText();
+        _currentQuestions = _buildDynamicQuestions(context);
+      }
+    }
+
     if (coachProv.prefilledMessage != null) {
       _textController.text = coachProv.prefilledMessage!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -410,7 +457,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -693,7 +739,28 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       return context.tr('coach_fallback_prompt');
     }
 
-    return context.tr('coach_detailed_prompt')
+    // Build onboarding profile summary
+    final diseases = _onboardingAnswers?['diseases'] as List? ?? profile.healthConditions;
+    final diseasesStr = diseases.isNotEmpty ? diseases.join(', ') : 'Belirtilmemiş';
+    final sensitivities = _onboardingAnswers?['foodSensitivities'] as List? ?? [];
+    final sensitivitiesOther = _onboardingAnswers?['foodSensitivitiesOther'] as String? ?? '';
+    final sensitivitiesStr = (sensitivities.isNotEmpty || sensitivitiesOther.isNotEmpty)
+        ? '${sensitivities.join(', ')} ${sensitivitiesOther.isNotEmpty ? "($sensitivitiesOther)" : ""}'
+        : 'Belirtilmemiş';
+    final targetW = _onboardingAnswers?['targetWeightKg'] ?? '';
+
+    final onboardingContext = '\n\n'
+        'SAĞLIK VE GÜVENLİK PROFİLİ:\n'
+        '- Hastalıklar: $diseasesStr\n'
+        '- Hassasiyetler / Alerjiler: $sensitivitiesStr\n'
+        '- Diyet Planı: ${profile.dietaryPreferences.isNotEmpty ? profile.dietaryPreferences.join(', ') : "Belirtilmemiş"}\n'
+        '- Hedef Kilo: $targetW kg\n\n'
+        'KRİTİK GÜVENLİK TALİMATLARI:\n'
+        '1. GÜVENLİK BİRİNCİ ÖNCELİKTİR: Kullanıcının alerjisi veya hassasiyeti olduğu belirtilen gıdaları (Örn: Glüten/Çölyak, Laktoz, Fındık vb.) içeren veya tetikleyen besinleri, yemekleri ya da tarifleri KESİNLİKLE önerme ve kullanma!\n'
+        '2. PORSİYON BİLGİSİ VERME: Kullanıcı eğer bir plan yapmanı, tarif vermeni veya öğün önermeni istiyorsa, kalori değerlerinin yanında mutlaka net porsiyon/servis miktarları (Örn: 1 kase, 150 gram, 2 dilim) da ver. Sadece kalori değerini vermek yemek yaparken veya porsiyon ayarlarken yeterli değildir.\n'
+        '3. Bu profile ve yukarıdaki kısıtlamalara tam uyum sağla. Türkçe ve kısa/öz yanıt ver.';
+
+    final basePrompt = context.tr('coach_detailed_prompt')
         .replaceFirst('{name}', profile.name)
         .replaceFirst('{age}', profile.age.toString())
         .replaceFirst('{height}', profile.height.toStringAsFixed(0))
@@ -709,13 +776,46 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         .replaceFirst('{fat}', today.fat.toStringAsFixed(1))
         .replaceFirst('{fatGoal}', profile.fatGoal.toStringAsFixed(0))
         .replaceFirst('{name}', profile.name);
+
+    return '$basePrompt$onboardingContext';
   }
 
   Future<void> _sendMessage(String text, {String? displayText}) async {
     if (text.trim().isEmpty) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     _textController.clear();
 
     final coachProv = context.read<CoachProvider>();
+
+    if (text.trim().length <= 1) {
+      final userMsg = CoachMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        content: (displayText ?? text).trim(),
+        isUser: true,
+        timestamp: DateTime.now(),
+      );
+
+      coachProv.addMessage(userMsg);
+      setState(() {
+        _isTyping = true;
+      });
+      _scrollToBottom(force: true);
+
+      await Future.delayed(const Duration(milliseconds: 600));
+      final fallbackMsg = CoachMessage(
+        id: '${DateTime.now().millisecondsSinceEpoch}_ai',
+        content: context.tr('Anlayamadım, lütfen tekrar yazar mısınız?'),
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+
+      coachProv.addMessage(fallbackMsg);
+      setState(() {
+        _isTyping = false;
+      });
+      _scrollToBottom(force: true);
+      return;
+    }
 
     final userMsg = CoachMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -733,8 +833,8 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     try {
       final systemPrompt = _buildSystemPrompt(context);
 
-      final historyMsgs = coachProv.currentMessages.length > 10
-          ? coachProv.currentMessages.sublist(coachProv.currentMessages.length - 10)
+      final historyMsgs = coachProv.currentMessages.length > 20
+          ? coachProv.currentMessages.sublist(coachProv.currentMessages.length - 20)
           : List<CoachMessage>.from(coachProv.currentMessages);
 
       final apiMessages = historyMsgs.map((m) => {
@@ -864,13 +964,53 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildTopHeaderMain(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Row(
+          children: [
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: Icon(
+                  Icons.menu_rounded, 
+                  color: _isTyping ? cs.onSurface.withValues(alpha: 0.3) : cs.onSurface, 
+                  size: 28
+                ),
+                onPressed: _isTyping ? null : () {
+                  Scaffold.of(ctx).openDrawer();
+                },
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              context.tr('Dijital İkiz'),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                letterSpacing: -0.5,
+                color: cs.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildChatBody(BuildContext context) {
     final coach = context.watch<CoachProvider>();
 
     return WaveBackground(
       child: Column(
         children: [
-          if (!widget.isEmbedded) _buildTopHeader(context),
+          if (widget.isDialog) 
+            _buildTopHeader(context)
+          else if (!widget.isEmbedded)
+            _buildTopHeaderMain(context),
           Expanded(
             child: coach.currentMessages.isEmpty
                 ? _buildEmptyState(context)
@@ -911,13 +1051,7 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       return _buildChatBody(context);
     }
 
-    return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: _buildChatBody(context),
-      ),
-    );
+    return _buildChatBody(context);
   }
 
   List<String> _buildSymptomQuestions(BuildContext context) {
@@ -945,19 +1079,25 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     if (hour >= 6 && hour < 12) {
       questions.add(context.tr('🍳 Kahvaltı önerisi?'));
       questions.add(context.tr('🗓️ Bugün ne yemeliyim?'));
+      questions.add(context.tr('☀️ Güne enerjik başlama tüyoları?'));
+      questions.add(context.tr('☕ Kahve yanında sağlıklı ne yiyebilirim?'));
     }
 
     if (hour >= 19 || hour < 6) {
       questions.add(context.tr('💤 Uyku dostu besinler?'));
       questions.add(context.tr('📊 Günümü değerlendir'));
+      questions.add(context.tr('🍵 Gece açlığını yatıştıracak tarif?'));
+      questions.add(context.tr('Akşam ne yemeliyim?'));
     }
 
     if (nutrition.todayLog.exercises.isNotEmpty) {
       questions.add(context.tr('🏃‍♂️ Spor sonrası ne yemeliyim?'));
+      questions.add(context.tr('🏋️‍♂️ Spor öncesi enerji öğünleri?'));
     }
 
     if (waterIntakeMl < waterGoalMl * 0.8) {
       questions.add(context.tr('💧 Su içme tüyoları?'));
+      questions.add(context.tr('🥤 Aromalı su tarifleri?'));
     }
 
     if (calorieGoal > 0 && today.calories < calorieGoal * 0.7) {
@@ -979,6 +1119,12 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     questions.add(context.tr('🍎 Sağlıklı atıştırmalık?'));
     questions.add(context.tr('⚡ Metabolizma hızlandırma?'));
     questions.add(context.tr('🥗 Pratik öğle yemeği?'));
+    questions.add(context.tr('🥦 Lif tüketimini artırma yolları?'));
+    questions.add(context.tr('🍬 Şeker krizini önleme yöntemleri?'));
+    questions.add(context.tr('🔥 Yağ yakımını destekleyen besinler?'));
+    questions.add(context.tr('🌾 Glütensiz beslenme tüyoları?'));
+    questions.add(context.tr('🧁 Düşük kalorili tatlı tarifi?'));
+    questions.add(context.tr('🍽️ Aralıklı oruç öğün planı?'));
 
     questions.shuffle();
     return questions.take(4).toList();
@@ -992,38 +1138,141 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
+            SizedBox(
               width: 96,
               height: 96,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF007AFF), Color(0xFF58A6FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF007AFF).withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 1. Four corner brackets
+                  // Top Left
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Color(0xFFFFC107), width: 3),
+                          left: BorderSide(color: Color(0xFFFFC107), width: 3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Top Right
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Color(0xFFFFC107), width: 3),
+                          right: BorderSide(color: Color(0xFFFFC107), width: 3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Bottom Left
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFFFFC107), width: 3),
+                          left: BorderSide(color: Color(0xFFFFC107), width: 3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Bottom Right
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFFFFC107), width: 3),
+                          right: BorderSide(color: Color(0xFFFFC107), width: 3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // 2. Centered rounded square container
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E222F),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      color: Color(0xFFFFC107),
+                      size: 38,
+                    ),
+                  ),
+                  
+                  // 3. Overlapping bottom-right gold circle badge
+                  Positioned(
+                    bottom: 6,
+                    right: 6,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFC107),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 3,
+                            offset: Offset(0, 1.5),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.auto_awesome, // Sparkles
+                        color: Color(0xFF1E222F),
+                        size: 9,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              child: Transform.scale(
-                scaleX: -1,
-                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 48),
-              ),
             ),
             const SizedBox(height: 24),
-            Text(
-              context.tr('Merhaba!'),
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 26,
-                letterSpacing: -0.5,
-                color: Color(0xFF007AFF),
-              ),
+            Builder(
+              builder: (context) {
+                final profile = context.watch<ProfileProvider>().activeProfile;
+                final name = profile != null ? ', ${profile.name.trim().split(' ').first}' : '';
+                return Text(
+                  '${context.tr('Merhaba')}$name!',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 26,
+                    letterSpacing: -0.5,
+                    color: Color(0xFF007AFF),
+                  ),
+                );
+              }
             ),
             const SizedBox(height: 4),
             Text(
@@ -1038,7 +1287,9 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 12),
             Text(
-              context.tr('Profil bilgilerine ve bugünkü verilerine göre sana özel öneriler sunabilirim. Nereden başlayalım?'),
+              _randomFeatureText.isNotEmpty 
+                  ? _randomFeatureText 
+                  : context.tr('Profil bilgilerine ve bugünkü verilerine göre sana özel öneriler sunabilirim.'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? Colors.white60 : Colors.black54,
@@ -1051,6 +1302,9 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
       ),
     );
   }
+
+
+
 
   Widget _buildTypingIndicator(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1175,102 +1429,119 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     if (allItems.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      height: 44,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: allItems.length,
-        itemBuilder: (context, index) {
-          final (isSymptom, itemIndex) = allItems[index];
-          final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: () {
-                  final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
-                  String prompt = label;
-
-                  if (isSymptom) {
-                    final symptomText = label.replaceAll('🚨 ', '').replaceAll(context.tr('🚨 {} ile beslenme bağlantısı?').replaceFirst('{}', ''), '');
-                    prompt = context.tr('prompt_symptom').replaceFirst('{symptom}', symptomText);
-                  } else if (label.contains(context.tr('🍳 Kahvaltı önerisi?').replaceAll('🍳 ', ''))) {
-                    prompt = context.tr('prompt_breakfast');
-                  } else if (label.contains('Akşam')) {
-                    prompt = context.tr('prompt_dinner');
-                  } else if (label.contains('💧') || label.contains('Su')) {
-                    prompt = context.tr('prompt_water');
-                  } else if (label.contains('🏃‍♂️') || label.contains('Spor') || label.contains('Adım')) {
-                    prompt = context.tr('prompt_steps');
-                  } else if (label.contains('🍎') || label.contains('atıştırmalık')) {
-                    prompt = context.tr('prompt_snack');
-                  } else if (label.contains('⚡') || label.contains('Enerjim')) {
-                    prompt = context.tr('prompt_energy');
-                  } else if (label.contains('📊') || label.contains('değerlendir') || label.contains('Günümü')) {
-                    prompt = context.tr('prompt_eval_day');
-                  } else if (label.contains('egzersiz')) {
-                    prompt = context.tr('prompt_post_workout');
-                  } else if (label.contains('Metabolizma')) {
-                    prompt = context.tr('prompt_metabolism');
-                  } else if (label.contains('💤') || label.contains('Uyku')) {
-                    prompt = context.tr('prompt_sleep');
-                  } else if (label.contains('⚖️') || label.contains('Kalori')) {
-                    prompt = context.tr('prompt_calorie');
-                  } else if (label.contains('🍗') || label.contains('Protein')) {
-                    prompt = context.tr('prompt_protein');
-                  } else if (label.contains('🥖') || label.contains('Karbonhidrat')) {
-                    prompt = context.tr('prompt_carb');
-                  } else if (label.contains('🥑') || label.contains('yağlar')) {
-                    prompt = context.tr('prompt_fat');
-                  } else if (label.contains('🥗') || label.contains('Öğle')) {
-                    prompt = context.tr('prompt_lunch');
-                  }
-
-                  _sendMessage(prompt);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSymptom
-                        ? (isDark ? const Color(0xFF5C1A1A) : const Color(0xFFFFCDD2))
-                        : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 18, bottom: 6),
+          child: Text(
+            context.tr('Nereden başlayalım?'),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        Container(
+          height: 44,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: allItems.length,
+            itemBuilder: (context, index) {
+              final (isSymptom, itemIndex) = allItems[index];
+              final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isSymptom
-                          ? (isDark ? const Color(0xFFEF9A9A) : const Color(0xFFEF5350))
-                          : (isDark ? Colors.white12 : Colors.black12),
-                      width: 0.8,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSymptom ? FontWeight.w600 : FontWeight.w500,
+                    onTap: () {
+                      final label = isSymptom ? _symptomQuestions[itemIndex] : _currentQuestions[itemIndex];
+                      String prompt = label;
+
+                      if (isSymptom) {
+                        final symptomText = label.replaceAll('🚨 ', '').replaceAll(context.tr('🚨 {} ile beslenme bağlantısı?').replaceFirst('{}', ''), '');
+                        prompt = context.tr('prompt_symptom').replaceFirst('{symptom}', symptomText);
+                      } else if (label.contains(context.tr('🍳 Kahvaltı önerisi?').replaceAll('🍳 ', ''))) {
+                        prompt = context.tr('prompt_breakfast');
+                      } else if (label.contains('Akşam')) {
+                        prompt = context.tr('prompt_dinner');
+                      } else if (label.contains('💧') || label.contains('Su')) {
+                        prompt = context.tr('prompt_water');
+                      } else if (label.contains('🏃‍♂️') || label.contains('Spor') || label.contains('Adım')) {
+                        prompt = context.tr('prompt_steps');
+                      } else if (label.contains('🍎') || label.contains('atıştırmalık')) {
+                        prompt = context.tr('prompt_snack');
+                      } else if (label.contains('⚡') || label.contains('Enerjim')) {
+                        prompt = context.tr('prompt_energy');
+                      } else if (label.contains('📊') || label.contains('değerlendir') || label.contains('Günümü')) {
+                        prompt = context.tr('prompt_eval_day');
+                      } else if (label.contains('egzersiz')) {
+                        prompt = context.tr('prompt_post_workout');
+                      } else if (label.contains('Metabolizma')) {
+                        prompt = context.tr('prompt_metabolism');
+                      } else if (label.contains('💤') || label.contains('Uyku')) {
+                        prompt = context.tr('prompt_sleep');
+                      } else if (label.contains('⚖️') || label.contains('Kalori')) {
+                        prompt = context.tr('prompt_calorie');
+                      } else if (label.contains('🍗') || label.contains('Protein')) {
+                        prompt = context.tr('prompt_protein');
+                      } else if (label.contains('🥖') || label.contains('Karbonhidrat')) {
+                        prompt = context.tr('prompt_carb');
+                      } else if (label.contains('🥑') || label.contains('yağlar')) {
+                        prompt = context.tr('prompt_fat');
+                      } else if (label.contains('🥗') || label.contains('Öğle')) {
+                        prompt = context.tr('prompt_lunch');
+                      }
+
+                      _sendMessage(prompt);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
                         color: isSymptom
-                            ? (isDark ? const Color(0xFFFFCDD2) : const Color(0xFFC62828))
-                            : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87),
+                            ? (isDark ? const Color(0xFF5C1A1A) : const Color(0xFFFFCDD2))
+                            : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: isSymptom
+                              ? (isDark ? const Color(0xFFEF9A9A) : const Color(0xFFEF5350))
+                              : (isDark ? Colors.white12 : Colors.black12),
+                          width: 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSymptom ? FontWeight.w600 : FontWeight.w500,
+                            color: isSymptom
+                                ? (isDark ? const Color(0xFFFFCDD2) : const Color(0xFFC62828))
+                                : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1528,6 +1799,257 @@ class _AnimatedDotsState extends State<_AnimatedDots> with TickerProviderStateMi
           ),
         ),
       )),
+    );
+  }
+}
+
+// ─── standalone public CoachDrawer ───────────────────────────────────────────
+
+class CoachDrawer extends StatelessWidget {
+  const CoachDrawer({super.key});
+
+  Widget _buildDrawerItem({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required IconData icon,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF2C2C2E) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: isSelected
+                ? Border.all(color: const Color(0xFF007AFF).withValues(alpha: 0.15), width: 1)
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF007AFF).withValues(alpha: 0.1)
+                      : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: isSelected ? const Color(0xFF007AFF) : cs.onSurface.withValues(alpha: 0.5),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isSelected ? const Color(0xFF007AFF) : cs.onSurface,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurface.withValues(alpha: 0.4),
+                          letterSpacing: -0.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (trailing != null) 
+                trailing
+              else
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: cs.onSurface.withValues(alpha: 0.25),
+                  size: 18,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, String archivedAt) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(context.tr('Konuşmayı Sil'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(context.tr('Bu konuşma geçmişini silmek istediğinize emin misiniz?')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('Vazgeç'), style: const TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<CoachProvider>().deleteSession(archivedAt);
+              Navigator.pop(ctx);
+            },
+            child: Text(context.tr('Sil'), style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatSessionDate(BuildContext context, String archivedAtStr) {
+    final date = DateTime.tryParse(archivedAtStr);
+    if (date == null) return archivedAtStr;
+    
+    final months = [
+      '', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+    ];
+    
+    return '${date.day} ${months[date.month]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final coachProv = context.watch<CoachProvider>();
+    final activeSessionId = coachProv.selectedSessionId;
+    final history = coachProv.history;
+
+    return Drawer(
+      backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+      child: Column(
+        children: [
+          // Spacer for status bar/dynamic island
+          SizedBox(height: MediaQuery.of(context).padding.top + 8),
+          
+          // Action Buttons - iOS subtle light tint button
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                foregroundColor: const Color(0xFF007AFF),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: Text(
+                context.tr('Yeni Konuşma Başlat'),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, letterSpacing: -0.2),
+              ),
+              onPressed: () {
+                coachProv.startNewSession();
+                Navigator.pop(context); // Close drawer
+              },
+            ),
+          ),
+
+          const Divider(height: 1, indent: 16, endIndent: 16),
+
+          // Session List
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                // Active Conversation Item
+                _buildDrawerItem(
+                  context: context,
+                  title: context.tr('Aktif Konuşma'),
+                  subtitle: coachProv.currentMessages.isNotEmpty 
+                      ? coachProv.currentMessages.last.content 
+                      : context.tr('Henüz konuşma başlamadı'),
+                  isSelected: activeSessionId == null,
+                  icon: Icons.chat_bubble_rounded,
+                  onTap: () {
+                    coachProv.selectSession(null);
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 8),
+                if (history.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 16, bottom: 8),
+                    child: Text(
+                      context.tr('Geçmiş Konuşmalar'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: cs.onSurface.withValues(alpha: 0.45),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  ...history.map((session) {
+                    final isSelected = activeSessionId == session.archivedAt;
+                    final displayDate = _formatSessionDate(context, session.archivedAt);
+                    final preview = session.messages.isNotEmpty 
+                        ? session.messages.last.content 
+                        : '';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: _buildDrawerItem(
+                        context: context,
+                        title: displayDate,
+                        subtitle: preview,
+                        isSelected: isSelected,
+                        icon: Icons.history_rounded,
+                        onTap: () {
+                          coachProv.selectSession(session.archivedAt);
+                          Navigator.pop(context);
+                        },
+                        trailing: IconButton(
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                            color: cs.error.withValues(alpha: 0.6),
+                          ),
+                          onPressed: () {
+                            _showDeleteConfirmation(context, session.archivedAt);
+                          },
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -974,38 +974,90 @@ class _MealChipRow extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onChanged;
   const _MealChipRow({required this.selected, required this.onChanged});
+
+  Widget _buildMealChip(BuildContext context, (String, String, String) m, bool isDark) {
+    final isSelected = selected == m.$1 || 
+        (m.$1 == 'öğle yemeği' && selected == 'öğle') || 
+        (m.$1 == 'akşam yemeği' && selected == 'akşam');
+    
+    return GestureDetector(
+      onTap: () => onChanged(m.$1),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? const Color(0xFF007AFF).withValues(alpha: 0.12)
+              : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF007AFF) : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(m.$2, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                m.$3,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: isSelected 
+                      ? const Color(0xFF007AFF)
+                      : (isDark ? Colors.white70 : Colors.black87),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final meals = [
       ('kahvaltı', '☀️', context.tr('Kahvaltı')),
-      ('öğle', '🌤', context.tr('Öğle')),
-      ('akşam', '🌙', context.tr('Akşam')),
-      ('ara öğün', '☕', context.tr('Ara Öğün'))
+      ('kahvaltı sonrası ara öğün', '☕️', context.tr('Kahvaltı Sonrası Ara Öğün')),
+      ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
+      ('öğle sonrası ara öğün', '🍵', context.tr('Öğle Sonrası Ara Öğün')),
+      ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
+      ('gece atıştırmalığı', '🍿', context.tr('Gece Atıştırmalığı')),
     ];
-    return Wrap(
-      spacing: 6,
-      children: meals.map((m) => ChoiceChip(
-        label: Text('${m.$2} ${m.$3}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        selected: selected == m.$1,
-        onSelected: (_) => onChanged(m.$1),
-        selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-        checkmarkColor: Theme.of(context).colorScheme.primary,
-        showCheckmark: true,
-        side: BorderSide(
-          color: selected == m.$1 
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) 
-            : Colors.transparent,
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildMealChip(context, meals[0], isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMealChip(context, meals[1], isDark)),
+          ],
         ),
-        labelStyle: TextStyle(
-          color: selected == m.$1 ? Theme.of(context).colorScheme.primary : null,
-          fontSize: 12,
-          fontWeight: selected == m.$1 ? FontWeight.w700 : FontWeight.w600,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _buildMealChip(context, meals[2], isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMealChip(context, meals[3], isDark)),
+          ],
         ),
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      )).toList(),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _buildMealChip(context, meals[4], isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMealChip(context, meals[5], isDark)),
+          ],
+        ),
+      ],
     );
   }
 }

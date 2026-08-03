@@ -67,10 +67,11 @@ class CoachProvider extends ChangeNotifier {
   final String profileId;
   List<CoachMessage> _currentMessages = [];
   List<CoachSession> _history = [];
-  Timer? _midnightTimer;
+  String? _selectedSessionId; // null represents active conversation, otherwise archivedAt of past session
   String? _prefilledMessage;
 
   String? get prefilledMessage => _prefilledMessage;
+  String? get selectedSessionId => _selectedSessionId;
 
   void setPrefilledMessage(String? msg) {
     _prefilledMessage = msg;
@@ -84,27 +85,19 @@ class CoachProvider extends ChangeNotifier {
 
   CoachProvider(this.profileId) {
     _load();
-    _scheduleMidnightArchive();
   }
 
-  @override
-  void dispose() {
-    _midnightTimer?.cancel();
-    super.dispose();
+  List<CoachMessage> get currentMessages {
+    if (_selectedSessionId == null) {
+      return List.unmodifiable(_currentMessages);
+    }
+    final session = _history.firstWhere(
+      (s) => s.archivedAt == _selectedSessionId,
+      orElse: () => CoachSession(archivedAt: '', messages: []),
+    );
+    return List.unmodifiable(session.messages);
   }
 
-  // Fires at next 00:00 to archive the day's session, then reschedules
-  void _scheduleMidnightArchive() {
-    _midnightTimer?.cancel();
-    final now = DateTime.now();
-    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
-    _midnightTimer = Timer(nextMidnight.difference(now), () {
-      archiveSession();
-      _scheduleMidnightArchive();
-    });
-  }
-
-  List<CoachMessage> get currentMessages => List.unmodifiable(_currentMessages);
   List<CoachSession> get history => List.unmodifiable(_history);
 
   String get _messagesKey => 'coach_messages_$profileId';
@@ -130,8 +123,6 @@ class CoachProvider extends ChangeNotifier {
         _history = list.map((e) => CoachSession.fromJson(e as Map<String, dynamic>)).toList();
       } catch (_) {}
     }
-    // Archive stale session from a previous day
-    _archiveIfPreviousDay();
     notifyListeners();
 
     // Cloud fetch
@@ -189,7 +180,6 @@ class CoachProvider extends ChangeNotifier {
       // Sync history (individual sessions)
       final batch = FirebaseFirestore.instance.batch();
       for (final session in _history) {
-        // Use archivedAt (ISO string) as doc ID for day-by-day/timestamp uniqueness
         final docRef = userDoc.collection('coach_sessions').doc(session.archivedAt);
         batch.set(docRef, session.toJson());
       }
@@ -199,69 +189,116 @@ class CoachProvider extends ChangeNotifier {
     }
   }
 
-  void addMessage(CoachMessage message) {
-    _currentMessages.add(message);
-    if (_currentMessages.length > 50) _currentMessages.removeAt(0);
-    _saveLocal();
-    
-    // For real-time active session sync
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && !user.isAnonymous) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('coach')
-          .doc('active')
-          .set({
-        'current': _currentMessages.map((m) => m.toJson()).toList(),
-        'lastSync': FieldValue.serverTimestamp(),
-      });
+  void selectSession(String? archivedAt) {
+    _selectedSessionId = archivedAt;
+    notifyListeners();
+  }
+
+  void startNewSession() {
+    if (_currentMessages.isNotEmpty) {
+      final session = CoachSession(
+        archivedAt: DateTime.now().toIso8601String(),
+        messages: List<CoachMessage>.from(_currentMessages),
+      );
+      _history.insert(0, session);
+      if (_history.length > 20) _history.removeLast();
+      _currentMessages = [];
     }
-    
+    _selectedSessionId = null;
+    _saveLocal();
+    syncToCloud();
+    notifyListeners();
+  }
+
+  void addMessage(CoachMessage message) {
+    if (_selectedSessionId == null) {
+      _currentMessages.add(message);
+      if (_currentMessages.length > 50) _currentMessages.removeAt(0);
+      
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.isAnonymous) {
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('coach')
+            .doc('active')
+            .set({
+          'current': _currentMessages.map((m) => m.toJson()).toList(),
+          'lastSync': FieldValue.serverTimestamp(),
+        });
+      }
+    } else {
+      final index = _history.indexWhere((s) => s.archivedAt == _selectedSessionId);
+      if (index != -1) {
+        final session = _history[index];
+        session.messages.add(message);
+        if (session.messages.length > 50) session.messages.removeAt(0);
+        
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null && !user.isAnonymous) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('coach_sessions')
+              .doc(session.archivedAt)
+              .set(session.toJson());
+        }
+      }
+    }
+    _saveLocal();
     notifyListeners();
   }
 
   void updateMessage(String id, String newContent) {
-    final index = _currentMessages.indexWhere((m) => m.id == id);
+    List<CoachMessage> targetList;
+    CoachSession? targetSession;
+    
+    if (_selectedSessionId == null) {
+      targetList = _currentMessages;
+    } else {
+      final index = _history.indexWhere((s) => s.archivedAt == _selectedSessionId);
+      if (index != -1) {
+        targetSession = _history[index];
+        targetList = targetSession.messages;
+      } else {
+        return;
+      }
+    }
+
+    final index = targetList.indexWhere((m) => m.id == id);
     if (index != -1) {
-      final old = _currentMessages[index];
-      _currentMessages[index] = CoachMessage(
+      final old = targetList[index];
+      targetList[index] = CoachMessage(
         id: old.id,
         content: newContent,
         isUser: old.isUser,
         timestamp: old.timestamp,
       );
       _saveLocal();
+      
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.isAnonymous) {
+        if (_selectedSessionId == null) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('coach')
+              .doc('active')
+              .set({
+            'current': _currentMessages.map((m) => m.toJson()).toList(),
+            'lastSync': FieldValue.serverTimestamp(),
+          });
+        } else if (targetSession != null) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('coach_sessions')
+              .doc(targetSession.archivedAt)
+              .set(targetSession.toJson());
+        }
+      }
       notifyListeners();
     }
-  }
-
-  void _archiveIfPreviousDay() {
-    if (_currentMessages.isEmpty) return;
-    final first = _currentMessages.first;
-    final today = DateTime.now();
-    if (first.timestamp.year != today.year ||
-        first.timestamp.month != today.month ||
-        first.timestamp.day != today.day) {
-      archiveSession();
-    }
-  }
-
-  void archiveSession() {
-    if (_currentMessages.isEmpty) return;
-    
-    final session = CoachSession(
-      archivedAt: DateTime.now().toIso8601String(),
-      messages: List<CoachMessage>.from(_currentMessages),
-    );
-    
-    _history.insert(0, session);
-    if (_history.length > 20) _history.removeLast();
-    
-    _currentMessages = [];
-    _saveLocal();
-    syncToCloud();
-    notifyListeners();
   }
 
   void toggleFavorite(String archivedAt) {
@@ -283,7 +320,22 @@ class CoachProvider extends ChangeNotifier {
 
   void deleteSession(String archivedAt) {
     _history.removeWhere((s) => s.archivedAt == archivedAt);
+    if (_selectedSessionId == archivedAt) {
+      _selectedSessionId = null;
+    }
     _saveLocal();
+    
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) {
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('coach_sessions')
+          .doc(archivedAt)
+          .delete()
+          .catchError((e) => debugPrint('Error deleting session from cloud: $e'));
+    }
+
     syncToCloud();
     notifyListeners();
   }

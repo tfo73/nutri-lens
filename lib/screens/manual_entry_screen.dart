@@ -46,27 +46,11 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   String? _networkImageUrl;
   final _picker = ImagePicker();
   late String _selectedMeal;
-  bool _isCalorieManuallyEdited = false;
+  bool _isCalorieLocked = true;
 
   final Map<String, TextEditingController> _microCtrls = {};
 
   static const List<(String, Color, List<(String, String, String)>)> _rawNutrientGroups = [
-    ('MİNERALLER', Color(0xFF007AFF), [
-      ('calcium',    'Kalsiyum',  'mg'),
-      ('iron',       'Demir',     'mg'),
-      ('magnesium',  'Magnezyum', 'mg'),
-      ('phosphorus', 'Fosfor',    'mg'),
-      ('potassium',  'Potasyum',  'mg'),
-      ('sodium',     'Sodyum',    'mg'),
-      ('zinc',       'Çinko',     'mg'),
-      ('copper',     'Bakır',     'mg'),
-      ('manganese',  'Manganez',  'mg'),
-      ('selenium',   'Selenyum',  'mcg'),
-      ('iodine',     'İyot',      'mcg'),
-      ('chromium',   'Krom',      'mcg'),
-      ('molybdenum', 'Molibden',  'mcg'),
-      ('fluoride',   'Florür',    'mcg'),
-    ]),
     ('VİTAMİNLER', Color(0xFFFF9500), [
       ('vit_c',        'C Vitamini',       'mg'),
       ('vit_d_mcg',    'D Vitamini',       'mcg'),
@@ -84,6 +68,22 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       ('biotin',       'Biotin (B7)',        'mcg'),
       ('choline',      'Kolin',             'mg'),
       ('betaine',      'Betain',            'mg'),
+    ]),
+    ('MİNERALLER', Color(0xFF007AFF), [
+      ('calcium',    'Kalsiyum',  'mg'),
+      ('iron',       'Demir',     'mg'),
+      ('magnesium',  'Magnezyum', 'mg'),
+      ('phosphorus', 'Fosfor',    'mg'),
+      ('potassium',  'Potasyum',  'mg'),
+      ('sodium',     'Sodyum',    'mg'),
+      ('zinc',       'Çinko',     'mg'),
+      ('copper',     'Bakır',     'mg'),
+      ('manganese',  'Manganez',  'mg'),
+      ('selenium',   'Selenyum',  'mcg'),
+      ('iodine',     'İyot',      'mcg'),
+      ('chromium',   'Krom',      'mcg'),
+      ('molybdenum', 'Molibden',  'mcg'),
+      ('fluoride',   'Florür',    'mcg'),
     ]),
     ('KAROTENOİDLER', Color(0xFFFF3B30), [
       ('beta_carot',  'Beta-Karoten',       'mcg'),
@@ -170,11 +170,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     _proteinCtrl.addListener(_autoCalcCalories);
     _carbCtrl.addListener(_autoCalcCalories);
     _fatCtrl.addListener(_autoCalcCalories);
-    _calorieFocusNode.addListener(() {
-      if (_calorieFocusNode.hasFocus) {
-        _isCalorieManuallyEdited = true;
-      }
-    });
   }
 
   void _populateMicroFieldsFrom65(NutritionData65 n65) {
@@ -188,7 +183,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   }
 
   void _autoCalcCalories() {
-    if (_isCalorieManuallyEdited) return;
+    if (!_isCalorieLocked) return;
     final p = double.tryParse(_proteinCtrl.text) ?? 0.0;
     final c = double.tryParse(_carbCtrl.text) ?? 0.0;
     final f = double.tryParse(_fatCtrl.text) ?? 0.0;
@@ -320,7 +315,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isTr = context.watch<LanguageProvider>().isTurkish;
 
-    final bg = isDark ? const Color(0xFF121212) : const Color(0xFFF2F2F7);
+    final bg = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
     final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final textSecondary = isDark ? Colors.white70 : const Color(0xFF8E8E93);
@@ -343,7 +338,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             color: textPrimary,
           ),
         ),
-        // NOTE: Trash button removed from app bar as explicitly requested
       ),
       body: SafeArea(
         child: Form(
@@ -356,7 +350,14 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: cardBg,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,13 +366,20 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       GestureDetector(
                         onTap: _showEnlargedImage,
                         child: Container(
-                          height: 160,
+                          height: 180,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              )
+                            ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                             child: _selectedImage != null
                                 ? Image.file(_selectedImage!, fit: BoxFit.cover)
                                 : CachedNetworkImage(imageUrl: _networkImageUrl!, fit: BoxFit.cover),
@@ -386,14 +394,17 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         minimumSize: const Size(double.infinity, 44),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        side: BorderSide(color: const Color(0xFF007AFF).withValues(alpha: 0.5)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        foregroundColor: const Color(0xFF007AFF),
+                        backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.05),
                       ),
                       icon: const Icon(Icons.add_a_photo_outlined, size: 18),
                       label: Text(
                         _selectedImage != null
                             ? context.tr('Fotoğrafı Değiştir')
                             : context.tr('Fotoğraf Ekle (İsteğe Bağlı)'),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: -0.2),
                       ),
                     ),
 
@@ -403,13 +414,19 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     TextFormField(
                       controller: _nameCtrl,
                       textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         labelText: context.tr('Yiyecek Adı'),
+                        labelStyle: TextStyle(color: textSecondary, fontSize: 14),
                         hintText: isTr ? 'ör. Izgara Tavuk Salatası' : 'e.g. Grilled Chicken Salad',
-                        prefixIcon: const Icon(Icons.restaurant_rounded, size: 20),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        prefixIcon: const Icon(Icons.restaurant_rounded, size: 20, color: Color(0xFF007AFF)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                         filled: true,
-                        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB),
+                        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
@@ -423,16 +440,26 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       const SizedBox(height: 16),
                       Text(
                         context.tr('Öğün Tipi'),
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textSecondary),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textSecondary),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         value: _selectedMeal,
+                        dropdownColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                          prefixIcon: const Icon(Icons.access_time_rounded, size: 20),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          prefixIcon: const Icon(Icons.access_time_rounded, size: 20, color: Color(0xFF007AFF)),
                           filled: true,
-                          fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB),
+                          fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         ),
                         items: [
                           DropdownMenuItem(value: 'kahvaltı', child: Text(context.tr('Kahvaltı'))),
@@ -458,14 +485,21 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: cardBg,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       isTr ? 'Porsiyon ve Kalori' : 'Portion & Calories',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textPrimary),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textPrimary, letterSpacing: -0.3),
                     ),
                     const SizedBox(height: 14),
                     Row(
@@ -474,12 +508,19 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                           child: TextFormField(
                             controller: _portionCtrl,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                             decoration: InputDecoration(
                               labelText: context.tr('Porsiyon Miktarı (g)'),
-                              prefixIcon: const Icon(Icons.scale_rounded, size: 20),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                              labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black54, fontSize: 13, fontWeight: FontWeight.bold),
+                              floatingLabelStyle: const TextStyle(color: Color(0xFF007AFF), fontSize: 13, fontWeight: FontWeight.bold),
+                              prefixIcon: const Icon(Icons.scale_rounded, size: 20, color: Color(0xFF007AFF)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
                               filled: true,
-                              fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB),
+                              fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             ),
                           ),
                         ),
@@ -487,14 +528,36 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _calorieCtrl,
-                            focusNode: _calorieFocusNode,
+                            readOnly: _isCalorieLocked,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                             decoration: InputDecoration(
-                              labelText: context.tr('Kalori (kcal)'),
-                              prefixIcon: const Icon(Icons.local_fire_department_rounded, size: 20, color: Color(0xFFD97706)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                              labelText: _isCalorieLocked ? context.tr('Kalori (otomatik)') : context.tr('Kalori'),
+                              labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black54, fontSize: 13, fontWeight: FontWeight.bold),
+                              floatingLabelStyle: const TextStyle(color: Color(0xFFFF9500), fontSize: 13, fontWeight: FontWeight.bold),
+                              prefixIcon: const Icon(Icons.local_fire_department_rounded, size: 20, color: Color(0xFFFF9500)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
                               filled: true,
-                              fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB),
+                              fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isCalorieLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                                  size: 18,
+                                  color: const Color(0xFFFF9500),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isCalorieLocked = !_isCalorieLocked;
+                                    if (_isCalorieLocked) {
+                                      _autoCalcCalories();
+                                    }
+                                  });
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -511,14 +574,21 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: cardBg,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       isTr ? 'Makro Besinler (g)' : 'Macro Nutrients (g)',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textPrimary),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textPrimary, letterSpacing: -0.3),
                     ),
                     const SizedBox(height: 14),
                     Row(
@@ -527,7 +597,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                           child: _buildInputTile(
                             ctrl: _proteinCtrl,
                             label: isTr ? 'Protein' : 'Protein',
-                            color: const Color(0xFF30B0C7),
+                            color: const Color(0xFFFF3B30), // Red
                             isDark: isDark,
                           ),
                         ),
@@ -536,7 +606,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                           child: _buildInputTile(
                             ctrl: _carbCtrl,
                             label: isTr ? 'Karb' : 'Carb',
-                            color: const Color(0xFFFFCC00),
+                            color: const Color(0xFFFF9500), // Orange
                             isDark: isDark,
                           ),
                         ),
@@ -545,7 +615,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                           child: _buildInputTile(
                             ctrl: _fatCtrl,
                             label: isTr ? 'Yağ' : 'Fat',
-                            color: const Color(0xFFFF2D55),
+                            color: const Color(0xFFAF52DE), // Purple
                             isDark: isDark,
                           ),
                         ),
@@ -554,7 +624,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                           child: _buildInputTile(
                             ctrl: _fiberCtrl,
                             label: isTr ? 'Lif' : 'Fiber',
-                            color: const Color(0xFF34C759),
+                            color: const Color(0xFF34C759), // Green
                             isDark: isDark,
                           ),
                         ),
@@ -567,51 +637,76 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               const SizedBox(height: 14),
 
               // Expandable Micro Nutrients Group Card
-              Container(
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: ExpansionTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  title: Text(
-                    isTr ? 'Tüm Mikro Besin Değerlerini Düzenle' : 'Edit Full Micro Spectrum',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textPrimary),
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: _rawNutrientGroups.map((group) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 10, bottom: 8),
-                                child: Text(
-                                  group.$1,
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: group.$2),
-                                ),
-                              ),
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: group.$3.map((item) {
-                                  return SizedBox(
-                                    width: (MediaQuery.of(context).size.width - 74) / 2,
-                                    child: _buildMicroInputTile(item, isDark),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                          );
-                        }).toList(),
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
+                    ],
+                  ),
+                  child: ExpansionTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    iconColor: const Color(0xFF007AFF),
+                    collapsedIconColor: textSecondary,
+                    title: Text(
+                      isTr ? 'Tüm Mikro Besin Değerlerini Düzenle' : 'Edit Full Micro Spectrum',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textPrimary, letterSpacing: -0.3),
                     ),
-                  ],
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: _rawNutrientGroups.map((group) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 14, bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 3,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: group.$2,
+                                          borderRadius: BorderRadius.circular(1.5),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        group.$1,
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: group.$2, letterSpacing: 0.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: group.$3.map((item) {
+                                    return SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 56) / 2,
+                                      child: _buildMicroInputTile(item, isDark),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 6),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -624,17 +719,18 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   backgroundColor: const Color(0xFF007AFF),
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
+                  shadowColor: Colors.transparent,
                 ),
                 icon: const Icon(Icons.check_circle_rounded, size: 20),
                 label: Text(
                   widget.existingEntry != null ? context.tr('Güncelle') : context.tr('Kaydet'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: -0.2),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -648,45 +744,72 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     required Color color,
     required bool isDark,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.15),
+          width: 1,
         ),
-        const SizedBox(height: 4),
-        TextFormField(
-          controller: ctrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          textAlign: TextAlign.center,
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Column(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color, letterSpacing: 0.4),
           ),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-      ],
+          const SizedBox(height: 4),
+          TextFormField(
+            controller: ctrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 4),
+              border: InputBorder.none,
+            ),
+          ),
+          Text(
+            'g',
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.6), fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildMicroInputTile((String, String, String) k, bool isDark) {
-    return TextFormField(
-      controller: _microCtrls[k.$1],
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: '${k.$2} (${k.$3})',
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        isDense: true,
-        filled: true,
-        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB),
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.circular(10),
       ),
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            '${k.$2} (${k.$3})',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? Colors.white60 : Colors.black54),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          TextFormField(
+            controller: _microCtrls[k.$1],
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 4),
+              border: InputBorder.none,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
