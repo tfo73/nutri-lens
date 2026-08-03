@@ -34,8 +34,58 @@ import '../models/daily_log.dart';
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  double? _targetWeightKg;
+  Timer? _premiumTextTimer;
+  int _premiumTextIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOnboardingData();
+    _startPremiumTextRotation();
+  }
+
+  @override
+  void dispose() {
+    _premiumTextTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPremiumTextRotation() {
+    _premiumTextTimer?.cancel();
+    _premiumTextTimer = Timer.periodic(const Duration(minutes: 30), (timer) {
+      if (mounted) {
+        setState(() {
+          _premiumTextIndex = (_premiumTextIndex + 1) % 6;
+        });
+      }
+    });
+  }
+
+  Future<void> _loadOnboardingData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final answersStr = prefs.getString('onboarding_answers');
+      if (answersStr != null) {
+        final answers = jsonDecode(answersStr);
+        if (mounted) {
+          setState(() {
+            _targetWeightKg = (answers['targetWeightKg'] as num?)?.toDouble();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading onboarding weight data: $e');
+    }
+  }
 
   Widget _gradientName(String name, double fontSize) {
     return ShaderMask(
@@ -54,7 +104,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageProvider>();
@@ -62,6 +111,15 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final profile = profileProvider.activeProfile;
+
+    // Dynamically manage premium text rotation timer
+    if (profile != null) {
+      if (profile.isPremium) {
+        _premiumTextTimer?.cancel();
+      } else if (_premiumTextTimer == null || !_premiumTextTimer!.isActive) {
+        _startPremiumTextRotation();
+      }
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -124,58 +182,9 @@ class ProfileScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. Top Header (Greeting + Avatar with Camera Badge) ─────────
+          // ── 1. Top Header (Greeting) ─────────
           Row(
             children: [
-              GestureDetector(
-                onTap: () => _showPhotoOptions(context, profileProvider, profile),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.15),
-                      backgroundImage: profile.imagePath != null
-                          ? FileImage(File(profile.imagePath!))
-                          : null,
-                      child: profile.imagePath == null
-                          ? Text(
-                              profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF007AFF),
-                              ),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      right: -3,
-                      bottom: -3,
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF1C1F2E) : Colors.white,
-                            width: 2.0,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Merhaba ${profile.name}!',
@@ -193,11 +202,12 @@ class ProfileScreen extends StatelessWidget {
                   color: cs.onSurface.withValues(alpha: 0.8),
                   size: 24,
                 ),
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const SettingsScreen()),
                   );
+                  _loadOnboardingData();
                 },
               ),
             ],
@@ -210,8 +220,28 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 14),
           ],
 
-          // ── 3. Horizontal BMI Verileri Card ──────────────────────────────
-          _buildBMIDataCard(context, profile, isDark),
+          // ── 2.5. Beslenme Alışkanlığı Ortalamaları ───────────────────────
+          _buildNutritionAveragesCard(context, context.watch<NutritionProvider>(), isDark),
+          const SizedBox(height: 14),
+
+          // ── 3. Horizontal BMI & Weight Card Row ──────────────────────────
+          SizedBox(
+            height: 140,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 60,
+                  child: _buildBMIDataCard(context, profile, isDark),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 40,
+                  child: _buildWeightProgressCard(context, profile, isDark),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
 
           // ── 4. Main 2-Column Section (Charts + 7-Day Macro Rings) ─────────
@@ -258,6 +288,26 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildPremiumBanner(BuildContext context, bool isDark) {
+    final isTurkish = Provider.of<LanguageProvider>(context, listen: false).isTurkish;
+    final messages = isTurkish
+        ? [
+            'Sınırsız Görselden Yemek Analizi',
+            'Sınırsız Tarif Ederek Analiz',
+            'Sınırsız Barkod Okuma & Analiz',
+            'Kişisel Yapay Zeka Beslenme Koçu',
+            'Hedefine Özel Lezzetli Tarifler',
+            'Beslenme Raporlarını E-posta ile Al',
+          ]
+        : [
+            'Unlimited Food Image Analysis',
+            'Unlimited Text Description Analysis',
+            'Unlimited Barcode Scanning & Analysis',
+            'Personal AI Nutrition Coach',
+            'Tailored Delicious Meal Recipes',
+            'Email Nutrition Summary Reports',
+          ];
+    final activeText = messages[_premiumTextIndex];
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -310,12 +360,22 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                context.tr('Özel beslenme koçun ile hedefine daha hızlı ulaş!'),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black87,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    activeText,
+                    key: ValueKey<int>(_premiumTextIndex),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -425,7 +485,7 @@ class ProfileScreen extends StatelessWidget {
     final cardBg = isDark ? const Color(0xFF1C1F2E) : Colors.white;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
@@ -449,7 +509,7 @@ class ProfileScreen extends StatelessWidget {
               Text(
                 context.tr('BMI verileri'),
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: isDark ? Colors.white54 : Colors.black45,
                 ),
@@ -497,7 +557,7 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const Spacer(),
           _buildBMIProgressBar(bmi),
         ],
       ),
@@ -513,11 +573,14 @@ class ProfileScreen extends StatelessWidget {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: isDark ? const Color(0xFF1C1F2E) : Colors.white,
+          titlePadding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+          contentPadding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+          actionsPadding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
           title: Row(
             children: [
-              const Icon(Icons.info_outline, color: Color(0xFF007AFF)),
+              const Icon(Icons.info_outline, color: Color(0xFF007AFF), size: 22),
               const SizedBox(width: 10),
-              Text(ctx.tr('BMI Nedir?'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(ctx.tr('BMI Nedir?'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
             ],
           ),
           content: Column(
@@ -526,12 +589,12 @@ class ProfileScreen extends StatelessWidget {
             children: [
               Text(
                 ctx.tr('Vücut Kitle İndeksi (BMI), kilonuzun (kg) boyunuzun karesine (m²) bölünmesiyle hesaplanan uluslararası bir standarttır.'),
-                style: TextStyle(fontSize: 13.5, height: 1.4, color: cs.onSurface.withValues(alpha: 0.85)),
+                style: TextStyle(fontSize: 15, height: 1.4, color: cs.onSurface.withValues(alpha: 0.85)),
               ),
               const SizedBox(height: 14),
               Text(
                 ctx.tr('Kategoriler:'),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 8),
               _bmiCategoryRow('< 18.5', ctx.tr('Zayıf'), Colors.blueAccent),
@@ -543,7 +606,7 @@ class ProfileScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(ctx.tr('Tamam'), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF007AFF))),
+              child: Text(ctx.tr('Tamam'), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF007AFF), fontSize: 16)),
             ),
           ],
         );
@@ -562,15 +625,404 @@ class ProfileScreen extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          Text('$range: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
-          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12.5)),
+          Text('$range: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
         ],
       ),
     );
   }
 
-  Widget _buildBMICard(BuildContext context, UserProfile profile, ColorScheme cs) {
+   Widget _buildBMICard(BuildContext context, UserProfile profile, ColorScheme cs) {
     return _buildBMIDataCard(context, profile, Theme.of(context).brightness == Brightness.dark);
+  }
+
+  Widget _buildWeightProgressCard(BuildContext context, UserProfile profile, bool isDark) {
+    final cs = Theme.of(context).colorScheme;
+    final cardBg = isDark ? const Color(0xFF1C1F2E) : Colors.white;
+    final dividerColor = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06);
+
+    final startingW = profile.startingWeight;
+    final currentW = profile.weight;
+    final goal = profile.goal;
+    final hasWeightGoal = goal == Goal.lose || goal == Goal.gain;
+    final isLose = goal == Goal.lose;
+
+    final double targetW = _targetWeightKg ?? (isLose ? startingW - 5.0 : startingW + 5.0);
+    
+    // Calculate current weight change (difference between current and starting)
+    final diff = currentW - startingW;
+    final signStr = diff > 0 ? '+${diff.toStringAsFixed(1)} kg' : (diff < 0 ? '${diff.toStringAsFixed(1)} kg' : '0.0 kg');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('Değişim'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                signStr,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Divider(height: 1, color: dividerColor),
+          const SizedBox(height: 6),
+          Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    context.tr('İlk'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  Text(
+                    '${startingW.toStringAsFixed(1)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    context.tr('Son'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  Text(
+                    '${currentW.toStringAsFixed(1)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              if (hasWeightGoal) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      context.tr('Hedef'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    Text(
+                      '${targetW.toStringAsFixed(1)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFF9500),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNutritionAveragesCard(BuildContext context, NutritionProvider nutritionProvider, bool isDark) {
+    final now = DateTime.now();
+    double totalCalories = 0;
+    double totalCarbs = 0;
+    double totalProtein = 0;
+    double totalFat = 0;
+    int daysWithData = 0;
+
+    for (int i = 0; i < 7; i++) {
+      final date = now.subtract(Duration(days: i));
+      final log = nutritionProvider.getLogForDate(date);
+      if (log != null && log.entries.isNotEmpty) {
+        final nut = log.totalNutrition;
+        totalCalories += nut.calories;
+        totalCarbs += nut.carbohydrates;
+        totalProtein += nut.protein;
+        totalFat += nut.fat;
+        daysWithData++;
+      }
+    }
+
+    final cs = Theme.of(context).colorScheme;
+    final cardBg = isDark ? const Color(0xFF1C1F2E) : Colors.white;
+
+    if (daysWithData == 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.tr('Haftalık Beslenme Ortalamaları'),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : Colors.black45,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                context.tr('Henüz beslenme verisi girilmemiş'),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final double divisor = daysWithData.toDouble();
+    final avgCalories = totalCalories / divisor;
+    final avgCarbs = totalCarbs / divisor;
+    final avgProtein = totalProtein / divisor;
+    final avgFat = totalFat / divisor;
+
+    final totalMacros = avgCarbs + avgProtein + avgFat;
+    final double carbPct = totalMacros > 0 ? (avgCarbs / totalMacros) * 100 : 0;
+    final double proteinPct = totalMacros > 0 ? (avgProtein / totalMacros) * 100 : 0;
+    final double fatPct = totalMacros > 0 ? (avgFat / totalMacros) * 100 : 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.tr('Haftalık Beslenme Ortalamaları'),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white54 : Colors.black45,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            children: [
+              Text(
+                '${avgCalories.toStringAsFixed(0)} kcal',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '/ ${context.tr("gün")}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: cs.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${context.tr("Son")} 7 ${context.tr("gün")}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: cs.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Stacked progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: SizedBox(
+              height: 10,
+              width: double.infinity,
+              child: Row(
+                children: [
+                  if (carbPct > 0)
+                    Expanded(
+                      flex: (carbPct * 100).round(),
+                      child: Container(color: const Color(0xFFD97706)),
+                    ),
+                  if (proteinPct > 0)
+                    Expanded(
+                      flex: (proteinPct * 100).round(),
+                      child: Container(color: const Color(0xFFE11D48)),
+                    ),
+                  if (fatPct > 0)
+                    Expanded(
+                      flex: (fatPct * 100).round(),
+                      child: Container(color: const Color(0xFF8B5CF6)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Legend + Grams
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildMacroAverageLegend(
+                color: const Color(0xFFD97706),
+                label: context.tr('Karb'),
+                pct: carbPct,
+                grams: avgCarbs,
+                cs: cs,
+              ),
+              _buildMacroAverageLegend(
+                color: const Color(0xFFE11D48),
+                label: context.tr('Prot'),
+                pct: proteinPct,
+                grams: avgProtein,
+                cs: cs,
+              ),
+              _buildMacroAverageLegend(
+                color: const Color(0xFF8B5CF6),
+                label: context.tr('Yağ'),
+                pct: fatPct,
+                grams: avgFat,
+                cs: cs,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroAverageLegend({
+    required Color color,
+    required String label,
+    required double pct,
+    required double grams,
+    required ColorScheme cs,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '$label %${pct.toStringAsFixed(0)}',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Padding(
+          padding: const EdgeInsets.only(left: 14),
+          child: Text(
+            '${grams.toStringAsFixed(0)} g',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
 Widget _buildBMIProgressBar(double bmi) {
@@ -2063,6 +2515,8 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
   late final TextEditingController _ageCtrl;
   late Gender _gender;
   late Goal _goal;
+  double? _targetWeightKg;
+  double? _origTargetWeight;
 
   // Track original values to detect unsaved changes
   late String _origName;
@@ -2078,7 +2532,8 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
       _heightCtrl.text != _origHeight ||
       _ageCtrl.text != _origAge ||
       _gender != _origGender ||
-      _goal != _origGoal;
+      _goal != _origGoal ||
+      _targetWeightKg != _origTargetWeight;
 
   @override
   void initState() {
@@ -2097,6 +2552,24 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     _origAge = p.age.toString();
     _origGender = p.gender;
     _origGoal = p.goal;
+    _loadTargetWeight();
+  }
+
+  Future<void> _loadTargetWeight() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final answersStr = prefs.getString('onboarding_answers');
+      if (answersStr != null) {
+        final answers = jsonDecode(answersStr);
+        final val = (answers['targetWeightKg'] as num?)?.toDouble();
+        if (mounted) {
+          setState(() {
+            _targetWeightKg = val;
+            _origTargetWeight = val;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -2132,6 +2605,28 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
 
   Future<void> _save() async {
     final p = widget.profile;
+    
+    // Save target weight to onboarding_answers in SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final answersStr = prefs.getString('onboarding_answers');
+      Map<String, dynamic> answers = {};
+      if (answersStr != null) {
+        answers = jsonDecode(answersStr);
+      }
+      
+      final double currentW = double.tryParse(_weightCtrl.text) ?? p.weight;
+      if (_goal != Goal.maintain) {
+        answers['targetWeightKg'] = _targetWeightKg ?? currentW;
+      } else {
+        answers['targetWeightKg'] = currentW;
+      }
+      
+      await prefs.setString('onboarding_answers', jsonEncode(answers));
+    } catch (e) {
+      debugPrint('Error saving onboarding target weight: $e');
+    }
+
     await context.read<ProfileProvider>().save(
           profileId: p.id,
           name: _nameCtrl.text.trim().isEmpty ? p.name : _nameCtrl.text.trim(),
@@ -2360,6 +2855,35 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                             onChanged: (g) => setState(() => _goal = g),
                           ),
                         ),
+                        if (_goal != Goal.maintain) ...[
+                          Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                final double currentW = double.tryParse(_weightCtrl.text) ?? widget.profile.weight;
+                                _showNumberPicker(
+                                  context,
+                                  label: context.tr('Hedef Kilo'),
+                                  unit: 'kg',
+                                  values: [for (double i = 40.0; i <= 200.0; i += 0.1) i],
+                                  initial: _targetWeightKg ?? currentW,
+                                  onSelected: (v) => setState(() => _targetWeightKg = v),
+                                );
+                              },
+                              child: _buildAppleFieldRow(
+                                context,
+                                icon: Icons.track_changes_rounded,
+                                iconColor: const Color(0xFFFF9500),
+                                label: context.tr('Hedef Kilo'),
+                                child: Text(
+                                  '${(_targetWeightKg ?? (double.tryParse(_weightCtrl.text) ?? widget.profile.weight)).toStringAsFixed(1)} kg',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -3734,10 +4258,9 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
     }
 
     final nonNull = values.whereType<double>().toList();
-    final lineColor = const Color(0xFF7EE787);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 8, 10, 2),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
@@ -3760,22 +4283,24 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
               Expanded(
                 child: Text(
                   context.tr('Uyku Puanı Grafiği'),
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           if (nonNull.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
+            Expanded(
+              child: Center(
                 child: Text(context.tr('Henüz uyku verisi yok'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
               ),
             )
           else
-            SizedBox(
-              height: 115,
+            Expanded(
               child: LineChart(
                 LineChartData(
                   minX: 0,
@@ -3790,14 +4315,14 @@ class _SleepScoreChartState extends State<_SleepScoreChart> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 30,
+                        reservedSize: 18,
                         interval: 1,
                         getTitlesWidget: (val, _) {
                           final intVal = val.round();
                           if (intVal >= 1 && intVal <= 5 && (val - intVal).abs() < 0.1) {
                             return Container(
                               alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.only(right: 4),
                               child: Text(
                                 intVal.toString(),
                                 style: TextStyle(
@@ -4074,7 +4599,7 @@ class _WeightChartState extends State<_WeightChart> {
     final double midVal = minVal + step;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
@@ -4097,7 +4622,11 @@ class _WeightChartState extends State<_WeightChart> {
               Expanded(
                 child: Text(
                   context.tr('Kilo Grafiği'),
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -4135,22 +4664,22 @@ class _WeightChartState extends State<_WeightChart> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           if (nonNull.isEmpty)
-            Center(
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  Icon(Icons.monitor_weight_outlined, size: 36, color: cs.onSurface.withValues(alpha: 0.3)),
-                  const SizedBox(height: 8),
-                  Text(context.tr('Henüz kilo girişi yok'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
-                  const SizedBox(height: 16),
-                ],
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.monitor_weight_outlined, size: 36, color: cs.onSurface.withValues(alpha: 0.3)),
+                    const SizedBox(height: 8),
+                    Text(context.tr('Henüz kilo girişi yok'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
+                  ],
+                ),
               ),
             )
           else
-            SizedBox(
-              height: 120,
+            Expanded(
               child: LineChart(
                 LineChartData(
                   minX: 0,
@@ -4162,10 +4691,8 @@ class _WeightChartState extends State<_WeightChart> {
                     drawVerticalLine: false,
                     drawHorizontalLine: true,
                     checkToShowHorizontalLine: (val) {
-                      final d1 = (val - minVal).abs();
-                      final d2 = (val - midVal).abs();
-                      final d3 = (val - maxVal).abs();
-                      return d1 < 0.2 || d2 < 0.2 || d3 < 0.2;
+                      final intVal = val.round();
+                      return intVal == minVal.round() || intVal == midVal.round() || intVal == maxVal.round();
                     },
                     getDrawingHorizontalLine: (_) => FlLine(
                       color: cs.outlineVariant.withValues(alpha: 0.3),
@@ -4177,19 +4704,16 @@ class _WeightChartState extends State<_WeightChart> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 30,
-                        interval: step > 0 ? step : 1.0,
+                        reservedSize: 20,
+                        interval: 1.0,
                         getTitlesWidget: (val, _) {
-                          final d1 = (val - minVal).abs();
-                          final d2 = (val - midVal).abs();
-                          final d3 = (val - maxVal).abs();
-                          if (d1 < 0.3 || d2 < 0.3 || d3 < 0.3) {
-                            final int target = (d2 < 0.3 && d1 >= 0.3 && d3 >= 0.3) ? midVal.toInt() : val.round();
+                          final intVal = val.round();
+                          if (intVal == minVal.round() || intVal == midVal.round() || intVal == maxVal.round()) {
                             return Container(
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 6),
                               child: Text(
-                                target.toString(),
+                                intVal.toString(),
                                 style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w500,
@@ -4604,16 +5128,16 @@ class _WeeklyMacroRingsCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.tr('Kalori Takibi'),
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: cs.onSurface,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white54 : Colors.black45,
             ),
           ),
           const SizedBox(height: 6),

@@ -1131,8 +1131,6 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          if (isUser) const SizedBox(width: 10),
-          if (isUser) _buildUserAvatar(context, profile),
         ],
       ),
     );
@@ -1164,22 +1162,7 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildUserAvatar(BuildContext context, UserProfile? profile) {
-    if (profile?.imagePath != null && File(profile!.imagePath!).existsSync()) {
-      return CircleAvatar(
-        radius: 17,
-        backgroundImage: FileImage(File(profile.imagePath!)),
-      );
-    }
-    return CircleAvatar(
-      radius: 17,
-      backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.15),
-      child: Text(
-        profile?.name.isNotEmpty == true ? profile!.name[0].toUpperCase() : 'U',
-        style: const TextStyle(color: Color(0xFF007AFF), fontSize: 13, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
+
 
   List<TextSpan> _parseMarkdown(String text, Color baseColor) =>
       _parseMarkdownSpans(text, baseColor, fontSize: 14);
