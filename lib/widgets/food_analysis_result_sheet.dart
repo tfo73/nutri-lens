@@ -668,15 +668,34 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: cs.surface,
         body: Column(
           children: [
-            Expanded(
-              flex: 55,
+            // ── TOP: Full-bleed image ──
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.40,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (widget.image != null) Image.file(widget.image!, fit: BoxFit.cover) else const ColoredBox(color: Colors.black),
+                  if (widget.image != null)
+                    Image.file(widget.image!, fit: BoxFit.cover)
+                  else
+                    Container(color: cs.surfaceContainerHighest),
+                  // Gradient fade at bottom for smooth transition
+                  Positioned(
+                    left: 0, right: 0, bottom: 0,
+                    child: Container(
+                      height: 80,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, cs.surface],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Status bar area buttons
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 8,
                     left: 12,
@@ -684,63 +703,200 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
                       onTap: () async {
                         final choice = await _showDismissConfirmation();
                         if (choice == null) return;
-                        if (choice == true && context.mounted) { /* Stay on page */ }
-                        else if (choice == false && context.mounted) { Navigator.of(context).pop(); }
+                        if (choice == false && context.mounted) Navigator.of(context).pop();
                       },
                       child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5)),
-                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    right: 88,
-                    child: GestureDetector(
-                      onTap: _toggleSaveFood,
-                      child: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5)),
-                        child: Icon(
-                          _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                          color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
-                          size: 18,
+                        width: 38, height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black.withValues(alpha: 0.55),
                         ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    right: 50,
-                    child: GestureDetector(
-                      onTap: _confirm,
-                      child: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5)),
-                        child: const Icon(Icons.turned_in_rounded, color: Color(0xFF7EE787), size: 18),
+                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
                       ),
                     ),
                   ),
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 8,
                     right: 12,
-                    child: GestureDetector(
-                      onTap: () async {
-                        final ok = await _showDeleteConfirmation();
-                        if (ok == true && context.mounted) Navigator.pop(context);
-                      },
-                      child: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5)),
-                        child: const Icon(Icons.delete_rounded, color: Color(0xFFF85149), size: 18),
-                      ),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _toggleSaveFood,
+                          child: Container(
+                            width: 38, height: 38,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.55)),
+                            child: Icon(
+                              _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                              color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            final ok = await _showDeleteConfirmation();
+                            if (ok == true && context.mounted) Navigator.pop(context);
+                          },
+                          child: Container(
+                            width: 38, height: 38,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.55)),
+                            child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF3B30), size: 18),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            Expanded(flex: 45, child: Container(color: cs.surface, child: content)),
+            // ── BOTTOM: Scrollable content ──
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(context).padding.bottom),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Name + confidence
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            displayName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _ConfidenceBadge(result: result),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Portion editable
+                    Row(
+                      children: [
+                        Text('${context.tr('Porsiyon: ')}~', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
+                        IntrinsicWidth(
+                          child: TextField(
+                            controller: _gramsCtrl,
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cs.onSurface.withValues(alpha: 0.7)),
+                            decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                          ),
+                        ),
+                        Text('g', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Calorie display
+                    Center(
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              IntrinsicWidth(
+                                child: TextField(
+                                  controller: _calorieCtrl,
+                                  onTap: () => _isCalorieManuallyEdited = true,
+                                  onChanged: (_) => _isCalorieManuallyEdited = true,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 40, color: Color(0xFFFF6B35), letterSpacing: -1),
+                                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text('kcal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFFFF6B35))),
+                            ],
+                          ),
+                          Text(
+                            '~${result.alternativeMin.round()} – ${result.alternativeMax.round()} kcal aralığı',
+                            style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5), fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Macros
+                    Row(
+                      children: [
+                        _EditableMacro(controller: _proteinCtrl, label: context.tr('Protein'), color: const Color(0xFFFF3B30)),
+                        const SizedBox(width: 6),
+                        _EditableMacro(controller: _carbCtrl, label: context.tr('Karb'), color: const Color(0xFFFF9500)),
+                        const SizedBox(width: 6),
+                        _EditableMacro(controller: _fatCtrl, label: context.tr('Yağ'), color: const Color(0xFFAF52DE)),
+                        const SizedBox(width: 6),
+                        _EditableMacro(controller: _fiberCtrl, label: context.tr('Lif'), color: const Color(0xFF34C759)),
+                      ],
+                    ),
+                    if (result.offProduct != null) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          if (result.offProduct!.nutriscoreGrade != null) _NutriScoreBadge(grade: result.offProduct!.nutriscoreGrade!),
+                          if (result.offProduct!.nutriscoreGrade != null && result.offProduct!.novaGroup != null) const SizedBox(width: 6),
+                          if (result.offProduct!.novaGroup != null) _NovaBadge(group: result.offProduct!.novaGroup!),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    // Micro nutrients button
+                    OutlinedButton.icon(
+                      onPressed: _showMicroNutrients,
+                      icon: const Icon(Icons.equalizer_rounded, size: 18),
+                      label: Text(context.tr('Mikro Besinleri Gör'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    Text(context.tr('Hangi öğüne eklensin?'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurfaceVariant)),
+                    const SizedBox(height: 8),
+                    _MealChipRow(selected: _selectedMeal, onChanged: (m) => setState(() => _selectedMeal = m)),
+                    const SizedBox(height: 16),
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: widget.onEdit,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFFF3B30),
+                              side: const BorderSide(color: Color(0xFFFF3B30), width: 1.2),
+                              minimumSize: const Size.fromHeight(50),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: Text(context.tr('Detay Ekle'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _confirm,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF007AFF),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(50),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: Text(context.tr('Evet, Kaydet'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

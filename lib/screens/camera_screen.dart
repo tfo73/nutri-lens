@@ -3768,7 +3768,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollCtrl,
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.of(context).padding.bottom),
                   child: _buildContent(cs, isDark),
                 ),
               ),
@@ -3800,40 +3800,29 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
       children: [
         // Örnekler (sadece ilk turda)
         if (_conversationHistory.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(14),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C2530) : const Color(0xFFF2F7FF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? const Color(0xFF2B405A) : const Color(0xFFD0E1FD),
-                width: 1,
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.lightbulb_outline_rounded, color: Color(0xFF007AFF), size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      context.tr('Hızlı İpuçları / Örnekler'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF007AFF),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Örnekler:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                ...[
-                  context.tr('2 adet köfte, yanında pilav 200g'),
-                  context.tr('1 bardak süt ve 2 dilim ekmek'),
-                  context.tr('Izgara tavuk göğsü 150g, salata'),
-                ].map((e) => GestureDetector(
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    ...[
+                      context.tr('2 adet köfte, yanında pilav 200g'),
+                      context.tr('1 bardak süt ve 2 dilim ekmek'),
+                      context.tr('Izgara tavuk göğsü 150g, salata'),
+                    ].map((e) => GestureDetector(
                       onTap: () {
                         _textCtrl.text = e;
                         _textCtrl.selection = TextSelection.fromPosition(
@@ -3842,32 +3831,22 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                         setState(() {});
                       },
                       child: Container(
-                        margin: const EdgeInsets.only(top: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF131B26) : Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
-                          ),
+                          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                e,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark ? Colors.white70 : Colors.black87,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right_rounded, size: 14, color: Colors.grey),
-                          ],
+                        child: Text(
+                          e,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.white54 : Colors.black45,
+                          ),
                         ),
                       ),
                     )),
+                  ],
+                ),
               ],
             ),
           )
@@ -3901,7 +3880,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
           ),
         // Metin alanı + mikrofon butonu
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: ValueListenableBuilder<TextEditingValue>(
@@ -4047,29 +4026,27 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
   }
 
   Widget _buildAnalyzing(ColorScheme cs) {
-    return SizedBox(
-      height: 200,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: cs.primary, strokeWidth: 2.5),
-            const SizedBox(height: 16),
-            Text(
-              context.tr('Besin değerleri hesaplanıyor...'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface,
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: cs.primary, strokeWidth: 2.5),
+          const SizedBox(height: 16),
+          Text(
+            context.tr('Besin değerleri hesaplanıyor...'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface,
             ),
-            const SizedBox(height: 6),
-            Text(
-              context.tr('AI tarifinizi analiz ediyor'),
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.tr('AI tarifinizi analiz ediyor'),
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+          ),
+        ],
       ),
     );
   }
