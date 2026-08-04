@@ -926,110 +926,118 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     final ringBg = isDark ? const Color(0xFF222536) : Colors.black.withValues(alpha: 0.08);
 
-    final barTrackBg = progress > 1.0
-        ? darkBaseColor
-        : (isDark ? const Color(0xFF1B1E2D) : Colors.black.withValues(alpha: 0.05));
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: progress),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder: (context, animProgress, child) {
+        final animPercent = progress > 0 ? (percentTextVal * (animProgress / progress)).round() : 0;
+        final barTrackBg = animProgress > 1.0
+            ? darkBaseColor
+            : (isDark ? const Color(0xFF1B1E2D) : Colors.black.withValues(alpha: 0.05));
 
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-              color: isDark ? Colors.white54 : Colors.black54,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
+        return Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
 
-          SizedBox(
-            height: lerpDouble(52.0, 14.0, collapseFactor)!,
-            width: double.infinity,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (collapseFactor < 0.95)
-                  Opacity(
-                    opacity: (1.0 - collapseFactor * 1.25).clamp(0.0, 1.0),
-                    child: SizedBox(
-                      width: 52,
-                      height: 52,
-                      child: CustomPaint(
-                        painter: _RingProgressPainter(
-                          progress: progress,
-                          color: color,
-                          darkBaseColor: darkBaseColor,
-                          backgroundColor: ringBg,
-                          strokeWidth: 5.0,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '%$percentTextVal',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                if (collapseFactor > 0.05)
-                  Opacity(
-                    opacity: (collapseFactor * 1.25).clamp(0.0, 1.0),
-                    child: Container(
-                      height: 8,
-                      width: double.infinity,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: barTrackBg,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: color.withValues(alpha: 0.8),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progress > 1.0
-                              ? (progress - 1.0).clamp(0.0, 1.0)
-                              : progress.clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
+              SizedBox(
+                height: lerpDouble(52.0, 14.0, collapseFactor)!,
+                width: double.infinity,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (collapseFactor < 0.95)
+                      Opacity(
+                        opacity: (1.0 - collapseFactor * 1.25).clamp(0.0, 1.0),
+                        child: SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: CustomPaint(
+                            painter: _RingProgressPainter(
+                              progress: animProgress,
                               color: color,
-                              borderRadius: BorderRadius.circular(3),
+                              darkBaseColor: darkBaseColor,
+                              backgroundColor: ringBg,
+                              strokeWidth: 5.0,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '%$animPercent',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
 
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: collapseFactor > 0.5 ? FontWeight.w600 : FontWeight.normal,
-              color: isDark ? Colors.white54 : Colors.black54,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+                    if (collapseFactor > 0.05)
+                      Opacity(
+                        opacity: (collapseFactor * 1.25).clamp(0.0, 1.0),
+                        child: Container(
+                          height: 8,
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: barTrackBg,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.8),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: animProgress > 1.0
+                                  ? (animProgress - 1.0).clamp(0.0, 1.0)
+                                  : animProgress.clamp(0.0, 1.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: collapseFactor > 0.5 ? FontWeight.w600 : FontWeight.normal,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -2224,14 +2232,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required double calorieGoal,
     required bool isDark,
   }) {
-    final mealCategories = [
-      'Kahvaltı',
-      'Kahvaltı sonrası ara öğün',
-      'Öğle Yemeği',
-      'Öğle sonrası ara öğün',
-      'Akşam Yemeği',
-      'Gece Atıştırmalığı',
-    ];
+    final showSnacks = context.read<ProfileProvider>().activeProfile?.showSnacks ?? true;
+    final mealCategories = showSnacks
+        ? [
+            'Kahvaltı',
+            'Kahvaltı sonrası ara öğün',
+            'Öğle Yemeği',
+            'Öğle sonrası ara öğün',
+            'Akşam Yemeği',
+            'Gece Atıştırmalığı',
+          ]
+        : [
+            'Kahvaltı',
+            'Öğle Yemeği',
+            'Akşam Yemeği',
+          ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2308,47 +2323,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: entries.map((entry) {
                   final itemCal = entry.nutritionData.scaleBy(entry.portionSize / 100).calories.round();
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: InkWell(
-                      onTap: () => FoodEntryDetailSheet.show(context, entry: entry, date: _selectedDate),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            _buildFoodAvatar(entry, isDark),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    entry.name,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : Colors.black87,
+                  return FadeInSlide(
+                    duration: const Duration(milliseconds: 300),
+                    slidePixels: 12.0,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: InkWell(
+                        onTap: () => FoodEntryDetailSheet.show(context, entry: entry, date: _selectedDate),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              _buildFoodAvatar(entry, isDark),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      entry.name,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '$itemCal kcal, ${entry.portionSize.round()}${entry.portionUnit}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? Colors.white54 : Colors.black54,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '$itemCal kcal, ${entry.portionSize.round()}${entry.portionUnit}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark ? Colors.white54 : Colors.black54,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              size: 20,
-                              color: isDark ? Colors.white30 : Colors.black26,
-                            ),
-                          ],
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: isDark ? Colors.white30 : Colors.black26,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

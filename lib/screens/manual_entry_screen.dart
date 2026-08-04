@@ -17,6 +17,7 @@ class ManualEntryScreen extends StatefulWidget {
   final bool forceAdd;
   final DateTime? date;
   final bool showMealSelection;
+  final bool isOnlyEditMode;
 
   const ManualEntryScreen({
     super.key,
@@ -25,6 +26,7 @@ class ManualEntryScreen extends StatefulWidget {
     this.forceAdd = false,
     this.date,
     this.showMealSelection = true,
+    this.isOnlyEditMode = false,
   });
 
   @override
@@ -248,12 +250,14 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       nutrition65per100g: _buildNutrition65(factor),
     );
 
-    final provider = context.read<NutritionProvider>();
-    final isUpdate = widget.existingEntry != null && !widget.forceAdd;
-    if (isUpdate) {
-      provider.updateFoodEntry(entry, date: widget.date);
-    } else {
-      provider.addFoodEntry(entry, date: widget.date);
+    if (!widget.isOnlyEditMode) {
+      final provider = context.read<NutritionProvider>();
+      final isUpdate = widget.existingEntry != null && !widget.forceAdd;
+      if (isUpdate) {
+        provider.updateFoodEntry(entry, date: widget.date);
+      } else {
+        provider.addFoodEntry(entry, date: widget.date);
+      }
     }
 
     // Return the updated FoodEntry directly back to the caller

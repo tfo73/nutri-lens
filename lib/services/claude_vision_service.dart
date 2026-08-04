@@ -61,8 +61,8 @@ ADIM 3 — MAKRO HESAPLAMA:
 - Pişirme yöntemi etkisini uygula
 
 ADIM 4 — MİKRO BESİN TAHMİNİ (DETAYLI):
-- Her malzemenin bilinen mikro besin içeriğini kullanarak tahmini değerleri hesapla
-- Sıfır vermekten kaçın: eğer malzemede iz miktarda bile varsa gerçekçi bir değer gir
+- Her malzemenin bilinen mikro besin içeriğini kullanarak tahmini değerleri hesapla.
+- ASLA 0.0 veya sıfır vermeyin: Eğer malzemede iz miktarda bile varsa biyolojik olarak tamamen yok olmadığı sürece mutlaka gerçekçi, USDA standartlarıyla uyumlu bir değer girin. Mikro besin değerlerinin eksiksiz girilmesi zorunludur.
 - Birimler: vitaminler μg veya mg (ilgili standartta), mineraller mg, omega'lar g
 
 ADIM 5 — GÜVENİLİRLİK:

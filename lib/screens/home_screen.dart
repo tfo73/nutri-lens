@@ -491,7 +491,12 @@ class _HomeScreenState extends State<HomeScreen> {
         context.read<NutritionProvider>().addFoodEntry(entry, date: _currentDashboardDate);
         Navigator.pop(context);
       },
-    );
+    ).then((val) {
+      if (val is String && image != null && context.mounted) {
+        context.read<NutritionProvider>().analyzeAndAddImage(image, meal ?? 'kahvaltı', extraContext: val);
+        context.read<NutritionProvider>().enableHomeResult();
+      }
+    });
   }
 }
 
@@ -886,13 +891,20 @@ class _AnalysisStatusBoxState extends State<_AnalysisStatusBox> with SingleTicke
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '🔄 ${context.tr('Yemek analizi yapılıyor...')}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: widget.isDark ? Colors.white : Colors.black87,
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final hasContext = context.watch<NutritionProvider>().lastExtraContext != null;
+                              return Text(
+                                hasContext
+                                    ? '🔄 ${context.tr('Görsel yeniden analiz ediliyor...')}'
+                                    : '🔄 ${context.tr('Yemek analizi yapılıyor...')}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.isDark ? Colors.white : Colors.black87,
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 2),
                           Text(

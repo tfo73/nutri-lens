@@ -127,6 +127,7 @@ class UserProfile {
   final String? premiumPlan; // 'monthly' | 'yearly' | 'lifetime' | null
   final bool hadPremiumBefore;
   final DateTime? premiumExpirationDate;
+  final bool showSnacks;
 
   const UserProfile({
     required this.id,
@@ -150,6 +151,7 @@ class UserProfile {
     this.premiumPlan,
     this.hadPremiumBefore = false,
     this.premiumExpirationDate,
+    this.showSnacks = true,
   });
 
   UserProfile copyWith({
@@ -178,6 +180,7 @@ class UserProfile {
     bool? hadPremiumBefore,
     DateTime? premiumExpirationDate,
     bool clearPremiumExpirationDate = false,
+    bool? showSnacks,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -201,6 +204,7 @@ class UserProfile {
       premiumPlan: clearPremiumPlan ? null : (premiumPlan ?? this.premiumPlan),
       hadPremiumBefore: hadPremiumBefore ?? this.hadPremiumBefore,
       premiumExpirationDate: clearPremiumExpirationDate ? null : (premiumExpirationDate ?? this.premiumExpirationDate),
+      showSnacks: showSnacks ?? this.showSnacks,
     );
   }
 
@@ -213,6 +217,7 @@ class UserProfile {
         'gender': gender.index,
         'activityLevel': activityLevel.index,
         'goal': goal.index,
+        'showSnacks': showSnacks,
         if (imagePath != null) 'imagePath': imagePath,
         'healthConditions': healthConditions,
         if (advancedGoal != null) 'advancedGoal': advancedGoal,
@@ -256,6 +261,7 @@ class UserProfile {
         premiumPlan: json['premiumPlan'] as String?,
         hadPremiumBefore: json['hadPremiumBefore'] as bool? ?? json['isPremium'] as bool? ?? false,
         premiumExpirationDate: json['premiumExpirationDate'] != null ? DateTime.parse(json['premiumExpirationDate']) : null,
+        showSnacks: json['showSnacks'] as bool? ?? true,
       );
 
   // ─── Kalori / makro hesaplama ───────────────────────────────────────────────
@@ -1240,6 +1246,7 @@ class ProfileProvider extends ChangeNotifier {
     double? weeklyWeightDelta,
     DateTime? createdAt,
     double? startingWeight,
+    bool? showSnacks,
   }) async {
     // When profileId is provided → edit existing profile
     // When profileId is null → always create a brand new profile with a unique ID
@@ -1255,6 +1262,7 @@ class ProfileProvider extends ChangeNotifier {
     double existingWeeklyWeightDelta = 0.5;
     DateTime existingCreatedAt = DateTime.now();
     double existingStartingWeight = weight;
+    bool existingShowSnacks = true;
 
     if (profileId != null) {
       final existing = _profiles.firstWhere(
@@ -1280,6 +1288,7 @@ class ProfileProvider extends ChangeNotifier {
       existingWeeklyWeightDelta = existing.weeklyWeightDelta;
       existingCreatedAt = existing.createdAt;
       existingStartingWeight = existing.startingWeight;
+      existingShowSnacks = existing.showSnacks;
     }
 
     final profile = UserProfile(
@@ -1298,6 +1307,7 @@ class ProfileProvider extends ChangeNotifier {
       weeklyWeightDelta: weeklyWeightDelta ?? existingWeeklyWeightDelta,
       createdAt: createdAt ?? existingCreatedAt,
       startingWeight: startingWeight ?? existingStartingWeight,
+      showSnacks: showSnacks ?? existingShowSnacks,
     );
     if (_profiles.any((p) => p.id == profile.id)) {
       await updateProfile(profile);

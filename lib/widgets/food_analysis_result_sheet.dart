@@ -10,9 +10,12 @@ import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/profile_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/saved_foods_service.dart';
 import '../services/config_service.dart';
+import '../screens/manual_entry_screen.dart';
+import '../services/food_analysis_service.dart';
 
 class FoodAnalysisResultSheet extends StatefulWidget {
   final FoodAnalysisResult result;
@@ -39,7 +42,7 @@ class FoodAnalysisResultSheet extends StatefulWidget {
   @override
   State<FoodAnalysisResultSheet> createState() => _FoodAnalysisResultSheetState();
 
-  static Future<void> show(
+  static Future<dynamic> show(
     BuildContext context, {
     required FoodAnalysisResult result,
     File? image,
@@ -111,11 +114,17 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
   final _fiberCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _gramsCtrl = TextEditingController();
+  final _detailsController = TextEditingController();
+
   bool _isCalorieManuallyEdited = false;
+  FoodAnalysisResult? _localResult;
+  bool _showDetailsForm = false;
+  bool _isReanalyzing = false;
 
   @override
   void initState() {
     super.initState();
+    _localResult = widget.result;
     _selectedMeal = widget.mealType ?? 'kahvaltı';
     if (widget.image == null && !widget.isFullScreen) {
       _fetchSuggestedImage(widget.result.foodName, widget.result.foodNameEn);
@@ -208,6 +217,7 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
     _fiberCtrl.dispose();
     _nameCtrl.dispose();
     _gramsCtrl.dispose();
+    _detailsController.dispose();
     super.dispose();
   }
 
@@ -268,17 +278,27 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
 
   Future<void> _confirm() async {
     final isTr = context.read<LanguageProvider>().isTurkish;
-    final portionGrams = double.tryParse(_gramsCtrl.text) ?? widget.result.portionGrams;
+    final currentRes = _localResult ?? widget.result;
+    final portionGrams = double.tryParse(_gramsCtrl.text) ?? currentRes.portionGrams;
     final factor = portionGrams / 100;
 
-    // Download suggested image if user opted in and no user image
-    String? resolvedImagePath = widget.image?.path;
-    if (resolvedImagePath == null && _useSuggestedImage && _suggestedImageUrl != null) {
+    // Download suggested image or copy uploaded image persistently to application documents directory
+    String? resolvedImagePath;
+    if (widget.image != null) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/food_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await File(widget.image!.path).copy(file.path);
+        resolvedImagePath = file.path;
+      } catch (_) {
+        resolvedImagePath = widget.image!.path;
+      }
+    } else if (_useSuggestedImage && _suggestedImageUrl != null) {
       try {
         final imgResp = await http.get(Uri.parse(_suggestedImageUrl!))
             .timeout(const Duration(seconds: 10));
         if (imgResp.statusCode == 200) {
-          final dir = await getTemporaryDirectory();
+          final dir = await getApplicationDocumentsDirectory();
           final file = File('${dir.path}/food_${DateTime.now().millisecondsSinceEpoch}.jpg');
           await file.writeAsBytes(imgResp.bodyBytes);
           resolvedImagePath = file.path;
@@ -288,32 +308,221 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
     final entry = FoodEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameCtrl.text.trim().isEmpty 
-          ? (isTr ? widget.result.foodName : (widget.result.foodNameEn ?? widget.result.foodName)) 
+          ? (isTr ? currentRes.foodName : (currentRes.foodNameEn ?? currentRes.foodName)) 
           : _nameCtrl.text.trim(),
       portionSize: portionGrams,
-      nutritionData: widget.result.nutritionPer100g.copyWith(
+      nutritionData: currentRes.nutritionPer100g.copyWith(
         calories: factor > 0 ? (double.tryParse(_calorieCtrl.text) ?? 0.0) / factor : 0,
         protein: factor > 0 ? (double.tryParse(_proteinCtrl.text) ?? 0.0) / factor : 0,
         carbohydrates: factor > 0 ? (double.tryParse(_carbCtrl.text) ?? 0.0) / factor : 0,
         fat: factor > 0 ? (double.tryParse(_fatCtrl.text) ?? 0.0) / factor : 0,
         fiber: factor > 0 ? (double.tryParse(_fiberCtrl.text) ?? 0.0) / factor : 0,
       ),
-      nutrition65per100g: widget.result.nutrition65per100g,
+      nutrition65per100g: currentRes.nutrition65per100g,
       timestamp: DateTime.now(),
       mealType: _selectedMeal,
       imagePath: resolvedImagePath,
-      novaGroup: widget.result.offProduct?.novaGroup,
+      novaGroup: currentRes.offProduct?.novaGroup,
     );
     widget.onConfirm(entry);
   }
 
+  void _toggleDetailsForm(bool show) {
+    setState(() {
+      _showDetailsForm = show;
+    });
+    if (widget.draggableController != null) {
+      widget.draggableController!.animateTo(
+        show ? 0.58 : 0.85,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Future<void> _handleEdit() async {
+    final currentRes = _localResult ?? widget.result;
+    
+    final currentEntry = FoodEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: _nameCtrl.text.trim(),
+      portionSize: double.tryParse(_gramsCtrl.text) ?? currentRes.portionGrams,
+      nutritionData: NutritionData(
+        calories: double.tryParse(_calorieCtrl.text) ?? 0.0,
+        protein: double.tryParse(_proteinCtrl.text) ?? 0.0,
+        carbohydrates: double.tryParse(_carbCtrl.text) ?? 0.0,
+        fat: double.tryParse(_fatCtrl.text) ?? 0.0,
+        fiber: double.tryParse(_fiberCtrl.text) ?? 0.0,
+        sodium: currentRes.nutritionPer100g.sodium,
+        sugar: currentRes.nutritionPer100g.sugar,
+        saturatedFat: currentRes.nutritionPer100g.saturatedFat,
+        vitaminA: currentRes.nutritionPer100g.vitaminA,
+        vitaminC: currentRes.nutritionPer100g.vitaminC,
+        vitaminD: currentRes.nutritionPer100g.vitaminD,
+        vitaminE: currentRes.nutritionPer100g.vitaminE,
+        vitaminK: currentRes.nutritionPer100g.vitaminK,
+        vitaminB6: currentRes.nutritionPer100g.vitaminB6,
+        vitaminB12: currentRes.nutritionPer100g.vitaminB12,
+        folate: currentRes.nutritionPer100g.folate,
+        calcium: currentRes.nutritionPer100g.calcium,
+        iron: currentRes.nutritionPer100g.iron,
+        magnesium: currentRes.nutritionPer100g.magnesium,
+        potassium: currentRes.nutritionPer100g.potassium,
+        zinc: currentRes.nutritionPer100g.zinc,
+        selenium: currentRes.nutritionPer100g.selenium,
+        omega3: currentRes.nutritionPer100g.omega3,
+        omega6: currentRes.nutritionPer100g.omega6,
+      ),
+      nutrition65per100g: currentRes.nutrition65per100g,
+      timestamp: DateTime.now(),
+      mealType: _selectedMeal,
+      imagePath: widget.image?.path,
+    );
+
+    final updatedEntry = await Navigator.push<FoodEntry>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ManualEntryScreen(
+          existingEntry: currentEntry,
+          selectedMeal: _selectedMeal,
+          forceAdd: true,
+          isOnlyEditMode: true,
+        ),
+      ),
+    );
+
+    if (updatedEntry != null && mounted) {
+      setState(() {
+        _nameCtrl.text = updatedEntry.name;
+        _gramsCtrl.text = updatedEntry.portionSize.toStringAsFixed(0);
+        
+        final portionGrams = updatedEntry.portionSize;
+        final factor = portionGrams / 100;
+        
+        _calorieCtrl.text = (updatedEntry.nutritionData.calories * factor).toStringAsFixed(0);
+        _proteinCtrl.text = (updatedEntry.nutritionData.protein * factor).toStringAsFixed(1);
+        _carbCtrl.text = (updatedEntry.nutritionData.carbohydrates * factor).toStringAsFixed(1);
+        _fatCtrl.text = (updatedEntry.nutritionData.fat * factor).toStringAsFixed(1);
+        _fiberCtrl.text = (updatedEntry.nutritionData.fiber * factor).toStringAsFixed(1);
+
+        _localResult = FoodAnalysisResult(
+          foodName: updatedEntry.name,
+          foodNameEn: currentRes.foodNameEn,
+          portionGrams: updatedEntry.portionSize,
+          nutritionPer100g: updatedEntry.nutritionData,
+          nutrition65per100g: updatedEntry.nutrition65per100g ?? currentRes.nutrition65per100g,
+          sources: currentRes.sources,
+          confidenceScore: currentRes.confidenceScore,
+          confidenceReason: currentRes.confidenceReason,
+          confidenceReasonEn: currentRes.confidenceReasonEn,
+          alternativeMin: updatedEntry.nutritionData.calories * factor * 0.9,
+          alternativeMax: updatedEntry.nutritionData.calories * factor * 1.1,
+        );
+      });
+    }
+  }
+
+  String _getDynamicExamplesText(String foodName, bool isTr) {
+    final n = foodName.trim().toLowerCase();
+
+    // Identify food category for relevant examples
+    final isPizza = n.contains('pizza');
+    final isBurger = n.contains('burger') || n.contains('hamburger') || n.contains('cheeseburger');
+    final isSushi = n.contains('sushi') || n.contains('maki') || n.contains('nigiri') || n.contains('kimbap') || n.contains('onigiri');
+    final isPasta = n.contains('pasta') || n.contains('spaghetti') || n.contains('makarna') || n.contains('noodle') || n.contains('erişte');
+    final isSalad = n.contains('salata') || n.contains('salad');
+    final isSoup = n.contains('çorba') || n.contains('soup');
+    final isRice = n.contains('pilav') || n.contains('rice') || n.contains('fried rice');
+    final isWrap = n.contains('wrap') || n.contains('dürüm') || n.contains('tortilla') || n.contains('burrito');
+    final isDessert = n.contains('kek') || n.contains('cake') || n.contains('çikolata') || n.contains('chocolate') || n.contains('tatlı') || n.contains('dessert') || n.contains('waffle') || n.contains('tiramisu');
+    final isChicken = n.contains('tavuk') || n.contains('chicken');
+    final isSandwich = n.contains('sandviç') || n.contains('sandwich') || n.contains('tost') || n.contains('toast');
+
+    if (isTr) {
+      if (isPizza) return '2 dilim pizza yedim, ekstra peynirli\nPepperoni değil, karışık malzemeli pizza\nTam buğday hamurlu pizzaydı';
+      if (isBurger) return '1 adet yedim, çift köfte vardı\nBüyük boy menü, patates kızartması ile\nCheeseburger değil, çıtlı tavuk burger';
+      if (isSushi) return '8 parça yedim, soya sosuyla tükettim\nWasabi ekledim, avokadolu ruloydu\nKimbap değil, ızgara somon nigiri';
+      if (isPasta) return 'Büyük porsiyon yedim, kremalı soslu makarna\nYanında ekmek yedim\nTavuklu makarna değil, deniz mahsüllü makarna';
+      if (isSalad) return 'Büyük porsiyon, içinde tavuk da vardı\nÜzerine zeytinyağı ve limon sıktım\nSezar salata değil, Akdeniz salata';
+      if (isSoup) return '1 kase içtim, yanında ekmek yedim\nMercimek çorbası değil, ezogelin çorba\nİçine krema katıldı, çok baharatlıydı';
+      if (isRice) return '1 porsiyon yedim, tereyağlı pişirildi\nYanında tavuk ızgara ile yedim\nPilavın altında et suyu vardı';
+      if (isWrap) return '1 adet yedim, büyük boy dürüm\nİçinde soğan, biber ve kaşar vardı\nYanında ayran içtim';
+      if (isDessert) return '1 dilim yedim, üzerine dondurma eklendi\nYanında süt içtim\nYoğun çikolatalı, şeker oranı yüksek';
+      if (isChicken) return '200 gram yedim, fırında pişirildi\nYanında salata ile yedim\nSoslu tavuk göğsüydü, baharat eklendi';
+      if (isSandwich) return '1 adet yedim, içinde kaşar ve domates vardı\nTam buğday ekmekten yapıldı\nYanında çay içtim';
+      final cleanName = foodName.trim();
+      return '1 porsiyon $cleanName yedim\nYanında farklı bir şey de yedim\n$cleanName değil, farklı bir yemekti';
+    } else {
+      if (isPizza) return 'I had 2 slices of pizza, extra cheese on top\nNot pepperoni, it was a mixed topping pizza\nWhole wheat crust, not regular';
+      if (isBurger) return 'I had 1 burger, double patty\nLarge meal combo with fries\nNot a cheeseburger, it was a crispy chicken burger';
+      if (isSushi) return 'I ate 8 pieces, consumed with soy sauce\nWasabi added, it was an avocado roll\nNot kimbap, it was grilled salmon nigiri';
+      if (isPasta) return 'Large portion, creamy sauce pasta\nHad bread on the side\nNot chicken pasta, it was seafood pasta';
+      if (isSalad) return 'Large portion, it also had chicken\nAdded olive oil and lemon on top\nNot caesar salad, it was a Mediterranean salad';
+      if (isSoup) return '1 bowl, had bread on the side\nNot lentil soup, it was tomato soup\nCream was added, heavily spiced';
+      if (isRice) return '1 serving, cooked with butter\nHad it with grilled chicken\nChicken broth was used in the rice';
+      if (isWrap) return '1 piece, large size wrap\nHad onions, peppers and cheddar inside\nHad yogurt drink on the side';
+      if (isDessert) return '1 slice, ice cream was added on top\nHad milk with it\nHigh sugar, intensely chocolatey';
+      if (isChicken) return '200 grams, baked in the oven\nHad it with salad\nSauced chicken breast with spices';
+      if (isSandwich) return '1 piece, had cheddar and tomato inside\nMade from whole wheat bread\nHad tea with it';
+      final cleanName = foodName.trim();
+      return '1 portion of $cleanName\nI also had something on the side\nNot $cleanName, it was a different dish';
+    }
+
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
-    final result = widget.result;
+    final result = _localResult ?? widget.result;
     final scaled = result.nutritionScaled;
     final cs = Theme.of(context).colorScheme;
     final isTr = context.watch<LanguageProvider>().isTurkish;
     final displayName = isTr ? result.foodName : (result.foodNameEn ?? result.foodName);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final detailsList = <Widget>[];
+    final n65 = result.nutrition65per100g;
+    final factor = result.portionGrams / 100.0;
+    if (n65 != null) {
+      void addIf(String label, double val, String unit, {int dec = 1}) {
+        final scaledVal = val * factor;
+        if (scaledVal > 0.01) {
+          detailsList.add(_infoRow(context, context.tr(label), '${scaledVal.toStringAsFixed(dec)} $unit'));
+        }
+      }
+      addIf('Doymuş Yağ', n65.satFat, 'g');
+      addIf('Tekli Doymamış Yağ', n65.monoFat, 'g');
+      addIf('Çoklu Doymamış Yağ', n65.polyFat, 'g');
+      addIf('Kolesterol', n65.cholesterol, 'mg', dec: 0);
+      addIf('Sodyum', n65.sodium, 'mg', dec: 0);
+      addIf('Kalsiyum', n65.calcium, 'mg', dec: 0);
+      addIf('Demir', n65.iron, 'mg');
+      addIf('Magnezyum', n65.magnesium, 'mg', dec: 0);
+      addIf('Potasyum', n65.potassium, 'mg', dec: 0);
+      addIf('Çinko', n65.zinc, 'mg');
+      addIf('Fosfor', n65.phosphorus, 'mg', dec: 0);
+      addIf('Selenyum', n65.selenium, 'mcg');
+      addIf('Bakır', n65.copper, 'mg');
+      addIf('Manganez', n65.manganese, 'mg');
+      addIf('Vitamin A', n65.vitA_RAE, 'mcg RAE', dec: 0);
+      addIf('Vitamin C', n65.vitC, 'mg');
+      addIf('Vitamin D', n65.vitD_mcg, 'mcg');
+      addIf('Vitamin E', n65.vitE, 'mg');
+      addIf('Vitamin K', n65.vitK, 'mcg');
+      addIf('B1 (Tiamin)', n65.thiamine, 'mg');
+      addIf('B2 (Riboflavin)', n65.riboflavin, 'mg');
+      addIf('B3 (Niasin)', n65.niacin, 'mg');
+      addIf('B5 (Pantotenik)', n65.pantothenic, 'mg');
+      addIf('B6', n65.vitB6, 'mg');
+      addIf('Folat (B9)', n65.folate, 'mcg', dec: 0);
+      addIf('B12', n65.vitB12, 'mcg');
+      addIf('Biotin (B7)', n65.biotin, 'mcg');
+      addIf('Kolin', n65.choline, 'mg', dec: 0);
+      addIf('Omega-3', n65.omega3, 'g');
+      addIf('Omega-6', n65.omega6, 'g');
+    }
+
 
     Future<bool?> _showDeleteConfirmation() async {
       return await showDialog<bool?>(
@@ -362,295 +571,456 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       });
     }
 
-    final content = NotificationListener<DraggableScrollableNotification>(
-      onNotification: (notification) {
-        if (notification.extent <= notification.minExtent + 0.01 && !_isShowingExitDialog) {
-          _isShowingExitDialog = true;
-          _showDismissConfirmation().then((choice) {
-            _isShowingExitDialog = false;
-            if (choice == null) {
-              // User dismissed dialog by clicking outside (if possible) or back button
-              // Bring it back up a bit so it doesn't get stuck at 0.1
-              widget.draggableController?.animateTo(0.8, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-              return;
-            }
-            if (choice == true && context.mounted) {
-              // Stay on page as requested by user
-              widget.draggableController?.animateTo(0.8, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-            } else if (choice == false && context.mounted) {
-              exitSheet();
-            }
-          });
-        }
-        return false;
-      },
-      child: SingleChildScrollView(
-        controller: widget.scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!widget.isFullScreen)
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: cs.onSurface.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            if (!widget.isFullScreen) ...[
-              Stack(
+    final sheetContent = SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.of(context).padding.bottom),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: _showDetailsForm
+            ? Column(
+                key: const ValueKey('details_view'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (widget.image != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 400),
-                        child: Image.file(
-                          widget.image!,
-                          width: double.infinity,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    )
-                  else if (_imageSearching)
-                    Container(
-                      height: 140,
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: cs.primary.withValues(alpha: 0.06),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
-                            const SizedBox(height: 8),
-                            Text(context.tr('Görsel aranıyor...'), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (_suggestedImageUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: CachedNetworkImage(
-                        imageUrl: _suggestedImageUrl!,
-                        height: 160,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    )
-                  else
-                    Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: cs.primary.withValues(alpha: 0.06),
-                      ),
-                      child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 56, color: cs.primary.withValues(alpha: 0.25))),
-                    ),
-                  if (!_imageSearching)
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: GestureDetector(
-                        onTap: _toggleSaveFood,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black.withValues(alpha: 0.5),
-                          ),
-                          child: Icon(
-                            _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                            color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
-                            size: 20,
-                          ),
-                        ),
+                        color: cs.onSurface.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (widget.image == null && !_imageSearching && _suggestedImageUrl != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
                   ),
-                  child: Row(
+                  Row(
                     children: [
-                      Icon(Icons.image_outlined, size: 16, color: cs.onSurfaceVariant),
+                      const Icon(Icons.add_comment_rounded, color: Color(0xFF007AFF), size: 20),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(context.tr('Önerilen görsel kullanılsın mı?'),
-                          style: TextStyle(fontSize: 12, color: cs.onSurface, fontWeight: FontWeight.w500)),
-                      ),
-                      Switch.adaptive(
-                        value: _useSuggestedImage,
-                        onChanged: (v) => setState(() => _useSuggestedImage = v),
-                        activeColor: cs.primary,
+                      Text(
+                        context.tr('Detay Ekle'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    displayName,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: cs.onSurface),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _ConfidenceBadge(result: result),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(context.tr('Porsiyon: '), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
-                IntrinsicWidth(
-                  child: TextField(
-                    controller: _gramsCtrl,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                    },
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: cs.onSurface.withValues(alpha: 0.7)),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  
+                  // Dynamic Contextual Examples
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isTr ? 'Örnek:' : 'Examples:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white54 : Colors.black45,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getDynamicExamplesText(result.foodName, isTr),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark ? Colors.white54 : Colors.black45,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Text(context.tr(' g'), style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5))),
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                IntrinsicWidth(
-                  child: TextField(
-                    controller: _calorieCtrl,
-                    onTap: () => _isCalorieManuallyEdited = true,
-                    onChanged: (v) => _isCalorieManuallyEdited = true,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                    },
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 32, color: cs.primary),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
+                  const SizedBox(height: 16),
+
+                  // Text Box
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white10 : Colors.black12,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    child: TextField(
+                      controller: _detailsController,
+                      maxLines: 4,
+                      minLines: 3,
+                      style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: context.tr('Yemeğin porsiyonu, ismi veya malzemeleri hakkında detay yazın...'),
+                        hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white30 : Colors.black38),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Text('kcal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: cs.primary.withValues(alpha: 0.7))),
-              ],
-            ),
-            Text('${context.tr('~')}${result.alternativeMin.round()} – ${result.alternativeMax.round()}${context.tr(' kcal aralığı')}', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 11)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _EditableMacro(controller: _proteinCtrl, label: context.tr('Protein'), color: const Color(0xFF7EE787)),
-                const SizedBox(width: 6),
-                _EditableMacro(controller: _carbCtrl, label: context.tr('Karbonhidrat'), color: const Color(0xFF58A6FF)),
-                const SizedBox(width: 6),
-                _EditableMacro(controller: _fatCtrl, label: context.tr('Yağ'), color: const Color(0xFFF0A500)),
-                const SizedBox(width: 6),
-                _EditableMacro(controller: _fiberCtrl, label: context.tr('Lif'), color: const Color(0xFFFF6B6B)),
-              ],
-            ),
-            if (result.offProduct != null) ...[
-              const SizedBox(height: 8),
-              Row(
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _toggleDetailsForm(false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark ? Colors.white70 : Colors.black54,
+                            side: BorderSide(color: isDark ? Colors.white30 : Colors.black26),
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text(context.tr('Vazgeç'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            final text = _detailsController.text.trim();
+                            if (text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('Lütfen detay girin.')),
+                                  backgroundColor: const Color(0xFFFF3B30),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.pop(context, text);
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF007AFF),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                          label: Text(context.tr('Yeniden Analiz Et'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            : Column(
+                key: const ValueKey('main_view'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (result.offProduct!.nutriscoreGrade != null) _NutriScoreBadge(grade: result.offProduct!.nutriscoreGrade!),
-                  if (result.offProduct!.nutriscoreGrade != null && result.offProduct!.novaGroup != null) const SizedBox(width: 6),
-                  if (result.offProduct!.novaGroup != null) _NovaBadge(group: result.offProduct!.novaGroup!),
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: cs.onSurface.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Title row
+                  Row(
+                    children: [
+                      Icon(Icons.restaurant_menu_rounded, color: const Color(0xFF007AFF), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.tr('Görselden Analiz'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.bookmark_border_rounded, size: 20),
+                        color: _isSaved ? const Color(0xFFF0A500) : cs.onSurface.withValues(alpha: 0.6),
+                        onPressed: _toggleSaveFood,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF3B30), size: 20),
+                        onPressed: () async {
+                          final ok = await _showDeleteConfirmation();
+                          if (ok == true && context.mounted) Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+
+                  // User's added image
+                  if (widget.image != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.file(
+                          widget.image!,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+
+                  // Food name & portion card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _nameCtrl,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _ConfidenceBadge(result: result),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Text(
+                              '${context.tr('Porsiyon: ')}~',
+                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                            ),
+                            IntrinsicWidth(
+                              child: TextField(
+                                controller: _gramsCtrl,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'g',
+                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Calorie display
+                  Center(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            IntrinsicWidth(
+                              child: TextField(
+                                controller: _calorieCtrl,
+                                onTap: () => _isCalorieManuallyEdited = true,
+                                onChanged: (_) => _isCalorieManuallyEdited = true,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 40,
+                                  color: Color(0xFFFF6B35),
+                                  letterSpacing: -0.5,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'kcal',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFFF6B35),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '~${result.alternativeMin.round()} – ${result.alternativeMax.round()} kcal aralığı',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Macros
+                  Row(
+                    children: [
+                      _EditableMacro(controller: _proteinCtrl, label: context.tr('Protein'), color: const Color(0xFFFF3B30)),
+                      const SizedBox(width: 6),
+                      _EditableMacro(controller: _carbCtrl, label: context.tr('Karb'), color: const Color(0xFFFF9500)),
+                      const SizedBox(width: 6),
+                      _EditableMacro(controller: _fatCtrl, label: context.tr('Yağ'), color: const Color(0xFFAF52DE)),
+                      const SizedBox(width: 6),
+                      _EditableMacro(controller: _fiberCtrl, label: context.tr('Lif'), color: const Color(0xFF34C759)),
+                    ],
+                  ),
+                  if (result.offProduct != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        if (result.offProduct!.nutriscoreGrade != null) _NutriScoreBadge(grade: result.offProduct!.nutriscoreGrade!),
+                        if (result.offProduct!.nutriscoreGrade != null && result.offProduct!.novaGroup != null) const SizedBox(width: 6),
+                        if (result.offProduct!.novaGroup != null) _NovaBadge(group: result.offProduct!.novaGroup!),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+
+                  // Details expander
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: ExpansionTile(
+                        title: Text(
+                          context.tr('Detaylar'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: detailsList.isNotEmpty
+                                  ? detailsList
+                                  : [
+                                      Text(
+                                        context.tr('Mikro besin verisi bulunamadı.'),
+                                        style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                                      )
+                                    ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text(context.tr('Hangi öğüne eklensin?'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 8),
+                  _MealChipRow(selected: _selectedMeal, onChanged: (m) => setState(() => _selectedMeal = m)),
+                  const SizedBox(height: 24),
+
+                  // Restructured Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _handleEdit,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF007AFF),
+                            side: const BorderSide(color: Color(0xFF007AFF), width: 1.2),
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.edit_rounded, size: 16),
+                          label: Text(context.tr('Düzenle'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _toggleDetailsForm(true),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF34C759),
+                            side: const BorderSide(color: Color(0xFF34C759), width: 1.2),
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.add_comment_rounded, size: 16),
+                          label: Text(context.tr('Detay Ekle'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _confirm,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF007AFF),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: Text(context.tr('Evet, Kaydet'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
                 ],
               ),
-            ],
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _showMicroNutrients,
-              icon: const Icon(Icons.equalizer_rounded, size: 18),
-              label: Text(context.tr('Mikro Besinleri Gör'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 12),
-            Text(context.tr('Hangi öğüne eklensin?'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurfaceVariant)),
-            const SizedBox(height: 8),
-            _MealChipRow(selected: _selectedMeal, onChanged: (m) => setState(() => _selectedMeal = m)),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () {
-                if (widget.onEdit != null) {
-                  widget.onEdit?.call();
-                } else {
-                  _confirm();
-                }
-              },
-              icon: const Icon(Icons.edit_note_rounded, size: 22),
-              label: Text(context.tr('Yemeği Düzenle'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _confirm,
-              icon: const Icon(Icons.check_rounded, size: 22),
-              label: Text(context.tr('Öğüne Ekle'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-            ),
-          ],
-        ),
       ),
     );
 
-    if (!widget.isFullScreen) {
+    if (widget.isFullScreen) {
       return PopScope(
         canPop: _confirmedExit,
         onPopInvokedWithResult: (didPop, result) async {
           if (didPop) return;
           final choice = await _showDismissConfirmation();
-          if (choice == null) {
-            widget.draggableController?.animateTo(0.8, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-            return;
-          }
-          if (choice == true && context.mounted) {
-            widget.draggableController?.animateTo(0.8, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-          } else if (choice == false && context.mounted) {
-            exitSheet();
-          }
+          if (choice == null) return;
+          if (choice == false && context.mounted) exitSheet();
         },
-        child: Container(
-          decoration: BoxDecoration(color: cs.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
-          child: content,
+        child: Scaffold(
+          backgroundColor: isDark ? const Color(0xFF131520) : Colors.white,
+          body: SafeArea(
+            child: sheetContent,
+          ),
         ),
       );
     }
@@ -660,245 +1030,50 @@ class _FoodAnalysisResultSheetState extends State<FoodAnalysisResultSheet> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final choice = await _showDismissConfirmation();
-        if (choice == null) return;
+        if (choice == null) {
+          widget.draggableController?.animateTo(0.8, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+          return;
+        }
         if (choice == true && context.mounted) {
-          // stay on page
+          widget.draggableController?.animateTo(0.8, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
         } else if (choice == false && context.mounted) {
           exitSheet();
         }
       },
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        body: Column(
-          children: [
-            // ── TOP: Full-bleed image ──
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.40,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (widget.image != null)
-                    Image.file(widget.image!, fit: BoxFit.cover)
-                  else
-                    Container(color: cs.surfaceContainerHighest),
-                  // Gradient fade at bottom for smooth transition
-                  Positioned(
-                    left: 0, right: 0, bottom: 0,
-                    child: Container(
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, cs.surface],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Status bar area buttons
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    left: 12,
-                    child: GestureDetector(
-                      onTap: () async {
-                        final choice = await _showDismissConfirmation();
-                        if (choice == null) return;
-                        if (choice == false && context.mounted) Navigator.of(context).pop();
-                      },
-                      child: Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.black.withValues(alpha: 0.55),
-                        ),
-                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    right: 12,
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: _toggleSaveFood,
-                          child: Container(
-                            width: 38, height: 38,
-                            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.55)),
-                            child: Icon(
-                              _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                              color: _isSaved ? const Color(0xFFF0A500) : Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () async {
-                            final ok = await _showDeleteConfirmation();
-                            if (ok == true && context.mounted) Navigator.pop(context);
-                          },
-                          child: Container(
-                            width: 38, height: 38,
-                            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.55)),
-                            child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF3B30), size: 18),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // ── BOTTOM: Scrollable content ──
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(context).padding.bottom),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Name + confidence
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            displayName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        _ConfidenceBadge(result: result),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    // Portion editable
-                    Row(
-                      children: [
-                        Text('${context.tr('Porsiyon: ')}~', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
-                        IntrinsicWidth(
-                          child: TextField(
-                            controller: _gramsCtrl,
-                            keyboardType: TextInputType.number,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cs.onSurface.withValues(alpha: 0.7)),
-                            decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
-                          ),
-                        ),
-                        Text('g', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5))),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // Calorie display
-                    Center(
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              IntrinsicWidth(
-                                child: TextField(
-                                  controller: _calorieCtrl,
-                                  onTap: () => _isCalorieManuallyEdited = true,
-                                  onChanged: (_) => _isCalorieManuallyEdited = true,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  textInputAction: TextInputAction.done,
-                                  onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 40, color: Color(0xFFFF6B35), letterSpacing: -1),
-                                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Text('kcal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFFFF6B35))),
-                            ],
-                          ),
-                          Text(
-                            '~${result.alternativeMin.round()} – ${result.alternativeMax.round()} kcal aralığı',
-                            style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5), fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Macros
-                    Row(
-                      children: [
-                        _EditableMacro(controller: _proteinCtrl, label: context.tr('Protein'), color: const Color(0xFFFF3B30)),
-                        const SizedBox(width: 6),
-                        _EditableMacro(controller: _carbCtrl, label: context.tr('Karb'), color: const Color(0xFFFF9500)),
-                        const SizedBox(width: 6),
-                        _EditableMacro(controller: _fatCtrl, label: context.tr('Yağ'), color: const Color(0xFFAF52DE)),
-                        const SizedBox(width: 6),
-                        _EditableMacro(controller: _fiberCtrl, label: context.tr('Lif'), color: const Color(0xFF34C759)),
-                      ],
-                    ),
-                    if (result.offProduct != null) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          if (result.offProduct!.nutriscoreGrade != null) _NutriScoreBadge(grade: result.offProduct!.nutriscoreGrade!),
-                          if (result.offProduct!.nutriscoreGrade != null && result.offProduct!.novaGroup != null) const SizedBox(width: 6),
-                          if (result.offProduct!.novaGroup != null) _NovaBadge(group: result.offProduct!.novaGroup!),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    // Micro nutrients button
-                    OutlinedButton.icon(
-                      onPressed: _showMicroNutrients,
-                      icon: const Icon(Icons.equalizer_rounded, size: 18),
-                      label: Text(context.tr('Mikro Besinleri Gör'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(44),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    Text(context.tr('Hangi öğüne eklensin?'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: cs.onSurfaceVariant)),
-                    const SizedBox(height: 8),
-                    _MealChipRow(selected: _selectedMeal, onChanged: (m) => setState(() => _selectedMeal = m)),
-                    const SizedBox(height: 16),
-                    // Action buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: widget.onEdit,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFFF3B30),
-                              side: const BorderSide(color: Color(0xFFFF3B30), width: 1.2),
-                              minimumSize: const Size.fromHeight(50),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: Text(context.tr('Detay Ekle'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _confirm,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF007AFF),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(50),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: Text(context.tr('Evet, Kaydet'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF131520) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
+        child: sheetContent,
+      ),
+    );
+  }
+
+  Widget _infoRow(BuildContext ctx, String label, String value) {
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white70 : Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -908,40 +1083,38 @@ class _EditableMacro extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final Color color;
-  const _EditableMacro({required this.controller, required this.label, required this.color});
+
+  const _EditableMacro({
+    required this.controller,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Use high-contrast color choices in Light Mode to ensure accessibility
-    Color displayColor;
-    if (isDark) {
-      displayColor = color;
-    } else {
-      if (color == const Color(0xFF7EE787)) {
-        displayColor = const Color(0xFF1B6A27); // Protein: Dark Green
-      } else if (color == const Color(0xFF58A6FF)) {
-        displayColor = const Color(0xFF0969DA); // Carbs: Dark Blue
-      } else if (color == const Color(0xFFF0A500)) {
-        displayColor = const Color(0xFFB57C00); // Fat: Dark Amber/Gold
-      } else if (color == const Color(0xFFFF6B6B)) {
-        displayColor = const Color(0xFFCF222E); // Fiber: Dark Red
-      } else {
-        displayColor = color;
-      }
-    }
-
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
-          color: displayColor.withValues(alpha: isDark ? 0.12 : 0.08),
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
           borderRadius: BorderRadius.circular(12),
-          border: isDark ? null : Border.all(color: displayColor.withValues(alpha: 0.18), width: 1),
+          border: Border.all(
+            color: color.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
         child: Column(
           children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -953,22 +1126,21 @@ class _EditableMacro extends StatelessWidget {
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textAlign: TextAlign.center,
                     textInputAction: TextInputAction.done,
-                    onSubmitted: (_) {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                    },
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: displayColor),
+                    onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: color,
+                    ),
                     decoration: const InputDecoration(
-                      isDense: true,
                       border: InputBorder.none,
+                      isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
-                const SizedBox(width: 2),
-                Text('g', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: displayColor.withValues(alpha: 0.8))),
               ],
             ),
-            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: displayColor.withValues(alpha: 0.9)), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
@@ -1058,13 +1230,22 @@ class _ConfidenceBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final score = result.confidenceScore;
     final displayedScore = score < 85 ? 85 : (score > 100 ? 100 : score);
-    final color = Color.lerp(const Color(0xFFF85149), const Color(0xFF7EE787), displayedScore / 100) ?? const Color(0xFF7EE787);
+    final color = displayedScore >= 75
+        ? const Color(0xFF34C759) // Apple Green
+        : displayedScore >= 50
+            ? const Color(0xFFFF9500) // Apple Orange
+            : const Color(0xFFFF3B30); // Apple Red
+
     return InkWell(
       onTap: () => _showAiExplanation(context),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.4))),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1180,41 +1361,45 @@ class _MealChipRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final meals = [
-      ('kahvaltı', '☀️', context.tr('Kahvaltı')),
-      ('kahvaltı sonrası ara öğün', '☕️', context.tr('Kahvaltı Sonrası Ara Öğün')),
-      ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
-      ('öğle sonrası ara öğün', '🍵', context.tr('Öğle Sonrası Ara Öğün')),
-      ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
-      ('gece atıştırmalığı', '🍿', context.tr('Gece Atıştırmalığı')),
-    ];
-    return Column(
-      children: [
+    final showSnacks = context.watch<ProfileProvider>().activeProfile?.showSnacks ?? true;
+
+    final meals = showSnacks
+        ? [
+            ('kahvaltı', '☀️', context.tr('Kahvaltı')),
+            ('kahvaltı sonrası ara öğün', '☕️', context.tr('Kahvaltı Sonrası Ara Öğün')),
+            ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
+            ('öğle sonrası ara öğün', '🍵', context.tr('Öğle Sonrası Ara Öğün')),
+            ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
+            ('gece atıştırmalığı', '🍿', context.tr('Gece Atıştırmalığı')),
+          ]
+        : [
+            ('kahvaltı', '☀️', context.tr('Kahvaltı')),
+            ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
+            ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
+          ];
+
+    final rows = <Widget>[];
+    for (int i = 0; i < meals.length; i += 2) {
+      final item1 = meals[i];
+      final hasSecond = i + 1 < meals.length;
+      rows.add(
         Row(
           children: [
-            Expanded(child: _buildMealChip(context, meals[0], isDark)),
+            Expanded(child: _buildMealChip(context, item1, isDark)),
             const SizedBox(width: 8),
-            Expanded(child: _buildMealChip(context, meals[1], isDark)),
+            if (hasSecond)
+              Expanded(child: _buildMealChip(context, meals[i + 1], isDark))
+            else
+              const Spacer(),
           ],
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _buildMealChip(context, meals[2], isDark)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildMealChip(context, meals[3], isDark)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _buildMealChip(context, meals[4], isDark)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildMealChip(context, meals[5], isDark)),
-          ],
-        ),
-      ],
-    );
+      );
+      if (i + 2 < meals.length) {
+        rows.add(const SizedBox(height: 8));
+      }
+    }
+
+    return Column(children: rows);
   }
 }
 

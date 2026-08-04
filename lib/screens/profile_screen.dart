@@ -2517,6 +2517,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
   late Goal _goal;
   double? _targetWeightKg;
   double? _origTargetWeight;
+  late bool _showSnacks;
 
   // Track original values to detect unsaved changes
   late String _origName;
@@ -2525,6 +2526,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
   late String _origAge;
   late Gender _origGender;
   late Goal _origGoal;
+  late bool _origShowSnacks;
 
   bool get _hasChanges =>
       _nameCtrl.text != _origName ||
@@ -2533,7 +2535,8 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
       _ageCtrl.text != _origAge ||
       _gender != _origGender ||
       _goal != _origGoal ||
-      _targetWeightKg != _origTargetWeight;
+      _targetWeightKg != _origTargetWeight ||
+      _showSnacks != _origShowSnacks;
 
   @override
   void initState() {
@@ -2545,6 +2548,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     _ageCtrl = TextEditingController(text: p.age.toString());
     _gender = p.gender;
     _goal = p.goal;
+    _showSnacks = p.showSnacks;
     // Store originals
     _origName = p.name;
     _origWeight = p.weight.toStringAsFixed(1);
@@ -2552,6 +2556,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     _origAge = p.age.toString();
     _origGender = p.gender;
     _origGoal = p.goal;
+    _origShowSnacks = p.showSnacks;
     _loadTargetWeight();
   }
 
@@ -2639,6 +2644,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
           advancedGoal: p.advancedGoal,
           healthConditions: p.healthConditions,
           dietaryPreferences: p.dietaryPreferences,
+          showSnacks: _showSnacks,
         );
     if (mounted) {
       Navigator.pop(context);
@@ -2884,6 +2890,19 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                             ),
                           ),
                         ],
+                        Divider(height: 1, indent: 56, endIndent: 16, color: isDark ? Colors.white10 : Colors.black12),
+                        _buildAppleFieldRow(
+                          context,
+                          icon: Icons.coffee_rounded,
+                          iconColor: const Color(0xFF5856D6),
+                          label: context.tr('Ara Öğünleri Göster'),
+                          showEditIcon: false,
+                          child: Switch.adaptive(
+                            value: _showSnacks,
+                            onChanged: (v) => setState(() => _showSnacks = v),
+                            activeColor: const Color(0xFF007AFF),
+                          ),
+                        ),
                       ],
                     ),
                   ),

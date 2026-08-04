@@ -1375,6 +1375,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       savedDelta = -_data.weeklyChangeDelta;
     }
 
+    final showSnacks = _data.mealCount == '4 Öğün' || _data.mealCount == '5+ Öğün';
+
     await profileProvider.save(
       profileId: _data.onboardingId,
       name: name.isEmpty ? 'Kullanıcı' : name,
@@ -1389,6 +1391,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       weeklyWeightDelta: savedDelta,
       createdAt: DateTime.now(),
       startingWeight: _data.weightKg,
+      showSnacks: showSnacks,
     );
 
     if (!mounted) return;

@@ -140,11 +140,14 @@ STEP 2 — MACRONUTRIENT & CALORIE CALCULATION (PER 100G OF THE FOOD):
 
 STEP 3 — MICRONUTRIENT & ESSENTIAL NUTRIENT ESTIMATION (PER 100G OF THE FOOD):
 - Estimate micronutrients proportionally to the estimated ingredients per 100g.
-- Never output zero unless the nutrient is biologically absent from the food.
+- You MUST NEVER return 0 or 0.0 for micronutrients, vitamins, or minerals unless the nutrient is biologically completely absent from the food category. Always estimate a realistic, USDA-aligned non-zero value. Filling all micro-nutrients with realistic estimates is strictly mandatory.
 - Required nutrients match the schema keys precisely.
 
 STEP 4 — USER HINT HANDLING:
-- If the user provides a hint (food name, restaurant, ingredients, cooking method, or portion size), use it only if it is consistent with the image.
+- If the user provides a hint/note about portion size or quantity (e.g. "2 dilim", "3 adet", "200 gram", "yarım", "küçük porsiyon", "büyük boy", "2 slices", "half"), you MUST include this quantity/size detail directly in the food name. Examples: "Pizza" + "2 dilim yedim" → yemek_adi="2 Dilim Pizza", yemek_adi_en="2 Slices of Pizza". "Burger" + "double patty" → yemek_adi_en="Double Patty Burger".
+- If the user provides a hint about a sauce or extra ingredient (e.g. "soya sosu", "extra cheese", "avokadolu"), combine it into the name. Examples: "Kimbap" + "soya sosuyla tükettim" → yemek_adi="Soya Soslu Kimbap", yemek_adi_en="Kimbap with Soy Sauce".
+- If the user corrects the food name (e.g. "bu pizza değil, hamburger"), use the corrected name entirely.
+- Apply ALL hints together if multiple are provided (e.g. "2 dilim pizza, ekstra peynirli" → "2 Dilim Ekstra Peynirli Pizza").
 - Never override obvious visual evidence with the user hint.
 
 STEP 5 — FINAL VALIDATION

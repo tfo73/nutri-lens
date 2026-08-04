@@ -22,6 +22,7 @@ import '../models/nutrition_data.dart';
 import '../models/nutrition_data_65.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/profile_provider.dart';
 import '../services/claude_vision_service.dart';
 import '../services/food_analysis_service.dart';
 import '../services/nutrition_service.dart';
@@ -592,8 +593,12 @@ class _CameraScreenState extends State<CameraScreen>
           _resetToScanning();
           widget.onFoodAdded?.call();
         },
-      ).then((_) {
-        if (!_editingFromResult) {
+      ).then((val) {
+        if (val is String && _capturedImage != null && mounted) {
+          provider.analyzeAndAddImage(_capturedImage!, _selectedMeal, extraContext: val);
+          provider.enableHomeResult();
+          Navigator.pop(context);
+        } else if (!_editingFromResult) {
           _resetToScanning();
         }
       });
@@ -1867,41 +1872,45 @@ class _MealChipRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final meals = [
-      ('kahvaltı', '☀️', context.tr('Kahvaltı')),
-      ('kahvaltı sonrası ara öğün', '☕️', context.tr('Kahvaltı Sonrası Ara Öğün')),
-      ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
-      ('öğle sonrası ara öğün', '🍵', context.tr('Öğle Sonrası Ara Öğün')),
-      ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
-      ('gece atıştırmalığı', '🍿', context.tr('Gece Atıştırmalığı')),
-    ];
-    return Column(
-      children: [
+    final showSnacks = context.watch<ProfileProvider>().activeProfile?.showSnacks ?? true;
+
+    final meals = showSnacks
+        ? [
+            ('kahvaltı', '☀️', context.tr('Kahvaltı')),
+            ('kahvaltı sonrası ara öğün', '☕️', context.tr('Kahvaltı Sonrası Ara Öğün')),
+            ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
+            ('öğle sonrası ara öğün', '🍵', context.tr('Öğle Sonrası Ara Öğün')),
+            ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
+            ('gece atıştırmalığı', '🍿', context.tr('Gece Atıştırmalığı')),
+          ]
+        : [
+            ('kahvaltı', '☀️', context.tr('Kahvaltı')),
+            ('öğle yemeği', '🌤', context.tr('Öğle Yemeği')),
+            ('akşam yemeği', '🌙', context.tr('Akşam Yemeği')),
+          ];
+
+    final rows = <Widget>[];
+    for (int i = 0; i < meals.length; i += 2) {
+      final item1 = meals[i];
+      final hasSecond = i + 1 < meals.length;
+      rows.add(
         Row(
           children: [
-            Expanded(child: _buildMealChip(context, meals[0], isDark)),
+            Expanded(child: _buildMealChip(context, item1, isDark)),
             const SizedBox(width: 8),
-            Expanded(child: _buildMealChip(context, meals[1], isDark)),
+            if (hasSecond)
+              Expanded(child: _buildMealChip(context, meals[i + 1], isDark))
+            else
+              const Spacer(),
           ],
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _buildMealChip(context, meals[2], isDark)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildMealChip(context, meals[3], isDark)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _buildMealChip(context, meals[4], isDark)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildMealChip(context, meals[5], isDark)),
-          ],
-        ),
-      ],
-    );
+      );
+      if (i + 2 < meals.length) {
+        rows.add(const SizedBox(height: 8));
+      }
+    }
+
+    return Column(children: rows);
   }
 }
 
@@ -3298,10 +3307,25 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
   bool _photoSearching = false;
   bool _useFoundPhoto = true;
 
+  final List<String> _selectedSuggestions = [];
+
   @override
   void initState() {
     super.initState();
     _meal = widget.selectedMeal;
+
+    final allSuggestions = [
+      '2 adet köfte, yanında pilav 200g',
+      '1 bardak süt ve 2 dilim ekmek',
+      'Izgara tavuk göğsü 150g, salata',
+      'Yulaf ezmesi, muz ve fıstık ezmesi',
+      'Fırında levrek ve haşlanmış sebze',
+      'Mercimek çorbası ve 1 dilim ekmek',
+      'Muzlu protein shake ve 10 badem',
+      'Zeytinyağlı taze fasulye ve yoğurt',
+    ];
+    allSuggestions.shuffle();
+    _selectedSuggestions.addAll(allSuggestions.take(3));
   }
 
   @override
@@ -3561,7 +3585,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
         final imgResp = await http.get(Uri.parse(_foundImageUrl!))
             .timeout(const Duration(seconds: 10));
         if (imgResp.statusCode == 200) {
-          final dir = await getTemporaryDirectory();
+          final dir = await getApplicationDocumentsDirectory();
           final file = File('${dir.path}/food_${DateTime.now().millisecondsSinceEpoch}.jpg');
           await file.writeAsBytes(imgResp.bodyBytes);
           imagePath = file.path;
@@ -3818,11 +3842,7 @@ class _VoiceTextEntrySheetState extends State<_VoiceTextEntrySheet> {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    ...[
-                      context.tr('2 adet köfte, yanında pilav 200g'),
-                      context.tr('1 bardak süt ve 2 dilim ekmek'),
-                      context.tr('Izgara tavuk göğsü 150g, salata'),
-                    ].map((e) => GestureDetector(
+                    ..._selectedSuggestions.map((key) => context.tr(key)).map((e) => GestureDetector(
                       onTap: () {
                         _textCtrl.text = e;
                         _textCtrl.selection = TextSelection.fromPosition(

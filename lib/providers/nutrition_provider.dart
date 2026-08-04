@@ -36,6 +36,8 @@ class NutritionProvider extends ChangeNotifier {
   File? get lastAnalyzedImage => _lastAnalyzedImage;
   String? _lastMealType;
   String? get lastMealType => _lastMealType;
+  String? _lastExtraContext;
+  String? get lastExtraContext => _lastExtraContext;
 
   final FoodAnalysisService _analysisService = FoodAnalysisService();
 
@@ -58,6 +60,7 @@ class NutritionProvider extends ChangeNotifier {
     _lastResult = null;
     _lastAnalyzedImage = null;
     _lastMealType = null;
+    _lastExtraContext = null;
     _showResultOnHome = false;
     _analysisError = null;
     notifyListeners();
@@ -73,6 +76,7 @@ class NutritionProvider extends ChangeNotifier {
     _isAnalyzing = true;
     _lastAnalyzedImage = image;
     _lastMealType = mealType;
+    _lastExtraContext = extraContext;
     _lastResult = null;
     _analysisError = null;
     _showResultOnHome = false;
